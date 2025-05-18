@@ -13,4 +13,5 @@ urlpatterns = [
     path('webhook-settings/', views.webhook_settings, name='webhook_settings'),
     path('activity-logs/', views.activity_logs, name='activity_logs'),
     path('send-to-telegram/', views.send_to_telegram, name='send_to_telegram'),
+    path('update-min-stock/', views.update_min_stock, name='update_min_stock'),
 ]

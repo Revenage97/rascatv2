@@ -22,11 +22,17 @@
                     <i class="bi bi-filter"></i> Filter
                 </button>
                 <ul class="dropdown-menu dropdown-menu-end">
-                    <li><a class="dropdown-item" href="?sort=name">Urutkan berdasarkan Nama</a></li>
-                    <li><a class="dropdown-item" href="?sort=category">Urutkan berdasarkan Kategori</a></li>
-                    <li><a class="dropdown-item" href="?sort=stock">Urutkan berdasarkan Stok</a></li>
+                    <li><a class="dropdown-item" href="?sort=name">Urutkan berdasarkan Nama (A-Z)</a></li>
+                    <li><a class="dropdown-item" href="?sort=name_desc">Urutkan berdasarkan Nama (Z-A)</a></li>
+                    <li><a class="dropdown-item" href="?sort=category">Urutkan berdasarkan Kategori (A-Z)</a></li>
+                    <li><a class="dropdown-item" href="?sort=category_desc">Urutkan berdasarkan Kategori (Z-A)</a></li>
+                    <li><a class="dropdown-item" href="?sort=stock_asc">Urutkan berdasarkan Stok (Terendah-Tertinggi)</a></li>
+                    <li><a class="dropdown-item" href="?sort=stock_desc">Urutkan berdasarkan Stok (Tertinggi-Terendah)</a></li>
+                    <li><a class="dropdown-item" href="?sort=price_asc">Urutkan berdasarkan Harga (Terendah-Tertinggi)</a></li>
+                    <li><a class="dropdown-item" href="?sort=price_desc">Urutkan berdasarkan Harga (Tertinggi-Terendah)</a></li>
                     <li><hr class="dropdown-divider"></li>
                     <li><a class="dropdown-item" href="?filter=low_stock">Stok di bawah minimum</a></li>
+                    <li><a class="dropdown-item" href="?">Reset Filter</a></li>
                 </ul>
             </div>
         </div>
@@ -47,8 +53,8 @@
                             <th>Kode Barang</th>
                             <th>Nama Barang</th>
                             <th>Kategori</th>
-                            <th>Stok Saat Ini</th>
                             <th>Harga Jual</th>
+                            <th>Stok Saat Ini</th>
                             <th>Stok Minimum</th>
                             <th>Aksi</th>
                             <th>Telegram</th>
@@ -65,14 +71,17 @@
                             <td>{{ item.code }}</td>
                             <td>{{ item.name }}</td>
                             <td>{{ item.category }}</td>
-                            <td>{{ item.current_stock }}</td>
                             <td>Rp {{ item.selling_price|floatformat:0|stringformat:"s"|slice:":-3" }}.{{ item.selling_price|floatformat:0|stringformat:"s"|slice:"-3:" }}</td>
+                            <td>{{ item.current_stock }}</td>
                             <td>
                                 <div class="input-group input-group-sm">
                                     <input type="number" class="form-control form-control-sm min-stock-input" 
                                            data-item-id="{{ item.id }}" value="{{ item.minimum_stock }}" min="0">
                                     <button class="btn btn-outline-secondary save-min-stock" type="button" data-item-id="{{ item.id }}">
                                         <i class="bi bi-save"></i>
+                                    </button>
+                                    <button class="btn btn-outline-danger delete-min-stock" type="button" data-item-id="{{ item.id }}">
+                                        <i class="bi bi-x"></i>
                                     </button>
                                 </div>
                             </td>
@@ -166,6 +175,7 @@
 {% block extra_js %}
 <script>
     document.addEventListener('DOMContentLoaded', function() {
+        // Get CSRF token
         const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
         const selectAllCheckbox = document.getElementById('selectAll');
         const itemCheckboxes = document.querySelectorAll('.item-checkbox');
@@ -175,13 +185,15 @@
         const toastMessage = document.getElementById('toastMessage');
         
         // Select all functionality
-        selectAllCheckbox.addEventListener('change', function() {
-            const isChecked = this.checked;
-            itemCheckboxes.forEach(checkbox => {
-                checkbox.checked = isChecked;
+        if (selectAllCheckbox) {
+            selectAllCheckbox.addEventListener('change', function() {
+                const isChecked = this.checked;
+                itemCheckboxes.forEach(checkbox => {
+                    checkbox.checked = isChecked;
+                });
+                updateSendButtonState();
             });
-            updateSendButtonState();
-        });
+        }
         
         // Individual checkbox change
         itemCheckboxes.forEach(checkbox => {
@@ -191,39 +203,43 @@
         // Update send button state
         function updateSendButtonState() {
             const checkedItems = document.querySelectorAll('.item-checkbox:checked');
-            sendToTelegramBtn.disabled = checkedItems.length === 0;
+            if (sendToTelegramBtn) {
+                sendToTelegramBtn.disabled = checkedItems.length === 0;
+            }
         }
         
         // Send to Telegram button
-        sendToTelegramBtn.addEventListener('click', function() {
-            const checkedItems = document.querySelectorAll('.item-checkbox:checked');
-            if (checkedItems.length === 0) {
-                showToast('Pilih minimal satu item untuk dikirim', 'danger');
-                return;
-            }
-            
-            const itemIds = Array.from(checkedItems).map(checkbox => checkbox.value);
-            
-            fetch('{% url "inventory:send_to_telegram" %}', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRFToken': csrfToken
-                },
-                body: JSON.stringify({ item_ids: itemIds })
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.status === 'success') {
-                    showToast('Berhasil dikirim ke Telegram', 'success');
-                } else {
-                    showToast('Gagal: ' + data.message, 'danger');
+        if (sendToTelegramBtn) {
+            sendToTelegramBtn.addEventListener('click', function() {
+                const checkedItems = document.querySelectorAll('.item-checkbox:checked');
+                if (checkedItems.length === 0) {
+                    showToast('Pilih minimal satu item untuk dikirim', 'danger');
+                    return;
                 }
-            })
-            .catch(error => {
-                showToast('Error: ' + error, 'danger');
+                
+                const itemIds = Array.from(checkedItems).map(checkbox => checkbox.value);
+                
+                fetch('{% url "inventory:send_to_telegram" %}', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': csrfToken
+                    },
+                    body: JSON.stringify({ item_ids: itemIds })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.status === 'success') {
+                        showToast('Berhasil dikirim ke Telegram', 'success');
+                    } else {
+                        showToast('Gagal: ' + data.message, 'danger');
+                    }
+                })
+                .catch(error => {
+                    showToast('Error: ' + error, 'danger');
+                });
             });
-        });
+        }
         
         // Single item send
         document.querySelectorAll('.send-single-item').forEach(button => {
@@ -259,9 +275,65 @@
                 const input = document.querySelector(`.min-stock-input[data-item-id="${itemId}"]`);
                 const minStock = input.value;
                 
-                // Here you would add AJAX to save the minimum stock
-                // For now, just show a toast notification
-                showToast('Stok minimum berhasil disimpan', 'success');
+                fetch('/inventory/update-min-stock/', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': csrfToken
+                    },
+                    body: JSON.stringify({ 
+                        item_id: itemId,
+                        minimum_stock: minStock 
+                    })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.status === 'success') {
+                        showToast('Stok minimum berhasil disimpan', 'success');
+                        // Change button color back to normal
+                        this.classList.remove('btn-primary');
+                        this.classList.add('btn-outline-secondary');
+                    } else {
+                        showToast('Gagal: ' + data.message, 'danger');
+                    }
+                })
+                .catch(error => {
+                    showToast('Error: ' + error, 'danger');
+                });
+            });
+        });
+        
+        // Delete minimum stock (set to 0)
+        document.querySelectorAll('.delete-min-stock').forEach(button => {
+            button.addEventListener('click', function() {
+                const itemId = this.getAttribute('data-item-id');
+                const input = document.querySelector(`.min-stock-input[data-item-id="${itemId}"]`);
+                
+                // Set value to 0
+                input.value = 0;
+                
+                fetch('/inventory/update-min-stock/', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': csrfToken
+                    },
+                    body: JSON.stringify({ 
+                        item_id: itemId,
+                        minimum_stock: 0 
+                    })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.status === 'success') {
+                        showToast('Stok minimum berhasil dihapus', 'success');
+                    } else {
+                        showToast('Gagal: ' + data.message, 'danger');
+                    }
+                })
+                .catch(error => {
+                    showToast('Error: ' + error, 'danger');
+                });
             });
         });
         

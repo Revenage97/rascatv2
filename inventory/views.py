@@ -60,7 +60,11 @@ def logout_view(request):
 @login_required
 def dashboard(request):
     query = request.GET.get('query', '')
+    sort = request.GET.get('sort', '')
+    sort_dir = request.GET.get('dir', 'asc')
+    filter_type = request.GET.get('filter', '')
     
+    # Start with all items or filtered by search query
     if query:
         items = Item.objects.filter(
             Q(code__icontains=query) | 
@@ -70,9 +74,41 @@ def dashboard(request):
     else:
         items = Item.objects.all()
     
+    # Apply filters
+    if filter_type == 'low_stock':
+        # Filter items with stock below minimum
+        items = items.filter(current_stock__lt=models.F('minimum_stock'))
+    
+    # Apply sorting
+    if sort:
+        # Determine sort field and direction
+        sort_field = ''
+        if sort == 'name':
+            sort_field = 'name'
+        elif sort == 'name_desc':
+            sort_field = '-name'
+        elif sort == 'category':
+            sort_field = 'category'
+        elif sort == 'category_desc':
+            sort_field = '-category'
+        elif sort == 'stock_asc':
+            sort_field = 'current_stock'
+        elif sort == 'stock_desc':
+            sort_field = '-current_stock'
+        elif sort == 'price_asc':
+            sort_field = 'selling_price'
+        elif sort == 'price_desc':
+            sort_field = '-selling_price'
+        
+        # Apply sorting if a valid field was specified
+        if sort_field:
+            items = items.order_by(sort_field)
+    
     return render(request, 'inventory/dashboard.html', {
         'items': items,
         'query': query,
+        'current_sort': sort,
+        'current_filter': filter_type,
     })
 
 @login_required
@@ -291,12 +327,25 @@ def send_to_telegram(request):
                 'produk': products
             }
             
-            # Send to webhook
+            # Send to webhook with debug info
+            headers = {
+                'Content-Type': 'application/json',
+                'User-Agent': 'Stock Management System/1.0'
+            }
+            
+            # Log the payload for debugging
+            print(f"Sending payload to webhook: {json.dumps(payload)}")
+            print(f"Webhook URL: {webhook_settings.telegram_webhook_url}")
+            
             response = requests.post(
                 webhook_settings.telegram_webhook_url,
                 json=payload,
-                headers={'Content-Type': 'application/json'}
+                headers=headers
             )
+            
+            # Log the response for debugging
+            print(f"Webhook response status: {response.status_code}")
+            print(f"Webhook response content: {response.text}")
             
             if response.status_code in [200, 201, 202]:
                 ActivityLog.objects.create(
@@ -311,14 +360,56 @@ def send_to_telegram(request):
                     user=request.user,
                     action='Kirim ke Telegram',
                     status='failed',
-                    notes=f'Gagal mengirim ke Telegram. Status code: {response.status_code}'
+                    notes=f'Gagal mengirim ke Telegram. Status code: {response.status_code}, Response: {response.text}'
                 )
                 return JsonResponse({'status': 'error', 'message': f'Gagal mengirim data. Status code: {response.status_code}'}, status=400)
                 
         except Exception as e:
+            import traceback
+            error_details = traceback.format_exc()
+            print(f"Error sending to Telegram: {error_details}")
+            
             ActivityLog.objects.create(
                 user=request.user,
                 action='Kirim ke Telegram',
+                status='failed',
+                notes=f'Error: {str(e)}'
+            )
+            return JsonResponse({'status': 'error', 'message': str(e)}, status=500)
+    
+    return JsonResponse({'status': 'error', 'message': 'Method not allowed'}, status=405)
+
+@login_required
+def update_min_stock(request):
+    if request.method == 'POST':
+        try:
+            data = json.loads(request.body)
+            item_id = data.get('item_id')
+            minimum_stock = data.get('minimum_stock', 0)
+            
+            if not item_id:
+                return JsonResponse({'status': 'error', 'message': 'ID item tidak ditemukan'}, status=400)
+            
+            try:
+                item = Item.objects.get(id=item_id)
+                item.minimum_stock = minimum_stock
+                item.save()
+                
+                ActivityLog.objects.create(
+                    user=request.user,
+                    action='Update Stok Minimum',
+                    status='success',
+                    notes=f'Stok minimum untuk {item.name} diubah menjadi {minimum_stock}'
+                )
+                
+                return JsonResponse({'status': 'success', 'message': 'Stok minimum berhasil diperbarui'})
+            except Item.DoesNotExist:
+                return JsonResponse({'status': 'error', 'message': 'Item tidak ditemukan'}, status=404)
+                
+        except Exception as e:
+            ActivityLog.objects.create(
+                user=request.user,
+                action='Update Stok Minimum',
                 status='failed',
                 notes=f'Error: {str(e)}'
             )
