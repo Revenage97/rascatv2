@@ -158,27 +158,6 @@
     </div>
 </div>
 
-<!-- Success Modal for Min Stock -->
-<div class="modal fade" id="successModal" tabindex="-1" aria-labelledby="successModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content">
-            <div class="modal-header bg-success text-white">
-                <h5 class="modal-title" id="successModalLabel">Sukses</h5>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <div class="modal-body">
-                <div class="text-center mb-3">
-                    <i class="bi bi-check-circle-fill text-success" style="font-size: 3rem;"></i>
-                </div>
-                <p id="successModalMessage" class="text-center fs-5">Stok minimum berhasil disimpan!</p>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-success" data-bs-dismiss="modal">OK</button>
-            </div>
-        </div>
-    </div>
-</div>
-
 <!-- Toast Notification -->
 <div class="position-fixed bottom-0 end-0 p-3" style="z-index: 11">
     <div id="notificationToast" class="toast" role="alert" aria-live="assertive" aria-atomic="true">
@@ -194,6 +173,9 @@
 {% endblock %}
 
 {% block extra_js %}
+<!-- SweetAlert2 CDN -->
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
 <script>
     document.addEventListener('DOMContentLoaded', function() {
         // Get CSRF token
@@ -202,8 +184,6 @@
         const toastEl = document.getElementById('notificationToast');
         const toast = new bootstrap.Toast(toastEl);
         const toastMessage = document.getElementById('toastMessage');
-        const successModal = new bootstrap.Modal(document.getElementById('successModal'));
-        const successModalMessage = document.getElementById('successModalMessage');
         
         // Completely rewritten Select All functionality
         function setupSelectAll() {
@@ -260,7 +240,12 @@
             sendToTelegramBtn.addEventListener('click', function() {
                 const checkedItems = document.querySelectorAll('.item-checkbox:checked');
                 if (checkedItems.length === 0) {
-                    showToast('Pilih minimal satu item untuk dikirim', 'danger');
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Error',
+                        text: 'Pilih minimal satu item untuk dikirim',
+                        confirmButtonColor: '#3085d6'
+                    });
                     return;
                 }
                 
@@ -277,13 +262,28 @@
                 .then(response => response.json())
                 .then(data => {
                     if (data.status === 'success') {
-                        showToast('Berhasil dikirim ke Telegram', 'success');
+                        Swal.fire({
+                            icon: 'success',
+                            title: 'Sukses',
+                            text: 'Berhasil dikirim ke Telegram',
+                            confirmButtonColor: '#3085d6'
+                        });
                     } else {
-                        showToast('Gagal: ' + data.message, 'danger');
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'Error',
+                            text: 'Gagal: ' + data.message,
+                            confirmButtonColor: '#3085d6'
+                        });
                     }
                 })
                 .catch(error => {
-                    showToast('Error: ' + error, 'danger');
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Error',
+                        text: 'Error: ' + error,
+                        confirmButtonColor: '#3085d6'
+                    });
                 });
             });
         }
@@ -305,18 +305,33 @@
                 .then(response => response.json())
                 .then(data => {
                     if (data.status === 'success') {
-                        showToast('Berhasil dikirim ke Telegram', 'success');
+                        Swal.fire({
+                            icon: 'success',
+                            title: 'Sukses',
+                            text: 'Berhasil dikirim ke Telegram',
+                            confirmButtonColor: '#3085d6'
+                        });
                     } else {
-                        showToast('Gagal: ' + data.message, 'danger');
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'Error',
+                            text: 'Gagal: ' + data.message,
+                            confirmButtonColor: '#3085d6'
+                        });
                     }
                 })
                 .catch(error => {
-                    showToast('Error: ' + error, 'danger');
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Error',
+                        text: 'Error: ' + error,
+                        confirmButtonColor: '#3085d6'
+                    });
                 });
             }
         });
         
-        // Save minimum stock - Fixed implementation with modal
+        // Save minimum stock - Implemented with SweetAlert2
         document.addEventListener('click', function(e) {
             if (e.target && e.target.closest('.save-min-stock')) {
                 const button = e.target.closest('.save-min-stock');
@@ -346,9 +361,18 @@
                     button.innerHTML = '<i class="bi bi-save"></i>';
                     
                     if (data.status === 'success') {
-                        // Show success modal
-                        successModalMessage.textContent = `Stok minimum berhasil disimpan: ${minStock}`;
-                        successModal.show();
+                        // Show SweetAlert2 notification
+                        Swal.fire({
+                            icon: 'success',
+                            title: 'Sukses!',
+                            text: `Stok minimum berhasil disimpan: ${minStock}`,
+                            confirmButtonColor: '#3085d6',
+                            timer: 2000,
+                            timerProgressBar: true
+                        }).then(() => {
+                            // Refresh the page to show updated data
+                            location.reload();
+                        });
                         
                         // Change button color to indicate success
                         button.classList.remove('btn-outline-secondary');
@@ -359,25 +383,31 @@
                             button.classList.remove('btn-success');
                             button.classList.add('btn-outline-secondary');
                         }, 1000);
-                        
-                        // Refresh the page to show updated data
-                        setTimeout(() => {
-                            location.reload();
-                        }, 2000);
                     } else {
-                        showToast('Gagal: ' + data.message, 'danger');
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'Error',
+                            text: 'Gagal: ' + data.message,
+                            confirmButtonColor: '#3085d6'
+                        });
                     }
                 })
                 .catch(error => {
                     // Reset button state
                     button.disabled = false;
                     button.innerHTML = '<i class="bi bi-save"></i>';
-                    showToast('Error: ' + error, 'danger');
+                    
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Error',
+                        text: 'Error: ' + error,
+                        confirmButtonColor: '#3085d6'
+                    });
                 });
             }
         });
         
-        // Delete minimum stock (set to 0) - Fixed implementation with modal
+        // Delete minimum stock (set to 0) - Implemented with SweetAlert2
         document.addEventListener('click', function(e) {
             if (e.target && e.target.closest('.delete-min-stock')) {
                 const button = e.target.closest('.delete-min-stock');
@@ -409,28 +439,43 @@
                     button.innerHTML = '<i class="bi bi-x"></i>';
                     
                     if (data.status === 'success') {
-                        // Show success modal
-                        successModalMessage.textContent = 'Stok minimum berhasil dihapus';
-                        successModal.show();
-                        
-                        // Refresh the page to show updated data
-                        setTimeout(() => {
+                        // Show SweetAlert2 notification
+                        Swal.fire({
+                            icon: 'success',
+                            title: 'Sukses!',
+                            text: 'Stok minimum berhasil dihapus',
+                            confirmButtonColor: '#3085d6',
+                            timer: 2000,
+                            timerProgressBar: true
+                        }).then(() => {
+                            // Refresh the page to show updated data
                             location.reload();
-                        }, 2000);
+                        });
                     } else {
-                        showToast('Gagal: ' + data.message, 'danger');
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'Error',
+                            text: 'Gagal: ' + data.message,
+                            confirmButtonColor: '#3085d6'
+                        });
                     }
                 })
                 .catch(error => {
                     // Reset button state
                     button.disabled = false;
                     button.innerHTML = '<i class="bi bi-x"></i>';
-                    showToast('Error: ' + error, 'danger');
+                    
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Error',
+                        text: 'Error: ' + error,
+                        confirmButtonColor: '#3085d6'
+                    });
                 });
             }
         });
         
-        // Show toast notification
+        // Show toast notification (legacy function, kept for compatibility)
         function showToast(message, type) {
             toastMessage.textContent = message;
             toastEl.classList.remove('bg-success', 'bg-danger');
@@ -444,6 +489,18 @@
         
         // Initialize
         updateSendButtonState();
+        
+        // Show welcome notification to verify SweetAlert2 is working
+        setTimeout(() => {
+            Swal.fire({
+                icon: 'info',
+                title: 'SweetAlert2 Aktif',
+                text: 'Notifikasi pop-up sudah diaktifkan menggunakan SweetAlert2',
+                confirmButtonColor: '#3085d6',
+                timer: 3000,
+                timerProgressBar: true
+            });
+        }, 1000);
     });
 </script>
 {% endblock %}
