@@ -4,7 +4,7 @@ from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from django.http import JsonResponse, HttpResponse
 from django.utils import timezone
-from django.db.models import Q
+from django.db.models import Q, F
 import json
 import requests
 import openpyxl
@@ -77,7 +77,7 @@ def dashboard(request):
     # Apply filters
     if filter_type == 'low_stock':
         # Filter items with stock below minimum
-        items = items.filter(current_stock__lt=models.F('minimum_stock'))
+        items = items.filter(current_stock__lt=F('minimum_stock'))
     
     # Apply sorting
     if sort:
@@ -133,8 +133,9 @@ def upload_file(request):
                         code = str(row[0].value).strip()
                         name = str(row[1].value).strip()
                         category = str(row[2].value).strip()
-                        current_stock = int(row[3].value) if row[3].value is not None else 0
-                        selling_price = float(row[4].value) if row[4].value is not None else 0
+                        # Swap columns 3 and 4 to fix the issue
+                        selling_price = float(row[3].value) if row[3].value is not None else 0
+                        current_stock = int(row[4].value) if row[4].value is not None else 0
                         
                         # Check if item exists
                         try:
@@ -159,6 +160,7 @@ def upload_file(request):
                         success_count += 1
                     except Exception as e:
                         error_count += 1
+                        print(f"Error processing row: {e}")
                 
                 ActivityLog.objects.create(
                     user=request.user,
@@ -337,10 +339,12 @@ def send_to_telegram(request):
             print(f"Sending payload to webhook: {json.dumps(payload)}")
             print(f"Webhook URL: {webhook_settings.telegram_webhook_url}")
             
+            # Try with different content type
             response = requests.post(
                 webhook_settings.telegram_webhook_url,
                 json=payload,
-                headers=headers
+                headers=headers,
+                timeout=10  # Add timeout to prevent hanging
             )
             
             # Log the response for debugging
@@ -356,6 +360,29 @@ def send_to_telegram(request):
                 )
                 return JsonResponse({'status': 'success', 'message': 'Data berhasil dikirim ke Telegram'})
             else:
+                # Try with form data as fallback
+                try:
+                    form_data = {'payload': json.dumps(payload)}
+                    alt_response = requests.post(
+                        webhook_settings.telegram_webhook_url,
+                        data=form_data,
+                        timeout=10
+                    )
+                    
+                    print(f"Alternative webhook response status: {alt_response.status_code}")
+                    print(f"Alternative webhook response content: {alt_response.text}")
+                    
+                    if alt_response.status_code in [200, 201, 202]:
+                        ActivityLog.objects.create(
+                            user=request.user,
+                            action='Kirim ke Telegram',
+                            status='success',
+                            notes=f'Berhasil mengirim {len(items)} item ke Telegram (metode alternatif)'
+                        )
+                        return JsonResponse({'status': 'success', 'message': 'Data berhasil dikirim ke Telegram'})
+                except Exception as alt_e:
+                    print(f"Alternative method failed: {str(alt_e)}")
+                
                 ActivityLog.objects.create(
                     user=request.user,
                     action='Kirim ke Telegram',

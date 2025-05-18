@@ -184,11 +184,11 @@
         const toast = new bootstrap.Toast(toastEl);
         const toastMessage = document.getElementById('toastMessage');
         
-        // Select all functionality
+        // Select all functionality - Fixed implementation
         if (selectAllCheckbox) {
-            selectAllCheckbox.addEventListener('change', function() {
+            selectAllCheckbox.addEventListener('click', function() {
                 const isChecked = this.checked;
-                itemCheckboxes.forEach(checkbox => {
+                document.querySelectorAll('.item-checkbox').forEach(checkbox => {
                     checkbox.checked = isChecked;
                 });
                 updateSendButtonState();
@@ -196,8 +196,10 @@
         }
         
         // Individual checkbox change
-        itemCheckboxes.forEach(checkbox => {
-            checkbox.addEventListener('change', updateSendButtonState);
+        document.addEventListener('change', function(e) {
+            if (e.target && e.target.classList.contains('item-checkbox')) {
+                updateSendButtonState();
+            }
         });
         
         // Update send button state
@@ -242,9 +244,10 @@
         }
         
         // Single item send
-        document.querySelectorAll('.send-single-item').forEach(button => {
-            button.addEventListener('click', function() {
-                const itemId = this.getAttribute('data-item-id');
+        document.addEventListener('click', function(e) {
+            if (e.target && e.target.closest('.send-single-item')) {
+                const button = e.target.closest('.send-single-item');
+                const itemId = button.getAttribute('data-item-id');
                 
                 fetch('{% url "inventory:send_to_telegram" %}', {
                     method: 'POST',
@@ -265,13 +268,14 @@
                 .catch(error => {
                     showToast('Error: ' + error, 'danger');
                 });
-            });
+            }
         });
         
-        // Save minimum stock
-        document.querySelectorAll('.save-min-stock').forEach(button => {
-            button.addEventListener('click', function() {
-                const itemId = this.getAttribute('data-item-id');
+        // Save minimum stock - Fixed implementation
+        document.addEventListener('click', function(e) {
+            if (e.target && e.target.closest('.save-min-stock')) {
+                const button = e.target.closest('.save-min-stock');
+                const itemId = button.getAttribute('data-item-id');
                 const input = document.querySelector(`.min-stock-input[data-item-id="${itemId}"]`);
                 const minStock = input.value;
                 
@@ -290,9 +294,20 @@
                 .then(data => {
                     if (data.status === 'success') {
                         showToast('Stok minimum berhasil disimpan', 'success');
-                        // Change button color back to normal
-                        this.classList.remove('btn-primary');
-                        this.classList.add('btn-outline-secondary');
+                        // Change button color to indicate success
+                        button.classList.remove('btn-outline-secondary');
+                        button.classList.add('btn-success');
+                        
+                        // Reset button color after 1 second
+                        setTimeout(() => {
+                            button.classList.remove('btn-success');
+                            button.classList.add('btn-outline-secondary');
+                        }, 1000);
+                        
+                        // Refresh the page to show updated data
+                        setTimeout(() => {
+                            location.reload();
+                        }, 1500);
                     } else {
                         showToast('Gagal: ' + data.message, 'danger');
                     }
@@ -300,13 +315,14 @@
                 .catch(error => {
                     showToast('Error: ' + error, 'danger');
                 });
-            });
+            }
         });
         
-        // Delete minimum stock (set to 0)
-        document.querySelectorAll('.delete-min-stock').forEach(button => {
-            button.addEventListener('click', function() {
-                const itemId = this.getAttribute('data-item-id');
+        // Delete minimum stock (set to 0) - Fixed implementation
+        document.addEventListener('click', function(e) {
+            if (e.target && e.target.closest('.delete-min-stock')) {
+                const button = e.target.closest('.delete-min-stock');
+                const itemId = button.getAttribute('data-item-id');
                 const input = document.querySelector(`.min-stock-input[data-item-id="${itemId}"]`);
                 
                 // Set value to 0
@@ -327,6 +343,10 @@
                 .then(data => {
                     if (data.status === 'success') {
                         showToast('Stok minimum berhasil dihapus', 'success');
+                        // Refresh the page to show updated data
+                        setTimeout(() => {
+                            location.reload();
+                        }, 1500);
                     } else {
                         showToast('Gagal: ' + data.message, 'danger');
                     }
@@ -334,7 +354,7 @@
                 .catch(error => {
                     showToast('Error: ' + error, 'danger');
                 });
-            });
+            }
         });
         
         // Show toast notification
