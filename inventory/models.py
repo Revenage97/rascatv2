@@ -40,7 +40,7 @@ class ActivityLog(models.Model):
         ('failed', 'Gagal'),
     )
     
-    user = models.ForeignKey(User, on_delete=models.CASCADE, verbose_name="User")
+    user = models.ForeignKey(User, on_delete=models.CASCADE, null=True, blank=True, verbose_name="User")
     action = models.CharField(max_length=255, verbose_name="Aksi")
     status = models.CharField(max_length=10, choices=STATUS_CHOICES, default='success', verbose_name="Status")
     notes = models.TextField(blank=True, null=True, verbose_name="Catatan")
