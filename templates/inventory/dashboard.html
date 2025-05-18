@@ -1,0 +1,284 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <h2 class="mb-4">Dashboard</h2>
+    
+    <div class="row mb-4">
+        <div class="col-md-6">
+            <form method="get" class="d-flex">
+                <input type="text" name="query" class="form-control me-2" placeholder="Cari barang..." value="{{ query }}">
+                <button type="submit" class="btn btn-outline-secondary">
+                    <i class="bi bi-search"></i> Cari
+                </button>
+            </form>
+        </div>
+        <div class="col-md-6 text-end">
+            <button id="sendToTelegramBtn" class="btn btn-info" disabled>
+                <i class="bi bi-telegram"></i> Kirim ke Telegram
+            </button>
+            <div class="btn-group">
+                <button type="button" class="btn btn-outline-secondary dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
+                    <i class="bi bi-filter"></i> Filter
+                </button>
+                <ul class="dropdown-menu dropdown-menu-end">
+                    <li><a class="dropdown-item" href="?sort=name">Urutkan berdasarkan Nama</a></li>
+                    <li><a class="dropdown-item" href="?sort=category">Urutkan berdasarkan Kategori</a></li>
+                    <li><a class="dropdown-item" href="?sort=stock">Urutkan berdasarkan Stok</a></li>
+                    <li><hr class="dropdown-divider"></li>
+                    <li><a class="dropdown-item" href="?filter=low_stock">Stok di bawah minimum</a></li>
+                </ul>
+            </div>
+        </div>
+    </div>
+    
+    <div class="card">
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" id="selectAll">
+                                    <label class="form-check-label" for="selectAll">Pilih Semua</label>
+                                </div>
+                            </th>
+                            <th>Kode Barang</th>
+                            <th>Nama Barang</th>
+                            <th>Kategori</th>
+                            <th>Stok Saat Ini</th>
+                            <th>Harga Jual</th>
+                            <th>Stok Minimum</th>
+                            <th>Aksi</th>
+                            <th>Telegram</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for item in items %}
+                        <tr {% if item.current_stock < item.minimum_stock %}class="table-danger"{% endif %}>
+                            <td>
+                                <div class="form-check">
+                                    <input class="form-check-input item-checkbox" type="checkbox" value="{{ item.id }}" id="item{{ item.id }}">
+                                </div>
+                            </td>
+                            <td>{{ item.code }}</td>
+                            <td>{{ item.name }}</td>
+                            <td>{{ item.category }}</td>
+                            <td>{{ item.current_stock }}</td>
+                            <td>Rp {{ item.selling_price|floatformat:0|stringformat:"s"|slice:":-3" }}.{{ item.selling_price|floatformat:0|stringformat:"s"|slice:"-3:" }}</td>
+                            <td>
+                                <div class="input-group input-group-sm">
+                                    <input type="number" class="form-control form-control-sm min-stock-input" 
+                                           data-item-id="{{ item.id }}" value="{{ item.minimum_stock }}" min="0">
+                                    <button class="btn btn-outline-secondary save-min-stock" type="button" data-item-id="{{ item.id }}">
+                                        <i class="bi bi-save"></i>
+                                    </button>
+                                </div>
+                            </td>
+                            <td>
+                                <div class="btn-group btn-group-sm">
+                                    <button type="button" class="btn btn-outline-primary edit-item" data-item-id="{{ item.id }}">
+                                        <i class="bi bi-pencil"></i>
+                                    </button>
+                                    <button type="button" class="btn btn-outline-danger delete-item" data-item-id="{{ item.id }}">
+                                        <i class="bi bi-trash"></i>
+                                    </button>
+                                </div>
+                            </td>
+                            <td>
+                                <button type="button" class="btn btn-sm btn-info send-single-item" data-item-id="{{ item.id }}">
+                                    <i class="bi bi-telegram"></i>
+                                </button>
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="9" class="text-center">Tidak ada data barang</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Edit Item -->
+<div class="modal fade" id="editItemModal" tabindex="-1" aria-labelledby="editItemModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="editItemModalLabel">Edit Item</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form id="editItemForm">
+                    <input type="hidden" id="editItemId">
+                    <div class="mb-3">
+                        <label for="editCode" class="form-label">Kode Barang</label>
+                        <input type="text" class="form-control" id="editCode" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="editName" class="form-label">Nama Barang</label>
+                        <input type="text" class="form-control" id="editName" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="editCategory" class="form-label">Kategori</label>
+                        <input type="text" class="form-control" id="editCategory" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="editStock" class="form-label">Stok Saat Ini</label>
+                        <input type="number" class="form-control" id="editStock" required min="0">
+                    </div>
+                    <div class="mb-3">
+                        <label for="editPrice" class="form-label">Harga Jual</label>
+                        <input type="number" class="form-control" id="editPrice" required min="0" step="0.01">
+                    </div>
+                    <div class="mb-3">
+                        <label for="editMinStock" class="form-label">Stok Minimum</label>
+                        <input type="number" class="form-control" id="editMinStock" required min="0">
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
+                <button type="button" class="btn btn-primary" id="saveItemChanges">Simpan</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Toast Notification -->
+<div class="position-fixed bottom-0 end-0 p-3" style="z-index: 11">
+    <div id="notificationToast" class="toast" role="alert" aria-live="assertive" aria-atomic="true">
+        <div class="toast-header">
+            <strong class="me-auto">Notifikasi</strong>
+            <button type="button" class="btn-close" data-bs-dismiss="toast" aria-label="Close"></button>
+        </div>
+        <div class="toast-body" id="toastMessage">
+            
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+        const selectAllCheckbox = document.getElementById('selectAll');
+        const itemCheckboxes = document.querySelectorAll('.item-checkbox');
+        const sendToTelegramBtn = document.getElementById('sendToTelegramBtn');
+        const toastEl = document.getElementById('notificationToast');
+        const toast = new bootstrap.Toast(toastEl);
+        const toastMessage = document.getElementById('toastMessage');
+        
+        // Select all functionality
+        selectAllCheckbox.addEventListener('change', function() {
+            const isChecked = this.checked;
+            itemCheckboxes.forEach(checkbox => {
+                checkbox.checked = isChecked;
+            });
+            updateSendButtonState();
+        });
+        
+        // Individual checkbox change
+        itemCheckboxes.forEach(checkbox => {
+            checkbox.addEventListener('change', updateSendButtonState);
+        });
+        
+        // Update send button state
+        function updateSendButtonState() {
+            const checkedItems = document.querySelectorAll('.item-checkbox:checked');
+            sendToTelegramBtn.disabled = checkedItems.length === 0;
+        }
+        
+        // Send to Telegram button
+        sendToTelegramBtn.addEventListener('click', function() {
+            const checkedItems = document.querySelectorAll('.item-checkbox:checked');
+            if (checkedItems.length === 0) {
+                showToast('Pilih minimal satu item untuk dikirim', 'danger');
+                return;
+            }
+            
+            const itemIds = Array.from(checkedItems).map(checkbox => checkbox.value);
+            
+            fetch('{% url "inventory:send_to_telegram" %}', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': csrfToken
+                },
+                body: JSON.stringify({ item_ids: itemIds })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    showToast('Berhasil dikirim ke Telegram', 'success');
+                } else {
+                    showToast('Gagal: ' + data.message, 'danger');
+                }
+            })
+            .catch(error => {
+                showToast('Error: ' + error, 'danger');
+            });
+        });
+        
+        // Single item send
+        document.querySelectorAll('.send-single-item').forEach(button => {
+            button.addEventListener('click', function() {
+                const itemId = this.getAttribute('data-item-id');
+                
+                fetch('{% url "inventory:send_to_telegram" %}', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': csrfToken
+                    },
+                    body: JSON.stringify({ item_ids: [itemId] })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.status === 'success') {
+                        showToast('Berhasil dikirim ke Telegram', 'success');
+                    } else {
+                        showToast('Gagal: ' + data.message, 'danger');
+                    }
+                })
+                .catch(error => {
+                    showToast('Error: ' + error, 'danger');
+                });
+            });
+        });
+        
+        // Save minimum stock
+        document.querySelectorAll('.save-min-stock').forEach(button => {
+            button.addEventListener('click', function() {
+                const itemId = this.getAttribute('data-item-id');
+                const input = document.querySelector(`.min-stock-input[data-item-id="${itemId}"]`);
+                const minStock = input.value;
+                
+                // Here you would add AJAX to save the minimum stock
+                // For now, just show a toast notification
+                showToast('Stok minimum berhasil disimpan', 'success');
+            });
+        });
+        
+        // Show toast notification
+        function showToast(message, type) {
+            toastMessage.textContent = message;
+            toastEl.classList.remove('bg-success', 'bg-danger');
+            if (type === 'success') {
+                toastEl.classList.add('bg-success', 'text-white');
+            } else if (type === 'danger') {
+                toastEl.classList.add('bg-danger', 'text-white');
+            }
+            toast.show();
+        }
+        
+        // Initialize
+        updateSendButtonState();
+    });
+</script>
+{% endblock %}

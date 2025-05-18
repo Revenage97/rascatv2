@@ -1,0 +1,55 @@
+from django.db import models
+from django.contrib.auth.models import User
+from django.utils import timezone
+
+class Item(models.Model):
+    code = models.CharField(max_length=50, unique=True, verbose_name="Kode Barang")
+    name = models.CharField(max_length=255, verbose_name="Nama Barang")
+    category = models.CharField(max_length=100, verbose_name="Kategori")
+    current_stock = models.IntegerField(default=0, verbose_name="Stok Saat Ini")
+    selling_price = models.DecimalField(max_digits=12, decimal_places=2, verbose_name="Harga Jual")
+    minimum_stock = models.IntegerField(default=0, verbose_name="Stok Minimum")
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"{self.code} - {self.name}"
+
+    class Meta:
+        ordering = ['code']
+        verbose_name = "Item"
+        verbose_name_plural = "Items"
+
+
+class WebhookSettings(models.Model):
+    telegram_webhook_url = models.URLField(max_length=500, blank=True, null=True, verbose_name="URL Webhook Telegram")
+    updated_at = models.DateTimeField(auto_now=True)
+    updated_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True)
+
+    def __str__(self):
+        return f"Webhook Settings (Last updated: {self.updated_at})"
+
+    class Meta:
+        verbose_name = "Webhook Setting"
+        verbose_name_plural = "Webhook Settings"
+
+
+class ActivityLog(models.Model):
+    STATUS_CHOICES = (
+        ('success', 'Berhasil'),
+        ('failed', 'Gagal'),
+    )
+    
+    user = models.ForeignKey(User, on_delete=models.CASCADE, verbose_name="User")
+    action = models.CharField(max_length=255, verbose_name="Aksi")
+    status = models.CharField(max_length=10, choices=STATUS_CHOICES, default='success', verbose_name="Status")
+    notes = models.TextField(blank=True, null=True, verbose_name="Catatan")
+    timestamp = models.DateTimeField(auto_now_add=True, verbose_name="Waktu")
+
+    def __str__(self):
+        return f"{self.user.username} - {self.action} - {self.status}"
+
+    class Meta:
+        ordering = ['-timestamp']
+        verbose_name = "Activity Log"
+        verbose_name_plural = "Activity Logs"
