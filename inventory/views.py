@@ -313,45 +313,111 @@ def send_to_telegram(request):
             if not webhook_settings or not webhook_settings.telegram_webhook_url:
                 return JsonResponse({'status': 'error', 'message': 'URL Webhook belum diatur'}, status=400)
             
-            # Prepare data for Telegram
-            products = []
+            # Prepare data for Zapier - Simplified format
+            products_list = []
             for item in items:
-                products.append({
-                    'kode_barang': item.code,
-                    'nama_barang': item.name,
+                products_list.append({
+                    'kode': item.code,
+                    'nama': item.name,
                     'kategori': item.category,
                     'stok': item.current_stock,
-                    'harga': f"Rp {item.selling_price:,.0f}".replace(',', '.'),
+                    'harga': int(item.selling_price),
                     'stok_minimum': item.minimum_stock
                 })
             
-            payload = {
-                'produk': products
+            # Try multiple payload formats to ensure compatibility with Zapier
+            
+            # Format 1: Simple array of products
+            payload1 = products_list
+            
+            # Format 2: Object with products array
+            payload2 = {
+                'products': products_list
             }
             
-            # Send to webhook with debug info
+            # Format 3: Single product (if only one selected)
+            payload3 = products_list[0] if products_list else {}
+            
+            # Log all payloads for debugging
+            print(f"Webhook URL: {webhook_settings.telegram_webhook_url}")
+            print(f"Payload 1 (array): {json.dumps(payload1)}")
+            print(f"Payload 2 (object): {json.dumps(payload2)}")
+            print(f"Payload 3 (single): {json.dumps(payload3)}")
+            
+            # Common headers
             headers = {
                 'Content-Type': 'application/json',
                 'User-Agent': 'Stock Management System/1.0'
             }
             
-            # Log the payload for debugging
-            print(f"Sending payload to webhook: {json.dumps(payload)}")
-            print(f"Webhook URL: {webhook_settings.telegram_webhook_url}")
+            # Try all payload formats
+            success = False
+            response_logs = []
             
-            # Try with different content type
-            response = requests.post(
-                webhook_settings.telegram_webhook_url,
-                json=payload,
-                headers=headers,
-                timeout=10  # Add timeout to prevent hanging
-            )
+            # Try Format 1
+            try:
+                response1 = requests.post(
+                    webhook_settings.telegram_webhook_url,
+                    json=payload1,
+                    headers=headers,
+                    timeout=10
+                )
+                response_logs.append(f"Format 1 response: {response1.status_code} - {response1.text}")
+                if response1.status_code in [200, 201, 202]:
+                    success = True
+            except Exception as e:
+                response_logs.append(f"Format 1 error: {str(e)}")
             
-            # Log the response for debugging
-            print(f"Webhook response status: {response.status_code}")
-            print(f"Webhook response content: {response.text}")
+            # Try Format 2 if not successful yet
+            if not success:
+                try:
+                    response2 = requests.post(
+                        webhook_settings.telegram_webhook_url,
+                        json=payload2,
+                        headers=headers,
+                        timeout=10
+                    )
+                    response_logs.append(f"Format 2 response: {response2.status_code} - {response2.text}")
+                    if response2.status_code in [200, 201, 202]:
+                        success = True
+                except Exception as e:
+                    response_logs.append(f"Format 2 error: {str(e)}")
             
-            if response.status_code in [200, 201, 202]:
+            # Try Format 3 if not successful yet and we have only one product
+            if not success and len(products_list) == 1:
+                try:
+                    response3 = requests.post(
+                        webhook_settings.telegram_webhook_url,
+                        json=payload3,
+                        headers=headers,
+                        timeout=10
+                    )
+                    response_logs.append(f"Format 3 response: {response3.status_code} - {response3.text}")
+                    if response3.status_code in [200, 201, 202]:
+                        success = True
+                except Exception as e:
+                    response_logs.append(f"Format 3 error: {str(e)}")
+            
+            # Try with form-encoded data as last resort
+            if not success:
+                try:
+                    form_data = {'payload': json.dumps(payload2)}
+                    response4 = requests.post(
+                        webhook_settings.telegram_webhook_url,
+                        data=form_data,
+                        timeout=10
+                    )
+                    response_logs.append(f"Form data response: {response4.status_code} - {response4.text}")
+                    if response4.status_code in [200, 201, 202]:
+                        success = True
+                except Exception as e:
+                    response_logs.append(f"Form data error: {str(e)}")
+            
+            # Log all responses
+            for log in response_logs:
+                print(log)
+            
+            if success:
                 ActivityLog.objects.create(
                     user=request.user,
                     action='Kirim ke Telegram',
@@ -360,36 +426,13 @@ def send_to_telegram(request):
                 )
                 return JsonResponse({'status': 'success', 'message': 'Data berhasil dikirim ke Telegram'})
             else:
-                # Try with form data as fallback
-                try:
-                    form_data = {'payload': json.dumps(payload)}
-                    alt_response = requests.post(
-                        webhook_settings.telegram_webhook_url,
-                        data=form_data,
-                        timeout=10
-                    )
-                    
-                    print(f"Alternative webhook response status: {alt_response.status_code}")
-                    print(f"Alternative webhook response content: {alt_response.text}")
-                    
-                    if alt_response.status_code in [200, 201, 202]:
-                        ActivityLog.objects.create(
-                            user=request.user,
-                            action='Kirim ke Telegram',
-                            status='success',
-                            notes=f'Berhasil mengirim {len(items)} item ke Telegram (metode alternatif)'
-                        )
-                        return JsonResponse({'status': 'success', 'message': 'Data berhasil dikirim ke Telegram'})
-                except Exception as alt_e:
-                    print(f"Alternative method failed: {str(alt_e)}")
-                
                 ActivityLog.objects.create(
                     user=request.user,
                     action='Kirim ke Telegram',
                     status='failed',
-                    notes=f'Gagal mengirim ke Telegram. Status code: {response.status_code}, Response: {response.text}'
+                    notes=f'Gagal mengirim ke Telegram. Logs: {"; ".join(response_logs)}'
                 )
-                return JsonResponse({'status': 'error', 'message': f'Gagal mengirim data. Status code: {response.status_code}'}, status=400)
+                return JsonResponse({'status': 'error', 'message': 'Gagal mengirim data. Lihat log untuk detail.'}, status=400)
                 
         except Exception as e:
             import traceback
