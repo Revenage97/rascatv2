@@ -177,28 +177,50 @@
     document.addEventListener('DOMContentLoaded', function() {
         // Get CSRF token
         const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
-        const selectAllCheckbox = document.getElementById('selectAll');
-        const itemCheckboxes = document.querySelectorAll('.item-checkbox');
         const sendToTelegramBtn = document.getElementById('sendToTelegramBtn');
         const toastEl = document.getElementById('notificationToast');
         const toast = new bootstrap.Toast(toastEl);
         const toastMessage = document.getElementById('toastMessage');
         
-        // Select all functionality - Fixed implementation
-        if (selectAllCheckbox) {
-            selectAllCheckbox.addEventListener('click', function() {
+        // Completely rewritten Select All functionality
+        function setupSelectAll() {
+            const selectAllCheckbox = document.getElementById('selectAll');
+            if (!selectAllCheckbox) return;
+            
+            // Remove any existing event listeners by cloning and replacing
+            const newSelectAll = selectAllCheckbox.cloneNode(true);
+            selectAllCheckbox.parentNode.replaceChild(newSelectAll, selectAllCheckbox);
+            
+            // Add new event listener
+            newSelectAll.addEventListener('change', function() {
                 const isChecked = this.checked;
-                document.querySelectorAll('.item-checkbox').forEach(checkbox => {
+                console.log('Select All clicked, setting all checkboxes to:', isChecked);
+                
+                const checkboxes = document.querySelectorAll('.item-checkbox');
+                checkboxes.forEach(function(checkbox) {
                     checkbox.checked = isChecked;
                 });
+                
                 updateSendButtonState();
             });
         }
+        
+        // Setup select all on page load
+        setupSelectAll();
         
         // Individual checkbox change
         document.addEventListener('change', function(e) {
             if (e.target && e.target.classList.contains('item-checkbox')) {
                 updateSendButtonState();
+                
+                // Check if all checkboxes are checked and update selectAll accordingly
+                const allCheckboxes = document.querySelectorAll('.item-checkbox');
+                const checkedCheckboxes = document.querySelectorAll('.item-checkbox:checked');
+                const selectAllCheckbox = document.getElementById('selectAll');
+                
+                if (selectAllCheckbox) {
+                    selectAllCheckbox.checked = allCheckboxes.length === checkedCheckboxes.length;
+                }
             }
         });
         
