@@ -158,6 +158,27 @@
     </div>
 </div>
 
+<!-- Success Modal for Min Stock -->
+<div class="modal fade" id="successModal" tabindex="-1" aria-labelledby="successModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header bg-success text-white">
+                <h5 class="modal-title" id="successModalLabel">Sukses</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="text-center mb-3">
+                    <i class="bi bi-check-circle-fill text-success" style="font-size: 3rem;"></i>
+                </div>
+                <p id="successModalMessage" class="text-center fs-5">Stok minimum berhasil disimpan!</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-success" data-bs-dismiss="modal">OK</button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <!-- Toast Notification -->
 <div class="position-fixed bottom-0 end-0 p-3" style="z-index: 11">
     <div id="notificationToast" class="toast" role="alert" aria-live="assertive" aria-atomic="true">
@@ -181,6 +202,8 @@
         const toastEl = document.getElementById('notificationToast');
         const toast = new bootstrap.Toast(toastEl);
         const toastMessage = document.getElementById('toastMessage');
+        const successModal = new bootstrap.Modal(document.getElementById('successModal'));
+        const successModalMessage = document.getElementById('successModalMessage');
         
         // Completely rewritten Select All functionality
         function setupSelectAll() {
@@ -293,13 +316,17 @@
             }
         });
         
-        // Save minimum stock - Fixed implementation
+        // Save minimum stock - Fixed implementation with modal
         document.addEventListener('click', function(e) {
             if (e.target && e.target.closest('.save-min-stock')) {
                 const button = e.target.closest('.save-min-stock');
                 const itemId = button.getAttribute('data-item-id');
                 const input = document.querySelector(`.min-stock-input[data-item-id="${itemId}"]`);
                 const minStock = input.value;
+                
+                // Change button to loading state
+                button.disabled = true;
+                button.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>';
                 
                 fetch('/inventory/update-min-stock/', {
                     method: 'POST',
@@ -314,8 +341,15 @@
                 })
                 .then(response => response.json())
                 .then(data => {
+                    // Reset button state
+                    button.disabled = false;
+                    button.innerHTML = '<i class="bi bi-save"></i>';
+                    
                     if (data.status === 'success') {
-                        showToast('Stok minimum berhasil disimpan', 'success');
+                        // Show success modal
+                        successModalMessage.textContent = `Stok minimum berhasil disimpan: ${minStock}`;
+                        successModal.show();
+                        
                         // Change button color to indicate success
                         button.classList.remove('btn-outline-secondary');
                         button.classList.add('btn-success');
@@ -329,18 +363,21 @@
                         // Refresh the page to show updated data
                         setTimeout(() => {
                             location.reload();
-                        }, 1500);
+                        }, 2000);
                     } else {
                         showToast('Gagal: ' + data.message, 'danger');
                     }
                 })
                 .catch(error => {
+                    // Reset button state
+                    button.disabled = false;
+                    button.innerHTML = '<i class="bi bi-save"></i>';
                     showToast('Error: ' + error, 'danger');
                 });
             }
         });
         
-        // Delete minimum stock (set to 0) - Fixed implementation
+        // Delete minimum stock (set to 0) - Fixed implementation with modal
         document.addEventListener('click', function(e) {
             if (e.target && e.target.closest('.delete-min-stock')) {
                 const button = e.target.closest('.delete-min-stock');
@@ -349,6 +386,10 @@
                 
                 // Set value to 0
                 input.value = 0;
+                
+                // Change button to loading state
+                button.disabled = true;
+                button.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>';
                 
                 fetch('/inventory/update-min-stock/', {
                     method: 'POST',
@@ -363,17 +404,27 @@
                 })
                 .then(response => response.json())
                 .then(data => {
+                    // Reset button state
+                    button.disabled = false;
+                    button.innerHTML = '<i class="bi bi-x"></i>';
+                    
                     if (data.status === 'success') {
-                        showToast('Stok minimum berhasil dihapus', 'success');
+                        // Show success modal
+                        successModalMessage.textContent = 'Stok minimum berhasil dihapus';
+                        successModal.show();
+                        
                         // Refresh the page to show updated data
                         setTimeout(() => {
                             location.reload();
-                        }, 1500);
+                        }, 2000);
                     } else {
                         showToast('Gagal: ' + data.message, 'danger');
                     }
                 })
                 .catch(error => {
+                    // Reset button state
+                    button.disabled = false;
+                    button.innerHTML = '<i class="bi bi-x"></i>';
                     showToast('Error: ' + error, 'danger');
                 });
             }
