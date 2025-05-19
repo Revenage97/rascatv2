@@ -10,7 +10,7 @@ import pandas as pd
 import os
 from datetime import datetime
 from .models import Item, WebhookSettings, ActivityLog
-from .forms import UploadFileForm, WebhookSettingsForm
+from .forms import ExcelUploadForm, WebhookSettingsForm
 
 # Existing views
 @login_required
@@ -105,10 +105,10 @@ def logout_view(request):
 @login_required
 def upload_file(request):
     if request.method == 'POST':
-        form = UploadFileForm(request.POST, request.FILES)
+        form = ExcelUploadForm(request.POST, request.FILES)
         if form.is_valid():
             try:
-                file = request.FILES['file']
+                file = request.FILES['excel_file']
                 
                 # Check file extension
                 if not file.name.endswith('.xlsx'):
@@ -177,7 +177,7 @@ def upload_file(request):
                 messages.error(request, f'Error: {str(e)}')
                 return redirect('inventory:upload_file')
     else:
-        form = UploadFileForm()
+        form = ExcelUploadForm()
     
     return render(request, 'inventory/upload_file.html', {'form': form})
 
@@ -286,7 +286,7 @@ def webhook_settings(request):
             ActivityLog.objects.create(
                 user=request.user,
                 action='update_webhook',
-                details=f'Updated webhook URL: {form.cleaned_data["webhook_url"]}'
+                details=f'Updated webhook URL: {form.cleaned_data["telegram_webhook_url"]}'
             )
             
             messages.success(request, 'Pengaturan webhook berhasil disimpan')
@@ -314,7 +314,7 @@ def send_to_telegram(request):
             
             # Get webhook URL
             webhook_settings = WebhookSettings.objects.first()
-            if not webhook_settings or not webhook_settings.webhook_url:
+            if not webhook_settings or not webhook_settings.telegram_webhook_url:
                 return JsonResponse({'status': 'error', 'message': 'Webhook URL not configured'})
             
             # Get selected items
@@ -341,7 +341,7 @@ def send_to_telegram(request):
             # Send to webhook
             import requests
             response = requests.post(
-                webhook_settings.webhook_url,
+                webhook_settings.telegram_webhook_url,
                 json=telegram_data,
                 headers={'Content-Type': 'application/json'}
             )
