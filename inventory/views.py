@@ -489,20 +489,24 @@ def webhook_settings(request):
     try:
         settings = WebhookSettings.objects.first()
         if not settings:
-            settings = WebhookSettings.objects.create(webhook_url='')
-    except:
-        settings = WebhookSettings.objects.create(webhook_url='')
+            settings = WebhookSettings.objects.create()
+    except Exception as e:
+        logger.error(f"Error getting webhook settings: {str(e)}")
+        settings = WebhookSettings.objects.create()
     
     if request.method == 'POST':
         form = WebhookSettingsForm(request.POST, instance=settings)
         if form.is_valid():
-            form.save()
+            webhook = form.save(commit=False)
+            webhook.updated_by = request.user
+            webhook.save()
             
             # Log activity
             ActivityLog.objects.create(
                 user=request.user,
                 action='update_webhook',
-                notes=f'Updated webhook URL: {form.cleaned_data["telegram_webhook_url"]}'
+                status='success',
+                notes=f'Updated webhook URLs'
             )
             
             messages.success(request, 'Pengaturan webhook berhasil disimpan')

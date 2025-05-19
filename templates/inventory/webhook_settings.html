@@ -8,15 +8,29 @@
         <div class="col-md-8">
             <div class="card">
                 <div class="card-body">
-                    <h5 class="card-title">URL Webhook Telegram</h5>
+                    <h5 class="card-title">Pengaturan URL Webhook</h5>
                     <p class="text-muted">Masukkan URL webhook untuk mengirim data ke Telegram melalui Zapier.</p>
                     
                     <form method="post">
                         {% csrf_token %}
                         <div class="mb-3">
+                            <label for="{{ form.telegram_webhook_url.id_for_label }}" class="form-label">URL Webhook Telegram</label>
                             {{ form.telegram_webhook_url }}
                             <div class="form-text">Contoh: https://hooks.zapier.com/hooks/catch/123456/abcdef/</div>
                         </div>
+                        
+                        <div class="mb-3">
+                            <label for="{{ form.webhook_kelola_stok.id_for_label }}" class="form-label">URL Webhook Telegram - Kelola Stok</label>
+                            {{ form.webhook_kelola_stok }}
+                            <div class="form-text">Contoh: https://hooks.zapier.com/hooks/catch/...</div>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="{{ form.webhook_transfer_stok.id_for_label }}" class="form-label">URL Webhook Telegram - Transfer Stok</label>
+                            {{ form.webhook_transfer_stok }}
+                            <div class="form-text">Contoh: https://hooks.zapier.com/hooks/catch/...</div>
+                        </div>
+                        
                         <button type="submit" class="btn btn-primary">
                             <i class="bi bi-save"></i> Simpan
                         </button>
