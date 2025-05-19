@@ -1,6 +1,19 @@
 // Main JavaScript for Stock Management Dashboard
 
+// Get CSRF token for AJAX requests
+let csrfToken = '';
 document.addEventListener('DOMContentLoaded', function() {
+    // Initialize CSRF token
+    const metaTag = document.querySelector('meta[name="csrf-token"]');
+    const csrfInput = document.querySelector('input[name="csrfmiddlewaretoken"]');
+    
+    if (metaTag) {
+        csrfToken = metaTag.getAttribute('content');
+    } else if (csrfInput) {
+        csrfToken = csrfInput.value;
+    } else {
+        console.error('CSRF token not found in page!');
+    }
     // Toggle sidebar on mobile
     const sidebarToggle = document.querySelector('.sidebar-toggle');
     if (sidebarToggle) {

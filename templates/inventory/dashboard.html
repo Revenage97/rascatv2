@@ -1,6 +1,16 @@
 {% extends 'base.html' %}
 
+{% load static %}
+
+{% block extra_head %}
+<!-- CSRF Token for JavaScript -->
+<meta name="csrf-token" content="{{ csrf_token }}">
+<script src="{% static 'js/csrf.js' %}"></script>
+{% endblock %}
+
 {% block content %}
+<input type="hidden" name="csrfmiddlewaretoken" value="{{ csrf_token }}">
+
 <div class="container-fluid py-4">
     <h2 class="mb-4">Dashboard</h2>
     
@@ -340,6 +350,7 @@
                 const minStock = input.value;
                 
                 // Change button to loading state
+                const originalContent = button.innerHTML;
                 button.disabled = true;
                 button.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>';
                 
@@ -358,7 +369,7 @@
                 .then(data => {
                     // Reset button state
                     button.disabled = false;
-                    button.innerHTML = '<i class="bi bi-save"></i>';
+                    button.innerHTML = originalContent;
                     
                     if (data.status === 'success') {
                         // Show SweetAlert2 notification
@@ -395,8 +406,9 @@
                 .catch(error => {
                     // Reset button state
                     button.disabled = false;
-                    button.innerHTML = '<i class="bi bi-save"></i>';
+                    button.innerHTML = originalContent;
                     
+                    console.error('Error saving minimum stock:', error);
                     Swal.fire({
                         icon: 'error',
                         title: 'Error',

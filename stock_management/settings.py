@@ -119,9 +119,27 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 LOGIN_URL = '/'
 LOGIN_REDIRECT_URL = '/dashboard/'
 
+# CSRF settings
+CSRF_TRUSTED_ORIGINS = [
+    'https://*.onrender.com',
+    'https://*.manus.ai',
+    'http://localhost:8000',
+    'http://127.0.0.1:8000',
+]
+
+# Ensure CSRF cookie is set on all responses
+CSRF_COOKIE_HTTPONLY = False  # Allow JavaScript to access the cookie
+CSRF_USE_SESSIONS = False     # Store CSRF token in cookie, not session
+CSRF_COOKIE_SAMESITE = 'Lax'  # Allow CSRF cookie in same-site requests
+
 # Render specific settings
 if os.environ.get('RENDER', False):
     SECURE_SSL_REDIRECT = True
     SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
     SESSION_COOKIE_SECURE = True
     CSRF_COOKIE_SECURE = True
+    
+    # Add Render domain to trusted origins if available
+    RENDER_EXTERNAL_HOSTNAME = os.environ.get('RENDER_EXTERNAL_HOSTNAME')
+    if RENDER_EXTERNAL_HOSTNAME:
+        CSRF_TRUSTED_ORIGINS.append(f'https://{RENDER_EXTERNAL_HOSTNAME}')

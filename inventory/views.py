@@ -5,6 +5,7 @@ from django.contrib import messages
 from django.http import JsonResponse, HttpResponse
 from django.utils import timezone
 from django.db.models import Q, F
+from django.views.decorators.csrf import ensure_csrf_cookie, csrf_exempt, csrf_protect
 import json
 import requests
 import openpyxl
@@ -58,6 +59,7 @@ def logout_view(request):
     return redirect('inventory:login')
 
 @login_required
+@ensure_csrf_cookie
 def dashboard(request):
     query = request.GET.get('query', '')
     sort = request.GET.get('sort', '')
@@ -297,6 +299,7 @@ def activity_logs(request):
     return render(request, 'inventory/activity_logs.html', {'logs': logs})
 
 @login_required
+@csrf_protect
 def send_to_telegram(request):
     if request.method == 'POST':
         try:
@@ -468,6 +471,7 @@ def send_to_telegram(request):
     return JsonResponse({'status': 'error', 'message': 'Method not allowed'}, status=405)
 
 @login_required
+@csrf_protect
 def update_min_stock(request):
     if request.method == 'POST':
         try:
