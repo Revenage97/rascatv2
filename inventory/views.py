@@ -512,12 +512,6 @@ def backup_file(request):
         logger.error(traceback.format_exc())
         messages.error(request, f"Terjadi kesalahan: {str(e)}")
         return redirect('inventory:dashboard')
-                os.makedirs(backup_dir, exist_ok=True)
-                
-                # Generate filename with timestamp
-                timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-                filename = f'backup_{timestamp}.xlsx'
-                filepath = os.path.join(backup_dir, filename)
                 
                 # Save to Excel
                 logger.info(f"Saving backup to: {filepath}")
