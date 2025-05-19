@@ -343,7 +343,7 @@
                 button.disabled = true;
                 button.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>';
                 
-                fetch('/inventory/update-min-stock/', {
+                fetch('{% url "inventory:update_min_stock" %}', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
@@ -421,7 +421,7 @@
                 button.disabled = true;
                 button.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>';
                 
-                fetch('/inventory/update-min-stock/', {
+                fetch('{% url "inventory:update_min_stock" %}', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',

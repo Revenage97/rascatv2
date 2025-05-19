@@ -418,19 +418,27 @@ def send_to_telegram(request):
                 print(log)
             
             if success:
+                # Create a list of product names for the log
+                product_names = [item.name for item in items]
+                product_names_str = ", ".join(product_names)
+                
                 ActivityLog.objects.create(
                     user=request.user,
                     action='Kirim ke Telegram',
                     status='success',
-                    notes=f'Berhasil mengirim {len(items)} item ke Telegram'
+                    notes=f'Berhasil mengirim {len(items)} item ke Telegram: {product_names_str}'
                 )
                 return JsonResponse({'status': 'success', 'message': 'Data berhasil dikirim ke Telegram'})
             else:
+                # Create a list of product names for the error log
+                product_names = [item.name for item in items]
+                product_names_str = ", ".join(product_names)
+                
                 ActivityLog.objects.create(
                     user=request.user,
                     action='Kirim ke Telegram',
                     status='failed',
-                    notes=f'Gagal mengirim ke Telegram. Logs: {"; ".join(response_logs)}'
+                    notes=f'Gagal mengirim item ke Telegram: {product_names_str}. Logs: {"; ".join(response_logs)}'
                 )
                 return JsonResponse({'status': 'error', 'message': 'Gagal mengirim data. Lihat log untuk detail.'}, status=400)
                 
@@ -439,11 +447,21 @@ def send_to_telegram(request):
             error_details = traceback.format_exc()
             print(f"Error sending to Telegram: {error_details}")
             
+            # Try to get product names if possible
+            product_names_str = "Unknown products"
+            try:
+                if 'item_ids' in data:
+                    items = Item.objects.filter(id__in=data['item_ids'])
+                    product_names = [item.name for item in items]
+                    product_names_str = ", ".join(product_names)
+            except:
+                pass
+            
             ActivityLog.objects.create(
                 user=request.user,
                 action='Kirim ke Telegram',
                 status='failed',
-                notes=f'Error: {str(e)}'
+                notes=f'Error saat mengirim item: {product_names_str}. Detail: {str(e)}'
             )
             return JsonResponse({'status': 'error', 'message': str(e)}, status=500)
     
