@@ -1,6 +1,7 @@
 from django.db import models
 from django.contrib.auth.models import User
 from django.utils import timezone
+import os
 
 class Item(models.Model):
     code = models.CharField(max_length=50, unique=True, verbose_name="Kode Barang")
@@ -47,9 +48,35 @@ class ActivityLog(models.Model):
     timestamp = models.DateTimeField(auto_now_add=True, verbose_name="Waktu")
 
     def __str__(self):
-        return f"{self.user.username} - {self.action} - {self.status}"
+        return f"{self.user.username if self.user else 'Anonymous'} - {self.action} - {self.status}"
 
     class Meta:
         ordering = ['-timestamp']
         verbose_name = "Activity Log"
         verbose_name_plural = "Activity Logs"
+
+
+class UploadHistory(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE, verbose_name="User")
+    filename = models.CharField(max_length=255, verbose_name="Nama File")
+    file_path = models.CharField(max_length=500, verbose_name="Path File")
+    file_size = models.IntegerField(default=0, verbose_name="Ukuran File (bytes)")
+    upload_date = models.DateTimeField(auto_now_add=True, verbose_name="Tanggal Upload")
+    success_count = models.IntegerField(default=0, verbose_name="Jumlah Item Berhasil")
+    error_count = models.IntegerField(default=0, verbose_name="Jumlah Item Gagal")
+    
+    def __str__(self):
+        return f"{self.filename} - {self.upload_date}"
+    
+    def get_file_size_display(self):
+        """Return human-readable file size."""
+        size = self.file_size
+        for unit in ['B', 'KB', 'MB', 'GB']:
+            if size < 1024 or unit == 'GB':
+                return f"{size:.2f} {unit}"
+            size /= 1024
+    
+    class Meta:
+        ordering = ['-upload_date']
+        verbose_name = "Upload History"
+        verbose_name_plural = "Upload Histories"

@@ -1,0 +1,58 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <h2 class="mb-4">History Upload File</h2>
+    
+    <div class="card mb-4">
+        <div class="card-header">
+            <div class="d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">Daftar File yang Telah Diupload</h5>
+                <a href="{% url 'inventory:download_backup' %}" class="btn btn-primary">
+                    <i class="bi bi-download"></i> Download Backup Terbaru
+                </a>
+            </div>
+        </div>
+        <div class="card-body">
+            {% if upload_history %}
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th>Nama File</th>
+                            <th>Tanggal Upload</th>
+                            <th>User</th>
+                            <th>Ukuran</th>
+                            <th>Item Berhasil</th>
+                            <th>Item Gagal</th>
+                            <th>Aksi</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for history in upload_history %}
+                        <tr>
+                            <td>{{ history.filename }}</td>
+                            <td>{{ history.upload_date|date:"d M Y, H:i" }}</td>
+                            <td>{{ history.user.username }}</td>
+                            <td>{{ history.get_file_size_display }}</td>
+                            <td>{{ history.success_count }}</td>
+                            <td>{{ history.error_count }}</td>
+                            <td>
+                                <a href="{% url 'inventory:download_file' history.id %}" class="btn btn-sm btn-outline-primary">
+                                    <i class="bi bi-download"></i> Download
+                                </a>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div class="alert alert-info">
+                Belum ada file yang diupload. Silakan upload file melalui menu "Upload File".
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

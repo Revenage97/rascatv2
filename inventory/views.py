@@ -9,9 +9,10 @@ from django.views.decorators.csrf import ensure_csrf_cookie, csrf_exempt, csrf_p
 import json
 import requests
 import openpyxl
+import os
 from openpyxl import Workbook
 from datetime import datetime, timedelta
-from .models import Item, WebhookSettings, ActivityLog
+from .models import Item, WebhookSettings, ActivityLog, UploadHistory
 from .forms import LoginForm, ItemForm, WebhookSettingsForm, CustomPasswordChangeForm, ExcelUploadForm
 
 def login_view(request):
@@ -121,7 +122,20 @@ def upload_file(request):
             excel_file = request.FILES['excel_file']
             
             try:
-                wb = openpyxl.load_workbook(excel_file)
+                # Save uploaded file
+                upload_dir = os.path.join('media', 'uploads')
+                os.makedirs(upload_dir, exist_ok=True)
+                
+                timestamp = datetime.now().strftime('%Y_%m_%d_%H_%M_%S')
+                filename = f"Upload_{timestamp}_{excel_file.name}"
+                file_path = os.path.join(upload_dir, filename)
+                
+                with open(file_path, 'wb+') as destination:
+                    for chunk in excel_file.chunks():
+                        destination.write(chunk)
+                
+                # Process the file
+                wb = openpyxl.load_workbook(file_path)
                 sheet = wb.active
                 
                 # Skip header row
@@ -164,6 +178,17 @@ def upload_file(request):
                         error_count += 1
                         print(f"Error processing row: {e}")
                 
+                # Create upload history record
+                file_size = os.path.getsize(file_path)
+                UploadHistory.objects.create(
+                    user=request.user,
+                    filename=filename,
+                    file_path=file_path,
+                    file_size=file_size,
+                    success_count=success_count,
+                    error_count=error_count
+                )
+                
                 ActivityLog.objects.create(
                     user=request.user,
                     action='Upload File',
@@ -189,6 +214,15 @@ def upload_file(request):
 
 @login_required
 def backup_file(request):
+    # Show upload history instead of direct download
+    upload_history = UploadHistory.objects.all().order_by('-upload_date')
+    
+    return render(request, 'inventory/backup_history.html', {
+        'upload_history': upload_history
+    })
+
+@login_required
+def download_backup(request):
     items = Item.objects.all()
     
     # Create a new workbook
@@ -214,19 +248,44 @@ def backup_file(request):
     timestamp = datetime.now().strftime('%Y_%m_%d_%H_%M_%S')
     filename = f"Backup_Inventory_{timestamp}.xlsx"
     
+    # Create directory for backups if it doesn't exist
+    backup_dir = os.path.join('media', 'backups')
+    os.makedirs(backup_dir, exist_ok=True)
+    
+    # Save file path
+    file_path = os.path.join(backup_dir, filename)
+    
+    # Save the workbook to file
+    wb.save(file_path)
+    
+    # Get file size
+    file_size = os.path.getsize(file_path)
+    
+    # Create backup history record
+    UploadHistory.objects.create(
+        user=request.user,
+        filename=filename,
+        file_path=file_path,
+        file_size=file_size,
+        success_count=items.count(),
+        error_count=0
+    )
+    
+    # Create response
     response = HttpResponse(
         content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
     )
     response['Content-Disposition'] = f'attachment; filename="{filename}"'
     
-    # Save the workbook to the response
-    wb.save(response)
+    # Open and serve the file
+    with open(file_path, 'rb') as f:
+        response.write(f.read())
     
     ActivityLog.objects.create(
         user=request.user,
-        action='Backup File',
+        action='Download Backup',
         status='success',
-        notes=f'Backup file berhasil dibuat: {filename}'
+        notes=f'Backup file berhasil didownload: {filename}'
     )
     
     return response
@@ -289,6 +348,39 @@ def webhook_settings(request):
         form = WebhookSettingsForm(instance=webhook_settings)
     
     return render(request, 'inventory/webhook_settings.html', {'form': form})
+
+@login_required
+def download_file(request, history_id):
+    try:
+        history = get_object_or_404(UploadHistory, id=history_id)
+        
+        # Check if file exists
+        if not os.path.exists(history.file_path):
+            messages.error(request, f"File tidak ditemukan: {history.filename}")
+            return redirect('inventory:backup_file')
+        
+        # Create response
+        response = HttpResponse(
+            content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+        )
+        response['Content-Disposition'] = f'attachment; filename="{history.filename}"'
+        
+        # Open and serve the file
+        with open(history.file_path, 'rb') as f:
+            response.write(f.read())
+        
+        ActivityLog.objects.create(
+            user=request.user,
+            action='Download File',
+            status='success',
+            notes=f'File berhasil didownload: {history.filename}'
+        )
+        
+        return response
+        
+    except Exception as e:
+        messages.error(request, f"Error saat download file: {str(e)}")
+        return redirect('inventory:backup_file')
 
 @login_required
 def activity_logs(request):
