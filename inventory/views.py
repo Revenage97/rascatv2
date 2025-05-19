@@ -109,6 +109,11 @@ def transfer_stok(request):
         if filter_option == 'low_stock':
             items = [item for item in items if item.minimum_stock and item.current_stock < item.minimum_stock]
         
+        # Convert Decimal to float for JSON serialization and intcomma filter
+        for item in items:
+            if hasattr(item, 'selling_price'):
+                item.selling_price = float(item.selling_price)
+        
         context = {
             'items': items,
             'query': query,
@@ -265,39 +270,45 @@ def upload_transfer_file(request):
             updated_count = 0
             created_count = 0
             
-            for _, row in df.iterrows():
-                code = str(row['Kode'])
-                name = row['Nama Barang']
-                category = row['Kategori']
-                stock = row['Total Stok']
-                price = row['Harga Jual']
-                
-                # Skip empty rows
-                if pd.isna(code) or pd.isna(name):
-                    continue
-                
-                # Convert to proper types
-                code = str(code).strip()
-                name = str(name).strip()
-                category = str(category).strip() if not pd.isna(category) else ''
-                stock = int(stock) if not pd.isna(stock) else 0
-                price = float(price) if not pd.isna(price) else 0
-                
-                # Update or create item
-                item, created = Item.objects.update_or_create(
-                    code=code,
-                    defaults={
-                        'name': name,
-                        'category': category,
-                        'current_stock': stock,
-                        'selling_price': price,
-                    }
-                )
-                
-                if created:
-                    created_count += 1
-                else:
-                    updated_count += 1
+            try:
+                for _, row in df.iterrows():
+                    code = str(row['Kode'])
+                    name = row['Nama Barang']
+                    category = row['Kategori']
+                    stock = row['Total Stok']
+                    price = row['Harga Jual']
+                    
+                    # Skip empty rows
+                    if pd.isna(code) or pd.isna(name):
+                        continue
+                    
+                    # Convert to proper types
+                    code = str(code).strip()
+                    name = str(name).strip()
+                    category = str(category).strip() if not pd.isna(category) else ''
+                    stock = int(stock) if not pd.isna(stock) else 0
+                    price = float(price) if not pd.isna(price) else 0
+                    
+                    # Update or create item
+                    item, created = Item.objects.update_or_create(
+                        code=code,
+                        defaults={
+                            'name': name,
+                            'category': category,
+                            'current_stock': stock,
+                            'selling_price': price,
+                        }
+                    )
+                    
+                    if created:
+                        created_count += 1
+                    else:
+                        updated_count += 1
+            except Exception as inner_e:
+                logger.error(f"Error processing row data: {str(inner_e)}")
+                logger.error(traceback.format_exc())
+                messages.error(request, f'Error saat memproses data: {str(inner_e)}')
+                return redirect('inventory:upload_file')
             
             # Log activity
             ActivityLog.objects.create(
@@ -308,7 +319,7 @@ def upload_transfer_file(request):
             
             logger.info(f"File processed successfully: {created_count} created, {updated_count} updated")
             messages.success(request, f'File berhasil diupload ke Transfer Stok. {created_count} item baru ditambahkan, {updated_count} item diperbarui.')
-            return redirect('inventory:kelola_stok_barang')  # Redirect to kelola_stok_barang instead of transfer_stok to avoid error
+            return redirect('inventory:transfer_stok')
             
         except Exception as e:
             logger.error(f"Error in upload_transfer_file: {str(e)}")
@@ -329,14 +340,26 @@ def backup_file(request):
                 items = Item.objects.all()
                 logger.info(f"Retrieved {items.count()} items for backup")
                 
+                # Convert Decimal to float for Excel compatibility
+                items_list = []
+                for item in items:
+                    items_list.append({
+                        'code': item.code,
+                        'name': item.name,
+                        'category': item.category,
+                        'current_stock': item.current_stock,
+                        'selling_price': float(item.selling_price),
+                        'minimum_stock': item.minimum_stock
+                    })
+                
                 # Create DataFrame
                 data = {
-                    'Kode': [item.code for item in items],
-                    'Nama Barang': [item.name for item in items],
-                    'Kategori': [item.category for item in items],
-                    'Total Stok': [item.current_stock for item in items],
-                    'Harga Jual': [item.selling_price for item in items],
-                    'Stok Minimum': [item.minimum_stock for item in items],
+                    'Kode': [item['code'] for item in items_list],
+                    'Nama Barang': [item['name'] for item in items_list],
+                    'Kategori': [item['category'] for item in items_list],
+                    'Total Stok': [item['current_stock'] for item in items_list],
+                    'Harga Jual': [item['selling_price'] for item in items_list],
+                    'Stok Minimum': [item['minimum_stock'] for item in items_list],
                 }
                 
                 df = pd.DataFrame(data)
@@ -393,28 +416,42 @@ def backup_file(request):
 
 @login_required
 def change_password(request):
-    if request.method == 'POST':
-        form = PasswordChangeForm(request.user, request.POST)
-        if form.is_valid():
-            user = form.save()
-            update_session_auth_hash(request, user)
+    try:
+        logger.info("Accessing change_password view")
+        
+        if request.method == 'POST':
+            # Import here to avoid circular import
+            from django.contrib.auth.forms import PasswordChangeForm
             
-            # Log activity
-            ActivityLog.objects.create(
-                user=request.user,
-                action='change_password',
-                notes=f'User {request.user.username} changed password'
-            )
-            
-            messages.success(request, 'Password berhasil diubah')
-            return redirect('inventory:dashboard')
+            form = PasswordChangeForm(request.user, request.POST)
+            if form.is_valid():
+                user = form.save()
+                update_session_auth_hash(request, user)
+                
+                # Log activity
+                ActivityLog.objects.create(
+                    user=request.user,
+                    action='change_password',
+                    notes=f'User {request.user.username} changed password'
+                )
+                
+                messages.success(request, 'Password berhasil diubah')
+                return redirect('inventory:dashboard')
+            else:
+                for error in form.errors.values():
+                    messages.error(request, error)
         else:
-            for error in form.errors.values():
-                messages.error(request, error)
-    else:
-        form = PasswordChangeForm(request.user)
+            # Import here to avoid circular import
+            from django.contrib.auth.forms import PasswordChangeForm
+            form = PasswordChangeForm(request.user)
+        
+        return render(request, 'inventory/change_password.html', {'form': form})
     
-    return render(request, 'inventory/change_password.html', {'form': form})
+    except Exception as e:
+        logger.error(f"Error in change_password view: {str(e)}")
+        logger.error(traceback.format_exc())
+        messages.error(request, f"Terjadi kesalahan: {str(e)}")
+        return redirect('inventory:dashboard')
 
 @login_required
 def webhook_settings(request):
