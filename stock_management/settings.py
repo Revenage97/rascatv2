@@ -106,9 +106,20 @@ STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
 # Enable WhiteNoise for static files
 STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 
-# Media files
+# Media files - Use Render disk for persistent storage in production
 MEDIA_URL = '/media/'
-MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
+
+# Check if running on Render with persistent disk
+if os.environ.get('RENDER', False) and os.path.exists('/opt/render/project/data'):
+    # Use Render persistent disk
+    MEDIA_ROOT = os.path.join('/opt/render/project/data', 'media')
+    UPLOAD_DIR = os.path.join(MEDIA_ROOT, 'uploads')
+    BACKUP_DIR = os.path.join(MEDIA_ROOT, 'backups')
+else:
+    # Local development
+    MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
+    UPLOAD_DIR = os.path.join(MEDIA_ROOT, 'uploads')
+    BACKUP_DIR = os.path.join(MEDIA_ROOT, 'backups')
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/4.2/ref/settings/#default-auto-field

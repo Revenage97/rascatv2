@@ -123,7 +123,8 @@ def upload_file(request):
             
             try:
                 # Save uploaded file
-                upload_dir = os.path.join('media', 'uploads')
+                from django.conf import settings
+                upload_dir = settings.UPLOAD_DIR
                 os.makedirs(upload_dir, exist_ok=True)
                 
                 timestamp = datetime.now().strftime('%Y_%m_%d_%H_%M_%S')
@@ -266,7 +267,8 @@ def download_backup(request):
         filename = f"Backup_Inventory_{timestamp}.xlsx"
         
         # Create directory for backups if it doesn't exist
-        backup_dir = os.path.join('media', 'backups')
+        from django.conf import settings
+        backup_dir = settings.BACKUP_DIR
         os.makedirs(backup_dir, exist_ok=True)
         
         # Save file path
