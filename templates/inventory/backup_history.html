@@ -33,7 +33,7 @@
                         <tr>
                             <td>{{ history.filename }}</td>
                             <td>{{ history.upload_date|date:"d M Y, H:i" }}</td>
-                            <td>{{ history.user.username }}</td>
+                            <td>{{ history.user.username|default:"Unknown" }}</td>
                             <td>{{ history.get_file_size_display }}</td>
                             <td>{{ history.success_count }}</td>
                             <td>{{ history.error_count }}</td>

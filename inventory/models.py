@@ -57,7 +57,7 @@ class ActivityLog(models.Model):
 
 
 class UploadHistory(models.Model):
-    user = models.ForeignKey(User, on_delete=models.CASCADE, verbose_name="User")
+    user = models.ForeignKey(User, on_delete=models.CASCADE, null=True, blank=True, verbose_name="User")
     filename = models.CharField(max_length=255, verbose_name="Nama File")
     file_path = models.CharField(max_length=500, verbose_name="Path File")
     file_size = models.IntegerField(default=0, verbose_name="Ukuran File (bytes)")

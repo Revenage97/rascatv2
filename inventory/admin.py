@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import Item, WebhookSettings, ActivityLog
+from .models import Item, WebhookSettings, ActivityLog, UploadHistory
 
 @admin.register(Item)
 class ItemAdmin(admin.ModelAdmin):
@@ -16,3 +16,9 @@ class ActivityLogAdmin(admin.ModelAdmin):
     list_display = ('user', 'action', 'status', 'timestamp')
     list_filter = ('user', 'status', 'timestamp')
     search_fields = ('action', 'notes')
+
+@admin.register(UploadHistory)
+class UploadHistoryAdmin(admin.ModelAdmin):
+    list_display = ('filename', 'user', 'upload_date', 'success_count', 'error_count')
+    list_filter = ('upload_date', 'user')
+    search_fields = ('filename',)

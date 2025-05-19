@@ -214,81 +214,113 @@ def upload_file(request):
 
 @login_required
 def backup_file(request):
-    # Show upload history instead of direct download
-    upload_history = UploadHistory.objects.all().order_by('-upload_date')
-    
-    return render(request, 'inventory/backup_history.html', {
-        'upload_history': upload_history
-    })
+    try:
+        # Show upload history instead of direct download
+        upload_history = UploadHistory.objects.all().order_by('-upload_date')
+        
+        return render(request, 'inventory/backup_history.html', {
+            'upload_history': upload_history
+        })
+    except Exception as e:
+        # Log the error
+        import traceback
+        error_message = str(e)
+        error_traceback = traceback.format_exc()
+        
+        ActivityLog.objects.create(
+            user=request.user,
+            action='View Backup History',
+            status='failed',
+            notes=f'Error: {error_message}\n\nTraceback: {error_traceback}'
+        )
+        
+        messages.error(request, f'Terjadi kesalahan saat menampilkan history file: {error_message}')
+        return redirect('inventory:dashboard')
 
 @login_required
 def download_backup(request):
-    items = Item.objects.all()
-    
-    # Create a new workbook
-    wb = Workbook()
-    ws = wb.active
-    ws.title = "Inventory"
-    
-    # Add headers
-    headers = ['Kode Barang', 'Nama Barang', 'Kategori', 'Stok Saat Ini', 'Harga Jual', 'Stok Minimum']
-    for col_num, header in enumerate(headers, 1):
-        ws.cell(row=1, column=col_num, value=header)
-    
-    # Add data
-    for row_num, item in enumerate(items, 2):
-        ws.cell(row=row_num, column=1, value=item.code)
-        ws.cell(row=row_num, column=2, value=item.name)
-        ws.cell(row=row_num, column=3, value=item.category)
-        ws.cell(row=row_num, column=4, value=item.current_stock)
-        ws.cell(row=row_num, column=5, value=float(item.selling_price))
-        ws.cell(row=row_num, column=6, value=item.minimum_stock)
-    
-    # Create response
-    timestamp = datetime.now().strftime('%Y_%m_%d_%H_%M_%S')
-    filename = f"Backup_Inventory_{timestamp}.xlsx"
-    
-    # Create directory for backups if it doesn't exist
-    backup_dir = os.path.join('media', 'backups')
-    os.makedirs(backup_dir, exist_ok=True)
-    
-    # Save file path
-    file_path = os.path.join(backup_dir, filename)
-    
-    # Save the workbook to file
-    wb.save(file_path)
-    
-    # Get file size
-    file_size = os.path.getsize(file_path)
-    
-    # Create backup history record
-    UploadHistory.objects.create(
-        user=request.user,
-        filename=filename,
-        file_path=file_path,
-        file_size=file_size,
-        success_count=items.count(),
-        error_count=0
-    )
-    
-    # Create response
-    response = HttpResponse(
-        content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
-    )
-    response['Content-Disposition'] = f'attachment; filename="{filename}"'
-    
-    # Open and serve the file
-    with open(file_path, 'rb') as f:
-        response.write(f.read())
-    
-    ActivityLog.objects.create(
-        user=request.user,
-        action='Download Backup',
-        status='success',
-        notes=f'Backup file berhasil didownload: {filename}'
-    )
-    
-    return response
+    try:
+        items = Item.objects.all()
+        
+        # Create a new workbook
+        wb = Workbook()
+        ws = wb.active
+        ws.title = "Inventory"
+        
+        # Add headers
+        headers = ['Kode Barang', 'Nama Barang', 'Kategori', 'Stok Saat Ini', 'Harga Jual', 'Stok Minimum']
+        for col_num, header in enumerate(headers, 1):
+            ws.cell(row=1, column=col_num, value=header)
+        
+        # Add data
+        for row_num, item in enumerate(items, 2):
+            ws.cell(row=row_num, column=1, value=item.code)
+            ws.cell(row=row_num, column=2, value=item.name)
+            ws.cell(row=row_num, column=3, value=item.category)
+            ws.cell(row=row_num, column=4, value=item.current_stock)
+            ws.cell(row=row_num, column=5, value=float(item.selling_price))
+            ws.cell(row=row_num, column=6, value=item.minimum_stock)
+        
+        # Create response
+        timestamp = datetime.now().strftime('%Y_%m_%d_%H_%M_%S')
+        filename = f"Backup_Inventory_{timestamp}.xlsx"
+        
+        # Create directory for backups if it doesn't exist
+        backup_dir = os.path.join('media', 'backups')
+        os.makedirs(backup_dir, exist_ok=True)
+        
+        # Save file path
+        file_path = os.path.join(backup_dir, filename)
+        
+        # Save the workbook to file
+        wb.save(file_path)
+        
+        # Get file size
+        file_size = os.path.getsize(file_path)
+        
+        # Create backup history record
+        UploadHistory.objects.create(
+            user=request.user,
+            filename=filename,
+            file_path=file_path,
+            file_size=file_size,
+            success_count=items.count(),
+            error_count=0
+        )
+        
+        # Create response
+        response = HttpResponse(
+            content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+        )
+        response['Content-Disposition'] = f'attachment; filename="{filename}"'
+        
+        # Open and serve the file
+        with open(file_path, 'rb') as f:
+            response.write(f.read())
+        
+        ActivityLog.objects.create(
+            user=request.user,
+            action='Download Backup',
+            status='success',
+            notes=f'Backup file berhasil didownload: {filename}'
+        )
+        
+        return response
+    except Exception as e:
+        # Log the error
+        import traceback
+        error_message = str(e)
+        error_traceback = traceback.format_exc()
+        
+        ActivityLog.objects.create(
+            user=request.user,
+            action='Download Backup',
+            status='failed',
+            notes=f'Error: {error_message}\n\nTraceback: {error_traceback}'
+        )
+        
+        messages.error(request, f'Terjadi kesalahan saat membuat backup: {error_message}')
+        return redirect('inventory:dashboard')
 
 @login_required
 def change_password(request):
@@ -379,6 +411,18 @@ def download_file(request, history_id):
         return response
         
     except Exception as e:
+        # Log the error
+        import traceback
+        error_message = str(e)
+        error_traceback = traceback.format_exc()
+        
+        ActivityLog.objects.create(
+            user=request.user,
+            action='Download File',
+            status='failed',
+            notes=f'Error: {error_message}\n\nTraceback: {error_traceback}'
+        )
+        
         messages.error(request, f"Error saat download file: {str(e)}")
         return redirect('inventory:backup_file')
 
