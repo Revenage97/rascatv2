@@ -12,7 +12,7 @@ import logging
 import traceback
 from datetime import datetime
 from .models import Item, WebhookSettings, ActivityLog
-from .forms import ExcelUploadForm, WebhookSettingsForm
+from .forms import ExcelUploadForm, WebhookSettingsForm, LoginForm
 
 # Configure logging
 logger = logging.getLogger(__name__)
