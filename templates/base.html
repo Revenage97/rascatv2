@@ -68,15 +68,29 @@
                                 <i class="bi bi-download me-2"></i> Backup File
                             </a>
                         </li>
+                        <!-- Pengaturan dengan dropdown -->
                         <li class="nav-item">
-                            <a class="nav-link {% if 'change-password' in request.path %}active{% endif %}" href="{% url 'inventory:change_password' %}">
-                                <i class="bi bi-key me-2"></i> Ubah Password
+                            <a class="nav-link dropdown-toggle {% if 'change-password' in request.path or 'webhook-settings' in request.path %}active{% endif %}" 
+                               href="#pengaturanSubmenu" 
+                               data-bs-toggle="collapse" 
+                               aria-expanded="{% if 'change-password' in request.path or 'webhook-settings' in request.path %}true{% else %}false{% endif %}">
+                                <i class="bi bi-gear me-2"></i> Pengaturan
+                                <i class="bi bi-chevron-down float-end collapse-icon"></i>
                             </a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link {% if 'webhook-settings' in request.path %}active{% endif %}" href="{% url 'inventory:webhook_settings' %}">
-                                <i class="bi bi-gear me-2"></i> Pengaturan Webhook
-                            </a>
+                            <div class="collapse {% if 'change-password' in request.path or 'webhook-settings' in request.path %}show{% endif %}" id="pengaturanSubmenu">
+                                <ul class="nav flex-column dropdown-menu">
+                                    <li>
+                                        <a class="dropdown-item {% if 'change-password' in request.path %}active{% endif %}" href="{% url 'inventory:change_password' %}">
+                                            <i class="bi bi-key submenu-icon"></i> Ubah Password
+                                        </a>
+                                    </li>
+                                    <li>
+                                        <a class="dropdown-item {% if 'webhook-settings' in request.path %}active{% endif %}" href="{% url 'inventory:webhook_settings' %}">
+                                            <i class="bi bi-gear-fill submenu-icon"></i> Pengaturan Webhook
+                                        </a>
+                                    </li>
+                                </ul>
+                            </div>
                         </li>
                         <li class="nav-item">
                             <a class="nav-link {% if 'activity-logs' in request.path %}active{% endif %}" href="{% url 'inventory:activity_logs' %}">
