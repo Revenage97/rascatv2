@@ -1,16 +1,20 @@
 from django.shortcuts import render, redirect
 from django.contrib.auth import authenticate, login, logout, update_session_auth_hash
 from django.contrib.auth.decorators import login_required
-from django.contrib.auth.forms import PasswordChangeForm
 from django.contrib import messages
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 import json
 import pandas as pd
 import os
+import logging
+import traceback
 from datetime import datetime
 from .models import Item, WebhookSettings, ActivityLog
 from .forms import ExcelUploadForm, WebhookSettingsForm
+
+# Configure logging
+logger = logging.getLogger(__name__)
 
 # Existing views
 @login_required
@@ -70,44 +74,53 @@ def kelola_stok_packing(request):
 
 @login_required
 def transfer_stok(request):
-    query = request.GET.get('query', '')
-    sort = request.GET.get('sort', '')
-    filter_option = request.GET.get('filter', '')
-    
-    items = Item.objects.all()
-    
-    # Search functionality
-    if query:
-        items = items.filter(name__icontains=query) | items.filter(code__icontains=query) | items.filter(category__icontains=query)
-    
-    # Sorting functionality
-    if sort == 'name':
-        items = items.order_by('name')
-    elif sort == 'name_desc':
-        items = items.order_by('-name')
-    elif sort == 'category':
-        items = items.order_by('category')
-    elif sort == 'category_desc':
-        items = items.order_by('-category')
-    elif sort == 'stock_asc':
-        items = items.order_by('current_stock')
-    elif sort == 'stock_desc':
-        items = items.order_by('-current_stock')
-    elif sort == 'price_asc':
-        items = items.order_by('selling_price')
-    elif sort == 'price_desc':
-        items = items.order_by('-selling_price')
-    
-    # Filtering functionality
-    if filter_option == 'low_stock':
-        items = [item for item in items if item.minimum_stock and item.current_stock < item.minimum_stock]
-    
-    context = {
-        'items': items,
-        'query': query,
-    }
-    
-    return render(request, 'inventory/transfer_stok.html', context)
+    try:
+        logger.info("Accessing transfer_stok view")
+        query = request.GET.get('query', '')
+        sort = request.GET.get('sort', '')
+        filter_option = request.GET.get('filter', '')
+        
+        items = Item.objects.all()
+        logger.info(f"Retrieved {items.count()} items from database")
+        
+        # Search functionality
+        if query:
+            items = items.filter(name__icontains=query) | items.filter(code__icontains=query) | items.filter(category__icontains=query)
+        
+        # Sorting functionality
+        if sort == 'name':
+            items = items.order_by('name')
+        elif sort == 'name_desc':
+            items = items.order_by('-name')
+        elif sort == 'category':
+            items = items.order_by('category')
+        elif sort == 'category_desc':
+            items = items.order_by('-category')
+        elif sort == 'stock_asc':
+            items = items.order_by('current_stock')
+        elif sort == 'stock_desc':
+            items = items.order_by('-current_stock')
+        elif sort == 'price_asc':
+            items = items.order_by('selling_price')
+        elif sort == 'price_desc':
+            items = items.order_by('-selling_price')
+        
+        # Filtering functionality
+        if filter_option == 'low_stock':
+            items = [item for item in items if item.minimum_stock and item.current_stock < item.minimum_stock]
+        
+        context = {
+            'items': items,
+            'query': query,
+        }
+        
+        logger.info("Rendering transfer_stok template")
+        return render(request, 'inventory/transfer_stok.html', context)
+    except Exception as e:
+        logger.error(f"Error in transfer_stok view: {str(e)}")
+        logger.error(traceback.format_exc())
+        messages.error(request, f"Terjadi kesalahan: {str(e)}")
+        return redirect('inventory:kelola_stok_barang')
 
 # Existing views below
 def login_view(request):
@@ -222,24 +235,29 @@ def upload_file(request):
 def upload_transfer_file(request):
     if request.method == 'POST':
         try:
+            logger.info("Processing upload_transfer_file request")
             file = request.FILES.get('transfer_file')
             
             if not file:
+                logger.error("No file found in request")
                 messages.error(request, 'File tidak ditemukan')
                 return redirect('inventory:upload_file')
             
             # Check file extension
             if not file.name.endswith('.xlsx'):
+                logger.error(f"Invalid file format: {file.name}")
                 messages.error(request, 'File harus berformat Excel (.xlsx)')
                 return redirect('inventory:upload_file')
             
             # Process Excel file
+            logger.info(f"Reading Excel file: {file.name}")
             df = pd.read_excel(file)
             
             # Check required columns
             required_columns = ['Kode', 'Nama Barang', 'Kategori', 'Total Stok', 'Harga Jual']
             for col in required_columns:
                 if col not in df.columns:
+                    logger.error(f"Required column missing: {col}")
                     messages.error(request, f'Kolom {col} tidak ditemukan dalam file')
                     return redirect('inventory:upload_file')
             
@@ -288,10 +306,13 @@ def upload_transfer_file(request):
                 notes=f'Uploaded file untuk Transfer Stok: {file.name}, Created: {created_count}, Updated: {updated_count}'
             )
             
+            logger.info(f"File processed successfully: {created_count} created, {updated_count} updated")
             messages.success(request, f'File berhasil diupload ke Transfer Stok. {created_count} item baru ditambahkan, {updated_count} item diperbarui.')
-            return redirect('inventory:transfer_stok')
+            return redirect('inventory:kelola_stok_barang')  # Redirect to kelola_stok_barang instead of transfer_stok to avoid error
             
         except Exception as e:
+            logger.error(f"Error in upload_transfer_file: {str(e)}")
+            logger.error(traceback.format_exc())
             messages.error(request, f'Error: {str(e)}')
             return redirect('inventory:upload_file')
     
@@ -299,65 +320,75 @@ def upload_transfer_file(request):
 
 @login_required
 def backup_file(request):
-    if request.method == 'POST':
-        try:
-            # Get all inventory items
-            items = Item.objects.all()
-            
-            # Create DataFrame
-            data = {
-                'Kode': [item.code for item in items],
-                'Nama Barang': [item.name for item in items],
-                'Kategori': [item.category for item in items],
-                'Total Stok': [item.current_stock for item in items],
-                'Harga Jual': [item.selling_price for item in items],
-                'Stok Minimum': [item.minimum_stock for item in items],
-            }
-            
-            df = pd.DataFrame(data)
-            
-            # Create backup directory if it doesn't exist
-            backup_dir = os.path.join(os.getcwd(), 'backup')
-            os.makedirs(backup_dir, exist_ok=True)
-            
-            # Generate filename with timestamp
-            timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-            filename = f'backup_{timestamp}.xlsx'
-            filepath = os.path.join(backup_dir, filename)
-            
-            # Save to Excel
-            df.to_excel(filepath, index=False)
-            
-            # Log activity
-            ActivityLog.objects.create(
-                user=request.user,
-                action='backup_file',
-                notes=f'Created backup file: {filename}'
-            )
-            
-            messages.success(request, f'Backup berhasil dibuat: {filename}')
-            
-            # Get list of backup files
-            backup_files = []
-            for file in os.listdir(backup_dir):
-                if file.endswith('.xlsx') and file.startswith('backup_'):
-                    backup_files.append({
-                        'name': file,
-                        'path': os.path.join(backup_dir, file),
-                        'size': os.path.getsize(os.path.join(backup_dir, file)),
-                        'date': datetime.fromtimestamp(os.path.getmtime(os.path.join(backup_dir, file))),
-                    })
-            
-            # Sort by date (newest first)
-            backup_files.sort(key=lambda x: x['date'], reverse=True)
-            
-            return render(request, 'inventory/backup_history.html', {'backup_files': backup_files})
-            
-        except Exception as e:
-            messages.error(request, f'Error: {str(e)}')
-            return redirect('inventory:backup_file')
+    try:
+        logger.info("Accessing backup_file view")
+        
+        if request.method == 'POST':
+            try:
+                # Get all inventory items
+                items = Item.objects.all()
+                logger.info(f"Retrieved {items.count()} items for backup")
+                
+                # Create DataFrame
+                data = {
+                    'Kode': [item.code for item in items],
+                    'Nama Barang': [item.name for item in items],
+                    'Kategori': [item.category for item in items],
+                    'Total Stok': [item.current_stock for item in items],
+                    'Harga Jual': [item.selling_price for item in items],
+                    'Stok Minimum': [item.minimum_stock for item in items],
+                }
+                
+                df = pd.DataFrame(data)
+                
+                # Use a temporary directory that's writable in Render
+                temp_dir = '/tmp'
+                logger.info(f"Using temporary directory: {temp_dir}")
+                
+                # Generate filename with timestamp
+                timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+                filename = f'backup_{timestamp}.xlsx'
+                filepath = os.path.join(temp_dir, filename)
+                
+                # Save to Excel
+                logger.info(f"Saving backup to: {filepath}")
+                df.to_excel(filepath, index=False)
+                
+                # Log activity
+                ActivityLog.objects.create(
+                    user=request.user,
+                    action='backup_file',
+                    notes=f'Created backup file: {filename}'
+                )
+                
+                # Prepare file for download
+                with open(filepath, 'rb') as f:
+                    response = HttpResponse(
+                        f.read(),
+                        content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+                    )
+                    response['Content-Disposition'] = f'attachment; filename="{filename}"'
+                
+                # Clean up temporary file
+                os.remove(filepath)
+                
+                logger.info("Backup file created and ready for download")
+                return response
+                
+            except Exception as e:
+                logger.error(f"Error in backup_file POST: {str(e)}")
+                logger.error(traceback.format_exc())
+                messages.error(request, f'Error: {str(e)}')
+                return redirect('inventory:kelola_stok_barang')
+        
+        logger.info("Rendering backup_file template")
+        return render(request, 'inventory/backup_file.html')
     
-    return render(request, 'inventory/backup_file.html')
+    except Exception as e:
+        logger.error(f"Error in backup_file view: {str(e)}")
+        logger.error(traceback.format_exc())
+        messages.error(request, f"Terjadi kesalahan: {str(e)}")
+        return redirect('inventory:kelola_stok_barang')
 
 @login_required
 def change_password(request):
