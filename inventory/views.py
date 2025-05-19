@@ -84,7 +84,7 @@ def login_view(request):
             ActivityLog.objects.create(
                 user=user,
                 action='login',
-                details=f'User {username} logged in'
+                notes=f'User {username} logged in'
             )
             return redirect('inventory:dashboard')
         else:
@@ -97,7 +97,7 @@ def logout_view(request):
     ActivityLog.objects.create(
         user=request.user,
         action='logout',
-        details=f'User {request.user.username} logged out'
+        notes=f'User {request.user.username} logged out'
     )
     logout(request)
     return redirect('inventory:login')
@@ -167,7 +167,7 @@ def upload_file(request):
                 ActivityLog.objects.create(
                     user=request.user,
                     action='upload_file',
-                    details=f'Uploaded file: {file.name}, Created: {created_count}, Updated: {updated_count}'
+                    notes=f'Uploaded file: {file.name}, Created: {created_count}, Updated: {updated_count}'
                 )
                 
                 messages.success(request, f'File berhasil diupload. {created_count} item baru ditambahkan, {updated_count} item diperbarui.')
@@ -216,7 +216,7 @@ def backup_file(request):
             ActivityLog.objects.create(
                 user=request.user,
                 action='backup_file',
-                details=f'Created backup file: {filename}'
+                notes=f'Created backup file: {filename}'
             )
             
             messages.success(request, f'Backup berhasil dibuat: {filename}')
@@ -255,7 +255,7 @@ def change_password(request):
             ActivityLog.objects.create(
                 user=request.user,
                 action='change_password',
-                details=f'User {request.user.username} changed password'
+                notes=f'User {request.user.username} changed password'
             )
             
             messages.success(request, 'Password berhasil diubah')
@@ -286,7 +286,7 @@ def webhook_settings(request):
             ActivityLog.objects.create(
                 user=request.user,
                 action='update_webhook',
-                details=f'Updated webhook URL: {form.cleaned_data["telegram_webhook_url"]}'
+                notes=f'Updated webhook URL: {form.cleaned_data["telegram_webhook_url"]}'
             )
             
             messages.success(request, 'Pengaturan webhook berhasil disimpan')
@@ -351,7 +351,7 @@ def send_to_telegram(request):
                 ActivityLog.objects.create(
                     user=request.user,
                     action='send_to_telegram',
-                    details=f'Sent {len(items)} items to Telegram'
+                    notes=f'Sent {len(items)} items to Telegram'
                 )
                 
                 return JsonResponse({'status': 'success'})
@@ -384,7 +384,7 @@ def update_min_stock(request):
             ActivityLog.objects.create(
                 user=request.user,
                 action='update_min_stock',
-                details=f'Updated minimum stock for {item.name} to {min_stock}'
+                notes=f'Updated minimum stock for {item.name} to {min_stock}'
             )
             
             return JsonResponse({'status': 'success'})
@@ -416,7 +416,7 @@ def delete_min_stock(request):
             ActivityLog.objects.create(
                 user=request.user,
                 action='delete_min_stock',
-                details=f'Removed minimum stock for {item.name}'
+                notes=f'Removed minimum stock for {item.name}'
             )
             
             return JsonResponse({'status': 'success'})
@@ -432,7 +432,6 @@ def delete_min_stock(request):
 def get_item(request):
     try:
         item_id = request.GET.get('item_id')
-        
         if not item_id:
             return JsonResponse({'status': 'error', 'message': 'Missing item_id parameter'})
         
@@ -447,7 +446,7 @@ def get_item(request):
                 'category': item.category,
                 'current_stock': item.current_stock,
                 'selling_price': item.selling_price,
-                'minimum_stock': item.minimum_stock or 0,
+                'minimum_stock': item.minimum_stock or 0
             }
         })
         
@@ -485,7 +484,7 @@ def update_item(request):
             ActivityLog.objects.create(
                 user=request.user,
                 action='update_item',
-                details=f'Updated item: {item.name}'
+                notes=f'Updated item: {item.name}'
             )
             
             return JsonResponse({'status': 'success'})
@@ -519,7 +518,7 @@ def delete_item(request):
             ActivityLog.objects.create(
                 user=request.user,
                 action='delete_item',
-                details=f'Deleted item: {item_name}'
+                notes=f'Deleted item: {item_name}'
             )
             
             return JsonResponse({'status': 'success'})
