@@ -113,14 +113,16 @@ def transfer_stok(request):
         # Convert items to list for manipulation
         items_list = []
         for item in items:
-            # Convert Decimal to string for intcomma filter
+            # Convert Decimal to float for intcomma filter compatibility
+            selling_price = float(item.selling_price) if item.selling_price else 0
+            
             item_dict = {
                 'id': item.id,
                 'code': item.code,
                 'name': item.name,
                 'category': item.category,
                 'current_stock': item.current_stock,
-                'selling_price': str(item.selling_price),  # Convert to string for template
+                'selling_price': selling_price,  # Convert to float for template
                 'minimum_stock': item.minimum_stock
             }
             items_list.append(item_dict)
@@ -262,22 +264,39 @@ def upload_transfer_file(request):
             if not file:
                 logger.error("No file found in request")
                 messages.error(request, 'File tidak ditemukan')
-                return redirect('inventory:upload_file')
+                return redirect('inventory:transfer_stok')
             
             # Check file extension
-            if not file.name.endswith('.xlsx'):
+            if not file.name.endswith(('.xlsx', '.xls')):
                 logger.error(f"Invalid file format: {file.name}")
-                messages.error(request, 'File harus berformat Excel (.xlsx)')
-                return redirect('inventory:upload_file')
+                messages.error(request, 'File harus berformat Excel (.xlsx, .xls)')
+                return redirect('inventory:transfer_stok')
+            
+            # Use Render disk path if available, otherwise use settings
+            render_disk_path = '/opt/render/project/data'
+            upload_dir = os.path.join(render_disk_path, 'uploads') if os.path.exists(render_disk_path) else settings.UPLOAD_DIR
+            
+            # Create directory if it doesn't exist
+            os.makedirs(upload_dir, exist_ok=True)
+            
+            # Save the file temporarily
+            timestamp = datetime.now().strftime('%Y%m%d%H%M%S')
+            file_path = os.path.join(upload_dir, f"transfer_{timestamp}_{file.name}")
+            
+            with open(file_path, 'wb+') as destination:
+                for chunk in file.chunks():
+                    destination.write(chunk)
+            
+            logger.info(f"File saved to {file_path}")
             
             # Process Excel file
             logger.info(f"Reading Excel file: {file.name}")
             try:
-                df = pd.read_excel(file)
+                df = pd.read_excel(file_path)
             except Exception as e:
                 logger.error(f"Error reading Excel file: {str(e)}")
                 messages.error(request, f'Error membaca file Excel: {str(e)}')
-                return redirect('inventory:upload_file')
+                return redirect('inventory:transfer_stok')
             
             # Check required columns
             required_columns = ['Kode', 'Nama Barang', 'Kategori', 'Total Stok', 'Harga Jual']
@@ -285,32 +304,44 @@ def upload_transfer_file(request):
             if missing_columns:
                 logger.error(f"Required columns missing: {', '.join(missing_columns)}")
                 messages.error(request, f'Kolom berikut tidak ditemukan dalam file: {", ".join(missing_columns)}')
-                return redirect('inventory:upload_file')
+                return redirect('inventory:transfer_stok')
             
             # Process data
             updated_count = 0
             created_count = 0
             error_count = 0
+            error_messages = []
             
             try:
-                for _, row in df.iterrows():
+                for index, row in df.iterrows():
                     try:
-                        code = str(row['Kode'])
-                        name = row['Nama Barang']
-                        category = row['Kategori']
-                        stock = row['Total Stok']
-                        price = row['Harga Jual']
+                        # Extract data with robust error handling
+                        code = str(row['Kode']).strip() if not pd.isna(row['Kode']) else None
+                        name = str(row['Nama Barang']).strip() if not pd.isna(row['Nama Barang']) else None
+                        category = str(row['Kategori']).strip() if not pd.isna(row['Kategori']) else ''
+                        
+                        # Handle potential NaN values
+                        try:
+                            stock = int(row['Total Stok']) if not pd.isna(row['Total Stok']) else 0
+                        except (ValueError, TypeError):
+                            stock = 0
+                            
+                        try:
+                            price = float(row['Harga Jual']) if not pd.isna(row['Harga Jual']) else 0
+                        except (ValueError, TypeError):
+                            price = 0
+                            
+                        try:
+                            min_stock = int(row['Stok Minimum']) if 'Stok Minimum' in df.columns and not pd.isna(row['Stok Minimum']) else None
+                        except (ValueError, TypeError):
+                            min_stock = None
                         
                         # Skip empty rows
-                        if pd.isna(code) or pd.isna(name):
+                        if not code or not name:
+                            logger.warning(f"Skipping row {index+2}: Empty code or name")
+                            error_count += 1
+                            error_messages.append(f"Baris {index+2}: Kode atau Nama Barang kosong")
                             continue
-                        
-                        # Convert to proper types
-                        code = str(code).strip()
-                        name = str(name).strip()
-                        category = str(category).strip() if not pd.isna(category) else ''
-                        stock = int(stock) if not pd.isna(stock) else 0
-                        price = float(price) if not pd.isna(price) else 0
                         
                         # Update or create item
                         item, created = Item.objects.update_or_create(
@@ -320,32 +351,81 @@ def upload_transfer_file(request):
                                 'category': category,
                                 'current_stock': stock,
                                 'selling_price': price,
+                                'minimum_stock': min_stock
                             }
                         )
                         
                         if created:
+                            logger.info(f"Created new item: {code} - {name}")
                             created_count += 1
                         else:
+                            logger.info(f"Updated existing item: {code} - {name}")
                             updated_count += 1
+                            
                     except Exception as row_error:
-                        logger.error(f"Error processing row: {str(row_error)}")
+                        logger.error(f"Error processing row {index+2}: {str(row_error)}")
                         error_count += 1
+                        error_messages.append(f"Baris {index+2}: {str(row_error)}")
                         continue
+                        
             except Exception as inner_e:
                 logger.error(f"Error processing Excel data: {str(inner_e)}")
                 logger.error(traceback.format_exc())
                 messages.error(request, f'Error saat memproses data: {str(inner_e)}')
-                return redirect('inventory:upload_file')
+                
+                # Log activity for failure
+                ActivityLog.objects.create(
+                    user=request.user,
+                    action='upload_transfer_file',
+                    status='failure',
+                    notes=f'Error processing file: {file.name}. Error: {str(inner_e)}'
+                )
+                
+                # Clean up temporary file
+                try:
+                    os.remove(file_path)
+                except Exception:
+                    pass
+                    
+                return redirect('inventory:transfer_stok')
             
             # Log activity
+            status = 'success' if error_count == 0 else 'partial'
             ActivityLog.objects.create(
                 user=request.user,
                 action='upload_transfer_file',
-                status='success',
+                status=status,
                 notes=f'Uploaded file untuk Transfer Stok: {file.name}, Created: {created_count}, Updated: {updated_count}, Errors: {error_count}'
             )
             
             logger.info(f"File processed successfully: {created_count} created, {updated_count} updated, {error_count} errors")
+            
+            # Show success/error message
+            if error_count == 0:
+                messages.success(request, f'Berhasil mengupload file. {created_count} item baru ditambahkan, {updated_count} item diperbarui.')
+            else:
+                messages.warning(request, f'File diproses dengan {error_count} error. {created_count} item baru ditambahkan, {updated_count} item diperbarui.')
+                for error in error_messages[:10]:  # Show first 10 errors
+                    messages.error(request, error)
+                if len(error_messages) > 10:
+                    messages.error(request, f'... dan {len(error_messages) - 10} error lainnya.')
+            
+            # Clean up temporary file
+            try:
+                os.remove(file_path)
+                logger.info(f"Temporary file {file_path} removed")
+            except Exception as cleanup_error:
+                logger.warning(f"Could not remove temporary file {file_path}: {str(cleanup_error)}")
+            
+            return redirect('inventory:transfer_stok')
+            
+        except Exception as e:
+            logger.error(f"Error in upload_transfer_file: {str(e)}")
+            logger.error(traceback.format_exc())
+            messages.error(request, f'Error: {str(e)}')
+            return redirect('inventory:transfer_stok')
+    
+    return redirect('inventory:transfer_stok')
             messages.success(request, f'File berhasil diupload ke Transfer Stok. {created_count} item baru ditambahkan, {updated_count} item diperbarui.')
             return redirect('inventory:transfer_stok')
             
@@ -355,9 +435,7 @@ def upload_transfer_file(request):
             messages.error(request, f'Error: {str(e)}')
             return redirect('inventory:upload_file')
     
-    return redirect('inventory:upload_file')
-
-@login_required
+    return redirect('inventory:upload_file')@login_required
 def backup_file(request):
     try:
         logger.info("Accessing backup_file view")
@@ -371,14 +449,19 @@ def backup_file(request):
                 # Convert Decimal to float for Excel compatibility
                 items_list = []
                 for item in items:
-                    items_list.append({
-                        'code': item.code,
-                        'name': item.name,
-                        'category': item.category,
-                        'current_stock': item.current_stock,
-                        'selling_price': float(item.selling_price),
-                        'minimum_stock': item.minimum_stock
-                    })
+                    try:
+                        items_list.append({
+                            'code': item.code,
+                            'name': item.name,
+                            'category': item.category,
+                            'current_stock': item.current_stock,
+                            'selling_price': float(item.selling_price) if item.selling_price else 0,
+                            'minimum_stock': item.minimum_stock if item.minimum_stock else 0
+                        })
+                    except Exception as item_error:
+                        logger.error(f"Error processing item {item.code}: {str(item_error)}")
+                        # Continue with other items even if one fails
+                        continue
                 
                 # Create DataFrame
                 data = {
@@ -393,8 +476,50 @@ def backup_file(request):
                 df = pd.DataFrame(data)
                 
                 # Use Render disk path if available, otherwise use temp directory
-                if os.path.exists('/opt/render/project/data'):
-                    backup_dir = '/opt/render/project/data'
+                render_disk_path = '/opt/render/project/data'
+                backup_dir = os.path.join(render_disk_path, 'backups') if os.path.exists(render_disk_path) else settings.BACKUP_DIR
+                
+                # Create directory if it doesn't exist
+                os.makedirs(backup_dir, exist_ok=True)
+                
+                # Generate filename with timestamp
+                timestamp = datetime.now().strftime('%Y_%m_%d_%H_%M_%S')
+                filename = f"Laporan_Manajemen_Barang_Cabang_{timestamp}.xlsx"
+                filepath = os.path.join(backup_dir, filename)
+                
+                # Save to Excel
+                logger.info(f"Saving backup to {filepath}")
+                df.to_excel(filepath, index=False)
+                
+                # Log activity
+                ActivityLog.objects.create(
+                    user=request.user,
+                    action='backup_file',
+                    status='success',
+                    notes=f'Created backup file: {filename}'
+                )
+                
+                # Prepare file for download
+                with open(filepath, 'rb') as excel_file:
+                    response = HttpResponse(
+                        excel_file.read(),
+                        content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+                    )
+                    response['Content-Disposition'] = f'attachment; filename="{filename}"'
+                    return response
+                
+            except Exception as inner_e:
+                logger.error(f"Error creating backup file: {str(inner_e)}")
+                logger.error(traceback.format_exc())
+                messages.error(request, f"Terjadi kesalahan saat membuat file backup: {str(inner_e)}")
+                return redirect('inventory:backup_file')
+        
+        return render(request, 'inventory/backup_file.html')
+    except Exception as e:
+        logger.error(f"Error in backup_file view: {str(e)}")
+        logger.error(traceback.format_exc())
+        messages.error(request, f"Terjadi kesalahan: {str(e)}")
+        return redirect('inventory:dashboard')        backup_dir = '/opt/render/project/data'
                 else:
                     backup_dir = '/tmp'
                 
