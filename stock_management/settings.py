@@ -32,6 +32,12 @@ DEBUG = True
 
 ALLOWED_HOSTS = ['*']
 
+# CSRF Trusted Origins
+CSRF_TRUSTED_ORIGINS = [
+    'https://*.manus.computer',
+    'https://*.onrender.com',
+]
+
 
 # Application definition
 
