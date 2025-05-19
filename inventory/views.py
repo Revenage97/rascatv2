@@ -362,6 +362,7 @@ def backup_file(request):
                 )
                 
                 # Prepare file for download
+                from django.http import HttpResponse
                 with open(filepath, 'rb') as f:
                     response = HttpResponse(
                         f.read(),
