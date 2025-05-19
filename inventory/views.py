@@ -70,7 +70,44 @@ def kelola_stok_packing(request):
 
 @login_required
 def transfer_stok(request):
-    return render(request, 'inventory/transfer_stok.html')
+    query = request.GET.get('query', '')
+    sort = request.GET.get('sort', '')
+    filter_option = request.GET.get('filter', '')
+    
+    items = Item.objects.all()
+    
+    # Search functionality
+    if query:
+        items = items.filter(name__icontains=query) | items.filter(code__icontains=query) | items.filter(category__icontains=query)
+    
+    # Sorting functionality
+    if sort == 'name':
+        items = items.order_by('name')
+    elif sort == 'name_desc':
+        items = items.order_by('-name')
+    elif sort == 'category':
+        items = items.order_by('category')
+    elif sort == 'category_desc':
+        items = items.order_by('-category')
+    elif sort == 'stock_asc':
+        items = items.order_by('current_stock')
+    elif sort == 'stock_desc':
+        items = items.order_by('-current_stock')
+    elif sort == 'price_asc':
+        items = items.order_by('selling_price')
+    elif sort == 'price_desc':
+        items = items.order_by('-selling_price')
+    
+    # Filtering functionality
+    if filter_option == 'low_stock':
+        items = [item for item in items if item.minimum_stock and item.current_stock < item.minimum_stock]
+    
+    context = {
+        'items': items,
+        'query': query,
+    }
+    
+    return render(request, 'inventory/transfer_stok.html', context)
 
 # Existing views below
 def login_view(request):
@@ -167,11 +204,11 @@ def upload_file(request):
                 ActivityLog.objects.create(
                     user=request.user,
                     action='upload_file',
-                    notes=f'Uploaded file: {file.name}, Created: {created_count}, Updated: {updated_count}'
+                    notes=f'Uploaded file untuk Kelola Stok Barang: {file.name}, Created: {created_count}, Updated: {updated_count}'
                 )
                 
-                messages.success(request, f'File berhasil diupload. {created_count} item baru ditambahkan, {updated_count} item diperbarui.')
-                return redirect('inventory:dashboard')
+                messages.success(request, f'File berhasil diupload ke Kelola Stok Barang. {created_count} item baru ditambahkan, {updated_count} item diperbarui.')
+                return redirect('inventory:kelola_stok_barang')
                 
             except Exception as e:
                 messages.error(request, f'Error: {str(e)}')
@@ -180,6 +217,85 @@ def upload_file(request):
         form = ExcelUploadForm()
     
     return render(request, 'inventory/upload_file.html', {'form': form})
+
+@login_required
+def upload_transfer_file(request):
+    if request.method == 'POST':
+        try:
+            file = request.FILES.get('transfer_file')
+            
+            if not file:
+                messages.error(request, 'File tidak ditemukan')
+                return redirect('inventory:upload_file')
+            
+            # Check file extension
+            if not file.name.endswith('.xlsx'):
+                messages.error(request, 'File harus berformat Excel (.xlsx)')
+                return redirect('inventory:upload_file')
+            
+            # Process Excel file
+            df = pd.read_excel(file)
+            
+            # Check required columns
+            required_columns = ['Kode', 'Nama Barang', 'Kategori', 'Total Stok', 'Harga Jual']
+            for col in required_columns:
+                if col not in df.columns:
+                    messages.error(request, f'Kolom {col} tidak ditemukan dalam file')
+                    return redirect('inventory:upload_file')
+            
+            # Process data
+            updated_count = 0
+            created_count = 0
+            
+            for _, row in df.iterrows():
+                code = str(row['Kode'])
+                name = row['Nama Barang']
+                category = row['Kategori']
+                stock = row['Total Stok']
+                price = row['Harga Jual']
+                
+                # Skip empty rows
+                if pd.isna(code) or pd.isna(name):
+                    continue
+                
+                # Convert to proper types
+                code = str(code).strip()
+                name = str(name).strip()
+                category = str(category).strip() if not pd.isna(category) else ''
+                stock = int(stock) if not pd.isna(stock) else 0
+                price = float(price) if not pd.isna(price) else 0
+                
+                # Update or create item
+                item, created = Item.objects.update_or_create(
+                    code=code,
+                    defaults={
+                        'name': name,
+                        'category': category,
+                        'current_stock': stock,
+                        'selling_price': price,
+                    }
+                )
+                
+                if created:
+                    created_count += 1
+                else:
+                    updated_count += 1
+            
+            # Log activity
+            ActivityLog.objects.create(
+                user=request.user,
+                action='upload_transfer_file',
+                notes=f'Uploaded file untuk Transfer Stok: {file.name}, Created: {created_count}, Updated: {updated_count}'
+            )
+            
+            messages.success(request, f'File berhasil diupload ke Transfer Stok. {created_count} item baru ditambahkan, {updated_count} item diperbarui.')
+            return redirect('inventory:transfer_stok')
+            
+        except Exception as e:
+            messages.error(request, f'Error: {str(e)}')
+            return redirect('inventory:upload_file')
+    
+    return redirect('inventory:upload_file')
 
 @login_required
 def backup_file(request):
