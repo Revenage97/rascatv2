@@ -426,16 +426,8 @@ def upload_transfer_file(request):
             return redirect('inventory:transfer_stok')
     
     return redirect('inventory:transfer_stok')
-            messages.success(request, f'File berhasil diupload ke Transfer Stok. {created_count} item baru ditambahkan, {updated_count} item diperbarui.')
-            return redirect('inventory:transfer_stok')
-            
-        except Exception as e:
-            logger.error(f"Error in upload_transfer_file: {str(e)}")
-            logger.error(traceback.format_exc())
-            messages.error(request, f'Error: {str(e)}')
-            return redirect('inventory:upload_file')
-    
-    return redirect('inventory:upload_file')@login_required
+
+@login_required
 def backup_file(request):
     try:
         logger.info("Accessing backup_file view")
