@@ -1,443 +1,308 @@
-from django.shortcuts import render, redirect, get_object_or_404
+from django.shortcuts import render, redirect
 from django.contrib.auth import authenticate, login, logout, update_session_auth_hash
 from django.contrib.auth.decorators import login_required
+from django.contrib.auth.forms import PasswordChangeForm
 from django.contrib import messages
-from django.http import JsonResponse, HttpResponse
-from django.utils import timezone
-from django.db.models import Q, F
-from django.views.decorators.csrf import ensure_csrf_cookie, csrf_exempt, csrf_protect
+from django.http import JsonResponse
+from django.views.decorators.csrf import csrf_exempt
 import json
-import requests
-import openpyxl
+import pandas as pd
 import os
-from openpyxl import Workbook
-from datetime import datetime, timedelta
-from .models import Item, WebhookSettings, ActivityLog, UploadHistory
-from .forms import LoginForm, ItemForm, WebhookSettingsForm, CustomPasswordChangeForm, ExcelUploadForm
+from datetime import datetime
+from .models import InventoryItem, WebhookSettings, ActivityLog
+from .forms import UploadFileForm, WebhookSettingsForm
 
+# Existing views
+@login_required
+def dashboard(request):
+    # Redirect to kelola_stok_barang view
+    return redirect('inventory:kelola_stok_barang')
+
+# New views for submenu pages
+@login_required
+def kelola_stok_barang(request):
+    query = request.GET.get('query', '')
+    sort = request.GET.get('sort', '')
+    filter_option = request.GET.get('filter', '')
+    
+    items = InventoryItem.objects.all()
+    
+    # Search functionality
+    if query:
+        items = items.filter(name__icontains=query) | items.filter(code__icontains=query) | items.filter(category__icontains=query)
+    
+    # Sorting functionality
+    if sort == 'name':
+        items = items.order_by('name')
+    elif sort == 'name_desc':
+        items = items.order_by('-name')
+    elif sort == 'category':
+        items = items.order_by('category')
+    elif sort == 'category_desc':
+        items = items.order_by('-category')
+    elif sort == 'stock_asc':
+        items = items.order_by('current_stock')
+    elif sort == 'stock_desc':
+        items = items.order_by('-current_stock')
+    elif sort == 'price_asc':
+        items = items.order_by('selling_price')
+    elif sort == 'price_desc':
+        items = items.order_by('-selling_price')
+    
+    # Filtering functionality
+    if filter_option == 'low_stock':
+        items = [item for item in items if item.minimum_stock and item.current_stock < item.minimum_stock]
+    
+    context = {
+        'items': items,
+        'query': query,
+    }
+    
+    return render(request, 'inventory/kelola_stok_barang.html', context)
+
+@login_required
+def kelola_harga(request):
+    return render(request, 'inventory/kelola_harga.html')
+
+@login_required
+def kelola_stok_packing(request):
+    return render(request, 'inventory/kelola_stok_packing.html')
+
+@login_required
+def transfer_stok(request):
+    return render(request, 'inventory/transfer_stok.html')
+
+# Existing views below
 def login_view(request):
-    if request.user.is_authenticated:
-        return redirect('inventory:dashboard')
-    
     if request.method == 'POST':
-        form = LoginForm(request.POST)
-        if form.is_valid():
-            username = form.cleaned_data['username']
-            password = form.cleaned_data['password']
-            user = authenticate(request, username=username, password=password)
-            
-            if user is not None:
-                login(request, user)
-                ActivityLog.objects.create(
-                    user=user,
-                    action='Login',
-                    status='success',
-                    notes='Login berhasil'
-                )
-                return redirect('inventory:dashboard')
-            else:
-                messages.error(request, 'Username atau password salah')
-                ActivityLog.objects.create(
-                    user=None,
-                    action='Login',
-                    status='failed',
-                    notes=f'Percobaan login gagal untuk username: {username}'
-                )
-    else:
-        form = LoginForm()
+        username = request.POST.get('username')
+        password = request.POST.get('password')
+        user = authenticate(request, username=username, password=password)
+        
+        if user is not None:
+            login(request, user)
+            ActivityLog.objects.create(
+                user=user,
+                action='login',
+                details=f'User {username} logged in'
+            )
+            return redirect('inventory:dashboard')
+        else:
+            messages.error(request, 'Username atau password salah')
     
-    return render(request, 'inventory/login.html', {'form': form})
+    return render(request, 'inventory/login.html')
 
 @login_required
 def logout_view(request):
     ActivityLog.objects.create(
         user=request.user,
-        action='Logout',
-        status='success',
-        notes='Logout berhasil'
+        action='logout',
+        details=f'User {request.user.username} logged out'
     )
     logout(request)
     return redirect('inventory:login')
 
 @login_required
-@ensure_csrf_cookie
-def dashboard(request):
-    query = request.GET.get('query', '')
-    sort = request.GET.get('sort', '')
-    sort_dir = request.GET.get('dir', 'asc')
-    filter_type = request.GET.get('filter', '')
-    
-    # Start with all items or filtered by search query
-    if query:
-        items = Item.objects.filter(
-            Q(code__icontains=query) | 
-            Q(name__icontains=query) | 
-            Q(category__icontains=query)
-        )
-    else:
-        items = Item.objects.all()
-    
-    # Apply filters
-    if filter_type == 'low_stock':
-        # Filter items with stock below minimum
-        items = items.filter(current_stock__lt=F('minimum_stock'))
-    
-    # Apply sorting
-    if sort:
-        # Determine sort field and direction
-        sort_field = ''
-        if sort == 'name':
-            sort_field = 'name'
-        elif sort == 'name_desc':
-            sort_field = '-name'
-        elif sort == 'category':
-            sort_field = 'category'
-        elif sort == 'category_desc':
-            sort_field = '-category'
-        elif sort == 'stock_asc':
-            sort_field = 'current_stock'
-        elif sort == 'stock_desc':
-            sort_field = '-current_stock'
-        elif sort == 'price_asc':
-            sort_field = 'selling_price'
-        elif sort == 'price_desc':
-            sort_field = '-selling_price'
-        
-        # Apply sorting if a valid field was specified
-        if sort_field:
-            items = items.order_by(sort_field)
-    
-    return render(request, 'inventory/dashboard.html', {
-        'items': items,
-        'query': query,
-        'current_sort': sort,
-        'current_filter': filter_type,
-    })
-
-@login_required
 def upload_file(request):
     if request.method == 'POST':
-        form = ExcelUploadForm(request.POST, request.FILES)
+        form = UploadFileForm(request.POST, request.FILES)
         if form.is_valid():
-            excel_file = request.FILES['excel_file']
-            
             try:
-                # Save uploaded file
-                from django.conf import settings
-                upload_dir = settings.UPLOAD_DIR
-                os.makedirs(upload_dir, exist_ok=True)
+                file = request.FILES['file']
                 
-                timestamp = datetime.now().strftime('%Y_%m_%d_%H_%M_%S')
-                filename = f"Upload_{timestamp}_{excel_file.name}"
-                file_path = os.path.join(upload_dir, filename)
+                # Check file extension
+                if not file.name.endswith('.xlsx'):
+                    messages.error(request, 'File harus berformat Excel (.xlsx)')
+                    return redirect('inventory:upload_file')
                 
-                with open(file_path, 'wb+') as destination:
-                    for chunk in excel_file.chunks():
-                        destination.write(chunk)
+                # Process Excel file
+                df = pd.read_excel(file)
                 
-                # Process the file
-                wb = openpyxl.load_workbook(file_path)
-                sheet = wb.active
+                # Check required columns
+                required_columns = ['Kode', 'Nama Barang', 'Kategori', 'Total Stok', 'Harga Jual']
+                for col in required_columns:
+                    if col not in df.columns:
+                        messages.error(request, f'Kolom {col} tidak ditemukan dalam file')
+                        return redirect('inventory:upload_file')
                 
-                # Skip header row
-                rows = list(sheet.rows)[1:]
+                # Process data
+                updated_count = 0
+                created_count = 0
                 
-                success_count = 0
-                error_count = 0
+                for _, row in df.iterrows():
+                    code = str(row['Kode'])
+                    name = row['Nama Barang']
+                    category = row['Kategori']
+                    stock = row['Total Stok']
+                    price = row['Harga Jual']
+                    
+                    # Skip empty rows
+                    if pd.isna(code) or pd.isna(name):
+                        continue
+                    
+                    # Convert to proper types
+                    code = str(code).strip()
+                    name = str(name).strip()
+                    category = str(category).strip() if not pd.isna(category) else ''
+                    stock = int(stock) if not pd.isna(stock) else 0
+                    price = float(price) if not pd.isna(price) else 0
+                    
+                    # Update or create item
+                    item, created = InventoryItem.objects.update_or_create(
+                        code=code,
+                        defaults={
+                            'name': name,
+                            'category': category,
+                            'current_stock': stock,
+                            'selling_price': price,
+                        }
+                    )
+                    
+                    if created:
+                        created_count += 1
+                    else:
+                        updated_count += 1
                 
-                for row in rows:
-                    try:
-                        code = str(row[0].value).strip()
-                        name = str(row[1].value).strip()
-                        category = str(row[2].value).strip()
-                        # Swap columns 3 and 4 to fix the issue
-                        selling_price = float(row[3].value) if row[3].value is not None else 0
-                        current_stock = int(row[4].value) if row[4].value is not None else 0
-                        
-                        # Check if item exists
-                        try:
-                            item = Item.objects.get(code=code)
-                            # Update existing item but preserve minimum_stock
-                            item.name = name
-                            item.category = category
-                            item.current_stock = current_stock
-                            item.selling_price = selling_price
-                            item.save()
-                        except Item.DoesNotExist:
-                            # Create new item
-                            Item.objects.create(
-                                code=code,
-                                name=name,
-                                category=category,
-                                current_stock=current_stock,
-                                selling_price=selling_price,
-                                minimum_stock=0  # Default value
-                            )
-                        
-                        success_count += 1
-                    except Exception as e:
-                        error_count += 1
-                        print(f"Error processing row: {e}")
-                
-                # Create upload history record
-                file_size = os.path.getsize(file_path)
-                UploadHistory.objects.create(
-                    user=request.user,
-                    filename=filename,
-                    file_path=file_path,
-                    file_size=file_size,
-                    success_count=success_count,
-                    error_count=error_count
-                )
-                
+                # Log activity
                 ActivityLog.objects.create(
                     user=request.user,
-                    action='Upload File',
-                    status='success',
-                    notes=f'Berhasil memproses {success_count} item, gagal {error_count} item'
+                    action='upload_file',
+                    details=f'Uploaded file: {file.name}, Created: {created_count}, Updated: {updated_count}'
                 )
                 
-                messages.success(request, f'File berhasil diupload. {success_count} item diproses, {error_count} item gagal.')
+                messages.success(request, f'File berhasil diupload. {created_count} item baru ditambahkan, {updated_count} item diperbarui.')
                 return redirect('inventory:dashboard')
-            
+                
             except Exception as e:
-                ActivityLog.objects.create(
-                    user=request.user,
-                    action='Upload File',
-                    status='failed',
-                    notes=f'Gagal memproses file: {str(e)}'
-                )
-                messages.error(request, f'Gagal memproses file: {str(e)}')
+                messages.error(request, f'Error: {str(e)}')
+                return redirect('inventory:upload_file')
     else:
-        form = ExcelUploadForm()
+        form = UploadFileForm()
     
     return render(request, 'inventory/upload_file.html', {'form': form})
 
 @login_required
 def backup_file(request):
-    try:
-        # Show upload history instead of direct download
-        upload_history = UploadHistory.objects.all().order_by('-upload_date')
-        
-        return render(request, 'inventory/backup_history.html', {
-            'upload_history': upload_history
-        })
-    except Exception as e:
-        # Log the error
-        import traceback
-        error_message = str(e)
-        error_traceback = traceback.format_exc()
-        
-        ActivityLog.objects.create(
-            user=request.user,
-            action='View Backup History',
-            status='failed',
-            notes=f'Error: {error_message}\n\nTraceback: {error_traceback}'
-        )
-        
-        messages.error(request, f'Terjadi kesalahan saat menampilkan history file: {error_message}')
-        return redirect('inventory:dashboard')
-
-@login_required
-def download_backup(request):
-    try:
-        items = Item.objects.all()
-        
-        # Create a new workbook
-        wb = Workbook()
-        ws = wb.active
-        ws.title = "Inventory"
-        
-        # Add headers
-        headers = ['Kode Barang', 'Nama Barang', 'Kategori', 'Stok Saat Ini', 'Harga Jual', 'Stok Minimum']
-        for col_num, header in enumerate(headers, 1):
-            ws.cell(row=1, column=col_num, value=header)
-        
-        # Add data
-        for row_num, item in enumerate(items, 2):
-            ws.cell(row=row_num, column=1, value=item.code)
-            ws.cell(row=row_num, column=2, value=item.name)
-            ws.cell(row=row_num, column=3, value=item.category)
-            ws.cell(row=row_num, column=4, value=item.current_stock)
-            ws.cell(row=row_num, column=5, value=float(item.selling_price))
-            ws.cell(row=row_num, column=6, value=item.minimum_stock)
-        
-        # Create response
-        timestamp = datetime.now().strftime('%Y_%m_%d_%H_%M_%S')
-        filename = f"Backup_Inventory_{timestamp}.xlsx"
-        
-        # Create directory for backups if it doesn't exist
-        from django.conf import settings
-        backup_dir = settings.BACKUP_DIR
-        os.makedirs(backup_dir, exist_ok=True)
-        
-        # Save file path
-        file_path = os.path.join(backup_dir, filename)
-        
-        # Save the workbook to file
-        wb.save(file_path)
-        
-        # Get file size
-        file_size = os.path.getsize(file_path)
-        
-        # Create backup history record
-        UploadHistory.objects.create(
-            user=request.user,
-            filename=filename,
-            file_path=file_path,
-            file_size=file_size,
-            success_count=items.count(),
-            error_count=0
-        )
-        
-        # Create response
-        response = HttpResponse(
-            content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
-        )
-        response['Content-Disposition'] = f'attachment; filename="{filename}"'
-        
-        # Open and serve the file
-        with open(file_path, 'rb') as f:
-            response.write(f.read())
-        
-        ActivityLog.objects.create(
-            user=request.user,
-            action='Download Backup',
-            status='success',
-            notes=f'Backup file berhasil didownload: {filename}'
-        )
-        
-        return response
-    except Exception as e:
-        # Log the error
-        import traceback
-        error_message = str(e)
-        error_traceback = traceback.format_exc()
-        
-        ActivityLog.objects.create(
-            user=request.user,
-            action='Download Backup',
-            status='failed',
-            notes=f'Error: {error_message}\n\nTraceback: {error_traceback}'
-        )
-        
-        messages.error(request, f'Terjadi kesalahan saat membuat backup: {error_message}')
-        return redirect('inventory:dashboard')
+    if request.method == 'POST':
+        try:
+            # Get all inventory items
+            items = InventoryItem.objects.all()
+            
+            # Create DataFrame
+            data = {
+                'Kode': [item.code for item in items],
+                'Nama Barang': [item.name for item in items],
+                'Kategori': [item.category for item in items],
+                'Total Stok': [item.current_stock for item in items],
+                'Harga Jual': [item.selling_price for item in items],
+                'Stok Minimum': [item.minimum_stock for item in items],
+            }
+            
+            df = pd.DataFrame(data)
+            
+            # Create backup directory if it doesn't exist
+            backup_dir = os.path.join(os.getcwd(), 'backup')
+            os.makedirs(backup_dir, exist_ok=True)
+            
+            # Generate filename with timestamp
+            timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+            filename = f'backup_{timestamp}.xlsx'
+            filepath = os.path.join(backup_dir, filename)
+            
+            # Save to Excel
+            df.to_excel(filepath, index=False)
+            
+            # Log activity
+            ActivityLog.objects.create(
+                user=request.user,
+                action='backup_file',
+                details=f'Created backup file: {filename}'
+            )
+            
+            messages.success(request, f'Backup berhasil dibuat: {filename}')
+            
+            # Get list of backup files
+            backup_files = []
+            for file in os.listdir(backup_dir):
+                if file.endswith('.xlsx') and file.startswith('backup_'):
+                    backup_files.append({
+                        'name': file,
+                        'path': os.path.join(backup_dir, file),
+                        'size': os.path.getsize(os.path.join(backup_dir, file)),
+                        'date': datetime.fromtimestamp(os.path.getmtime(os.path.join(backup_dir, file))),
+                    })
+            
+            # Sort by date (newest first)
+            backup_files.sort(key=lambda x: x['date'], reverse=True)
+            
+            return render(request, 'inventory/backup_history.html', {'backup_files': backup_files})
+            
+        except Exception as e:
+            messages.error(request, f'Error: {str(e)}')
+            return redirect('inventory:backup_file')
+    
+    return render(request, 'inventory/backup_file.html')
 
 @login_required
 def change_password(request):
     if request.method == 'POST':
-        form = CustomPasswordChangeForm(request.user, request.POST)
+        form = PasswordChangeForm(request.user, request.POST)
         if form.is_valid():
             user = form.save()
             update_session_auth_hash(request, user)
             
+            # Log activity
             ActivityLog.objects.create(
                 user=request.user,
-                action='Ubah Password',
-                status='success',
-                notes='Password berhasil diubah'
+                action='change_password',
+                details=f'User {request.user.username} changed password'
             )
             
-            messages.success(request, 'Password berhasil diubah!')
+            messages.success(request, 'Password berhasil diubah')
             return redirect('inventory:dashboard')
         else:
-            ActivityLog.objects.create(
-                user=request.user,
-                action='Ubah Password',
-                status='failed',
-                notes='Gagal mengubah password'
-            )
+            for error in form.errors.values():
+                messages.error(request, error)
     else:
-        form = CustomPasswordChangeForm(request.user)
+        form = PasswordChangeForm(request.user)
     
     return render(request, 'inventory/change_password.html', {'form': form})
 
 @login_required
 def webhook_settings(request):
     try:
-        webhook_settings = WebhookSettings.objects.first()
-        if not webhook_settings:
-            webhook_settings = WebhookSettings.objects.create()
+        settings = WebhookSettings.objects.first()
+        if not settings:
+            settings = WebhookSettings.objects.create(webhook_url='')
     except:
-        webhook_settings = WebhookSettings.objects.create()
+        settings = WebhookSettings.objects.create(webhook_url='')
     
     if request.method == 'POST':
-        form = WebhookSettingsForm(request.POST, instance=webhook_settings)
+        form = WebhookSettingsForm(request.POST, instance=settings)
         if form.is_valid():
-            webhook = form.save(commit=False)
-            webhook.updated_by = request.user
-            webhook.save()
+            form.save()
             
+            # Log activity
             ActivityLog.objects.create(
                 user=request.user,
-                action='Update Webhook',
-                status='success',
-                notes=f'Webhook URL diperbarui: {webhook.telegram_webhook_url}'
+                action='update_webhook',
+                details=f'Updated webhook URL: {form.cleaned_data["webhook_url"]}'
             )
             
-            messages.success(request, 'Webhook settings berhasil diperbarui!')
+            messages.success(request, 'Pengaturan webhook berhasil disimpan')
             return redirect('inventory:webhook_settings')
     else:
-        form = WebhookSettingsForm(instance=webhook_settings)
+        form = WebhookSettingsForm(instance=settings)
     
     return render(request, 'inventory/webhook_settings.html', {'form': form})
 
 @login_required
-def download_file(request, history_id):
-    try:
-        history = get_object_or_404(UploadHistory, id=history_id)
-        
-        # Check if file exists
-        if not os.path.exists(history.file_path):
-            messages.error(request, f"File tidak ditemukan: {history.filename}")
-            return redirect('inventory:backup_file')
-        
-        # Create response
-        response = HttpResponse(
-            content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
-        )
-        response['Content-Disposition'] = f'attachment; filename="{history.filename}"'
-        
-        # Open and serve the file
-        with open(history.file_path, 'rb') as f:
-            response.write(f.read())
-        
-        ActivityLog.objects.create(
-            user=request.user,
-            action='Download File',
-            status='success',
-            notes=f'File berhasil didownload: {history.filename}'
-        )
-        
-        return response
-        
-    except Exception as e:
-        # Log the error
-        import traceback
-        error_message = str(e)
-        error_traceback = traceback.format_exc()
-        
-        ActivityLog.objects.create(
-            user=request.user,
-            action='Download File',
-            status='failed',
-            notes=f'Error: {error_message}\n\nTraceback: {error_traceback}'
-        )
-        
-        messages.error(request, f"Error saat download file: {str(e)}")
-        return redirect('inventory:backup_file')
-
-@login_required
 def activity_logs(request):
-    # Get logs from the last 7 days
-    seven_days_ago = timezone.now() - timedelta(days=7)
-    logs = ActivityLog.objects.filter(timestamp__gte=seven_days_ago).order_by('-timestamp')
-    
+    logs = ActivityLog.objects.all().order_by('-timestamp')
     return render(request, 'inventory/activity_logs.html', {'logs': logs})
 
 @login_required
-@csrf_protect
+@csrf_exempt
 def send_to_telegram(request):
     if request.method == 'POST':
         try:
@@ -445,204 +310,223 @@ def send_to_telegram(request):
             item_ids = data.get('item_ids', [])
             
             if not item_ids:
-                return JsonResponse({'status': 'error', 'message': 'Tidak ada item yang dipilih'}, status=400)
-            
-            items = Item.objects.filter(id__in=item_ids)
+                return JsonResponse({'status': 'error', 'message': 'No items selected'})
             
             # Get webhook URL
             webhook_settings = WebhookSettings.objects.first()
-            if not webhook_settings or not webhook_settings.telegram_webhook_url:
-                return JsonResponse({'status': 'error', 'message': 'URL Webhook belum diatur'}, status=400)
+            if not webhook_settings or not webhook_settings.webhook_url:
+                return JsonResponse({'status': 'error', 'message': 'Webhook URL not configured'})
             
-            # Prepare data for Zapier - Simplified format
-            products_list = []
+            # Get selected items
+            items = InventoryItem.objects.filter(id__in=item_ids)
+            
+            # Prepare data for Telegram
+            telegram_data = {
+                'produk': []
+            }
+            
             for item in items:
-                products_list.append({
-                    'kode': item.code,
-                    'nama': item.name,
+                # Format price with thousand separator
+                price_str = f"Rp {item.selling_price:,.0f}".replace(',', '.')
+                
+                telegram_data['produk'].append({
+                    'kode_barang': item.code,
+                    'nama_barang': item.name,
                     'kategori': item.category,
                     'stok': item.current_stock,
-                    'harga': int(item.selling_price),
-                    'stok_minimum': item.minimum_stock
+                    'harga': price_str,
+                    'stok_minimum': item.minimum_stock or 0
                 })
             
-            # Try multiple payload formats to ensure compatibility with Zapier
-            
-            # Format 1: Simple array of products
-            payload1 = products_list
-            
-            # Format 2: Object with products array
-            payload2 = {
-                'products': products_list
-            }
-            
-            # Format 3: Single product (if only one selected)
-            payload3 = products_list[0] if products_list else {}
-            
-            # Log all payloads for debugging
-            print(f"Webhook URL: {webhook_settings.telegram_webhook_url}")
-            print(f"Payload 1 (array): {json.dumps(payload1)}")
-            print(f"Payload 2 (object): {json.dumps(payload2)}")
-            print(f"Payload 3 (single): {json.dumps(payload3)}")
-            
-            # Common headers
-            headers = {
-                'Content-Type': 'application/json',
-                'User-Agent': 'Stock Management System/1.0'
-            }
-            
-            # Try all payload formats
-            success = False
-            response_logs = []
-            
-            # Try Format 1
-            try:
-                response1 = requests.post(
-                    webhook_settings.telegram_webhook_url,
-                    json=payload1,
-                    headers=headers,
-                    timeout=10
-                )
-                response_logs.append(f"Format 1 response: {response1.status_code} - {response1.text}")
-                if response1.status_code in [200, 201, 202]:
-                    success = True
-            except Exception as e:
-                response_logs.append(f"Format 1 error: {str(e)}")
-            
-            # Try Format 2 if not successful yet
-            if not success:
-                try:
-                    response2 = requests.post(
-                        webhook_settings.telegram_webhook_url,
-                        json=payload2,
-                        headers=headers,
-                        timeout=10
-                    )
-                    response_logs.append(f"Format 2 response: {response2.status_code} - {response2.text}")
-                    if response2.status_code in [200, 201, 202]:
-                        success = True
-                except Exception as e:
-                    response_logs.append(f"Format 2 error: {str(e)}")
-            
-            # Try Format 3 if not successful yet and we have only one product
-            if not success and len(products_list) == 1:
-                try:
-                    response3 = requests.post(
-                        webhook_settings.telegram_webhook_url,
-                        json=payload3,
-                        headers=headers,
-                        timeout=10
-                    )
-                    response_logs.append(f"Format 3 response: {response3.status_code} - {response3.text}")
-                    if response3.status_code in [200, 201, 202]:
-                        success = True
-                except Exception as e:
-                    response_logs.append(f"Format 3 error: {str(e)}")
-            
-            # Try with form-encoded data as last resort
-            if not success:
-                try:
-                    form_data = {'payload': json.dumps(payload2)}
-                    response4 = requests.post(
-                        webhook_settings.telegram_webhook_url,
-                        data=form_data,
-                        timeout=10
-                    )
-                    response_logs.append(f"Form data response: {response4.status_code} - {response4.text}")
-                    if response4.status_code in [200, 201, 202]:
-                        success = True
-                except Exception as e:
-                    response_logs.append(f"Form data error: {str(e)}")
-            
-            # Log all responses
-            for log in response_logs:
-                print(log)
-            
-            if success:
-                # Create a list of product names for the log
-                product_names = [item.name for item in items]
-                product_names_str = ", ".join(product_names)
-                
-                ActivityLog.objects.create(
-                    user=request.user,
-                    action='Kirim ke Telegram',
-                    status='success',
-                    notes=f'Berhasil mengirim {len(items)} item ke Telegram: {product_names_str}'
-                )
-                return JsonResponse({'status': 'success', 'message': 'Data berhasil dikirim ke Telegram'})
-            else:
-                # Create a list of product names for the error log
-                product_names = [item.name for item in items]
-                product_names_str = ", ".join(product_names)
-                
-                ActivityLog.objects.create(
-                    user=request.user,
-                    action='Kirim ke Telegram',
-                    status='failed',
-                    notes=f'Gagal mengirim item ke Telegram: {product_names_str}. Logs: {"; ".join(response_logs)}'
-                )
-                return JsonResponse({'status': 'error', 'message': 'Gagal mengirim data. Lihat log untuk detail.'}, status=400)
-                
-        except Exception as e:
-            import traceback
-            error_details = traceback.format_exc()
-            print(f"Error sending to Telegram: {error_details}")
-            
-            # Try to get product names if possible
-            product_names_str = "Unknown products"
-            try:
-                if 'item_ids' in data:
-                    items = Item.objects.filter(id__in=data['item_ids'])
-                    product_names = [item.name for item in items]
-                    product_names_str = ", ".join(product_names)
-            except:
-                pass
-            
-            ActivityLog.objects.create(
-                user=request.user,
-                action='Kirim ke Telegram',
-                status='failed',
-                notes=f'Error saat mengirim item: {product_names_str}. Detail: {str(e)}'
+            # Send to webhook
+            import requests
+            response = requests.post(
+                webhook_settings.webhook_url,
+                json=telegram_data,
+                headers={'Content-Type': 'application/json'}
             )
-            return JsonResponse({'status': 'error', 'message': str(e)}, status=500)
+            
+            if response.status_code == 200:
+                # Log activity
+                ActivityLog.objects.create(
+                    user=request.user,
+                    action='send_to_telegram',
+                    details=f'Sent {len(items)} items to Telegram'
+                )
+                
+                return JsonResponse({'status': 'success'})
+            else:
+                return JsonResponse({'status': 'error', 'message': f'Webhook returned status code {response.status_code}'})
+            
+        except Exception as e:
+            return JsonResponse({'status': 'error', 'message': str(e)})
     
-    return JsonResponse({'status': 'error', 'message': 'Method not allowed'}, status=405)
+    return JsonResponse({'status': 'error', 'message': 'Invalid request method'})
 
 @login_required
-@csrf_protect
+@csrf_exempt
 def update_min_stock(request):
     if request.method == 'POST':
         try:
             data = json.loads(request.body)
             item_id = data.get('item_id')
-            minimum_stock = data.get('minimum_stock', 0)
+            min_stock = data.get('min_stock')
             
-            if not item_id:
-                return JsonResponse({'status': 'error', 'message': 'ID item tidak ditemukan'}, status=400)
+            if not item_id or min_stock is None:
+                return JsonResponse({'status': 'error', 'message': 'Missing required parameters'})
             
-            try:
-                item = Item.objects.get(id=item_id)
-                item.minimum_stock = minimum_stock
-                item.save()
-                
-                ActivityLog.objects.create(
-                    user=request.user,
-                    action='Update Stok Minimum',
-                    status='success',
-                    notes=f'Stok minimum untuk {item.name} diubah menjadi {minimum_stock}'
-                )
-                
-                return JsonResponse({'status': 'success', 'message': 'Stok minimum berhasil diperbarui'})
-            except Item.DoesNotExist:
-                return JsonResponse({'status': 'error', 'message': 'Item tidak ditemukan'}, status=404)
-                
-        except Exception as e:
+            # Update item
+            item = InventoryItem.objects.get(id=item_id)
+            item.minimum_stock = min_stock
+            item.save()
+            
+            # Log activity
             ActivityLog.objects.create(
                 user=request.user,
-                action='Update Stok Minimum',
-                status='failed',
-                notes=f'Error: {str(e)}'
+                action='update_min_stock',
+                details=f'Updated minimum stock for {item.name} to {min_stock}'
             )
-            return JsonResponse({'status': 'error', 'message': str(e)}, status=500)
+            
+            return JsonResponse({'status': 'success'})
+            
+        except InventoryItem.DoesNotExist:
+            return JsonResponse({'status': 'error', 'message': 'Item not found'})
+        except Exception as e:
+            return JsonResponse({'status': 'error', 'message': str(e)})
     
-    return JsonResponse({'status': 'error', 'message': 'Method not allowed'}, status=405)
+    return JsonResponse({'status': 'error', 'message': 'Invalid request method'})
+
+@login_required
+@csrf_exempt
+def delete_min_stock(request):
+    if request.method == 'POST':
+        try:
+            data = json.loads(request.body)
+            item_id = data.get('item_id')
+            
+            if not item_id:
+                return JsonResponse({'status': 'error', 'message': 'Missing item_id parameter'})
+            
+            # Update item
+            item = InventoryItem.objects.get(id=item_id)
+            item.minimum_stock = None
+            item.save()
+            
+            # Log activity
+            ActivityLog.objects.create(
+                user=request.user,
+                action='delete_min_stock',
+                details=f'Removed minimum stock for {item.name}'
+            )
+            
+            return JsonResponse({'status': 'success'})
+            
+        except InventoryItem.DoesNotExist:
+            return JsonResponse({'status': 'error', 'message': 'Item not found'})
+        except Exception as e:
+            return JsonResponse({'status': 'error', 'message': str(e)})
+    
+    return JsonResponse({'status': 'error', 'message': 'Invalid request method'})
+
+@login_required
+def get_item(request):
+    try:
+        item_id = request.GET.get('item_id')
+        
+        if not item_id:
+            return JsonResponse({'status': 'error', 'message': 'Missing item_id parameter'})
+        
+        item = InventoryItem.objects.get(id=item_id)
+        
+        return JsonResponse({
+            'status': 'success',
+            'item': {
+                'id': item.id,
+                'code': item.code,
+                'name': item.name,
+                'category': item.category,
+                'current_stock': item.current_stock,
+                'selling_price': item.selling_price,
+                'minimum_stock': item.minimum_stock or 0,
+            }
+        })
+        
+    except InventoryItem.DoesNotExist:
+        return JsonResponse({'status': 'error', 'message': 'Item not found'})
+    except Exception as e:
+        return JsonResponse({'status': 'error', 'message': str(e)})
+
+@login_required
+@csrf_exempt
+def update_item(request):
+    if request.method == 'POST':
+        try:
+            data = json.loads(request.body)
+            item_id = data.get('item_id')
+            
+            if not item_id:
+                return JsonResponse({'status': 'error', 'message': 'Missing item_id parameter'})
+            
+            # Get item
+            item = InventoryItem.objects.get(id=item_id)
+            
+            # Update fields
+            item.code = data.get('code', item.code)
+            item.name = data.get('name', item.name)
+            item.category = data.get('category', item.category)
+            item.current_stock = data.get('current_stock', item.current_stock)
+            item.selling_price = data.get('selling_price', item.selling_price)
+            item.minimum_stock = data.get('minimum_stock', item.minimum_stock)
+            
+            # Save changes
+            item.save()
+            
+            # Log activity
+            ActivityLog.objects.create(
+                user=request.user,
+                action='update_item',
+                details=f'Updated item: {item.name}'
+            )
+            
+            return JsonResponse({'status': 'success'})
+            
+        except InventoryItem.DoesNotExist:
+            return JsonResponse({'status': 'error', 'message': 'Item not found'})
+        except Exception as e:
+            return JsonResponse({'status': 'error', 'message': str(e)})
+    
+    return JsonResponse({'status': 'error', 'message': 'Invalid request method'})
+
+@login_required
+@csrf_exempt
+def delete_item(request):
+    if request.method == 'POST':
+        try:
+            data = json.loads(request.body)
+            item_id = data.get('item_id')
+            
+            if not item_id:
+                return JsonResponse({'status': 'error', 'message': 'Missing item_id parameter'})
+            
+            # Get item
+            item = InventoryItem.objects.get(id=item_id)
+            item_name = item.name
+            
+            # Delete item
+            item.delete()
+            
+            # Log activity
+            ActivityLog.objects.create(
+                user=request.user,
+                action='delete_item',
+                details=f'Deleted item: {item_name}'
+            )
+            
+            return JsonResponse({'status': 'success'})
+            
+        except InventoryItem.DoesNotExist:
+            return JsonResponse({'status': 'error', 'message': 'Item not found'})
+        except Exception as e:
+            return JsonResponse({'status': 'error', 'message': str(e)})
+    
+    return JsonResponse({'status': 'error', 'message': 'Invalid request method'})

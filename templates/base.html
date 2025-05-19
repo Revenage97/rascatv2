@@ -11,6 +11,7 @@
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.8.1/font/bootstrap-icons.css">
     <!-- Custom CSS -->
     <link rel="stylesheet" href="{% static 'css/style.css' %}">
+    {% block extra_head %}{% endblock %}
 </head>
 <body>
     <div class="container-fluid">
@@ -23,33 +24,62 @@
                         <h5>Rascat Bot</h5>
                     </div>
                     <ul class="nav flex-column">
+                        <!-- Dashboard dengan dropdown -->
                         <li class="nav-item">
-                            <a class="nav-link {% if request.path == '/dashboard/' %}active{% endif %}" href="{% url 'inventory:dashboard' %}">
+                            <a class="nav-link dropdown-toggle {% if 'dashboard' in request.path or 'kelola-stok-barang' in request.path or 'kelola-harga' in request.path or 'kelola-stok-packing' in request.path or 'transfer-stok' in request.path %}active{% endif %}" 
+                               href="#dashboardSubmenu" 
+                               data-bs-toggle="collapse" 
+                               aria-expanded="{% if 'dashboard' in request.path or 'kelola-stok-barang' in request.path or 'kelola-harga' in request.path or 'kelola-stok-packing' in request.path or 'transfer-stok' in request.path %}true{% else %}false{% endif %}">
                                 <i class="bi bi-speedometer2 me-2"></i> Dashboard
+                                <i class="bi bi-chevron-down float-end collapse-icon"></i>
                             </a>
+                            <div class="collapse {% if 'dashboard' in request.path or 'kelola-stok-barang' in request.path or 'kelola-harga' in request.path or 'kelola-stok-packing' in request.path or 'transfer-stok' in request.path %}show{% endif %}" id="dashboardSubmenu">
+                                <ul class="nav flex-column dropdown-menu">
+                                    <li>
+                                        <a class="dropdown-item {% if 'kelola-stok-barang' in request.path %}active{% endif %}" href="{% url 'inventory:kelola_stok_barang' %}">
+                                            <i class="bi bi-box submenu-icon"></i> Kelola Stok Barang
+                                        </a>
+                                    </li>
+                                    <li>
+                                        <a class="dropdown-item {% if 'kelola-harga' in request.path %}active{% endif %}" href="{% url 'inventory:kelola_harga' %}">
+                                            <i class="bi bi-currency-dollar submenu-icon"></i> Kelola Harga
+                                        </a>
+                                    </li>
+                                    <li>
+                                        <a class="dropdown-item {% if 'kelola-stok-packing' in request.path %}active{% endif %}" href="{% url 'inventory:kelola_stok_packing' %}">
+                                            <i class="bi bi-box-seam submenu-icon"></i> Kelola Stok Packing
+                                        </a>
+                                    </li>
+                                    <li>
+                                        <a class="dropdown-item {% if 'transfer-stok' in request.path %}active{% endif %}" href="{% url 'inventory:transfer_stok' %}">
+                                            <i class="bi bi-arrow-left-right submenu-icon"></i> Transfer Stok
+                                        </a>
+                                    </li>
+                                </ul>
+                            </div>
                         </li>
                         <li class="nav-item">
-                            <a class="nav-link {% if request.path == '/upload/' %}active{% endif %}" href="{% url 'inventory:upload_file' %}">
+                            <a class="nav-link {% if 'upload' in request.path %}active{% endif %}" href="{% url 'inventory:upload_file' %}">
                                 <i class="bi bi-upload me-2"></i> Upload File
                             </a>
                         </li>
                         <li class="nav-item">
-                            <a class="nav-link {% if request.path == '/backup/' %}active{% endif %}" href="{% url 'inventory:backup_file' %}">
+                            <a class="nav-link {% if 'backup' in request.path %}active{% endif %}" href="{% url 'inventory:backup_file' %}">
                                 <i class="bi bi-download me-2"></i> Backup File
                             </a>
                         </li>
                         <li class="nav-item">
-                            <a class="nav-link {% if request.path == '/change-password/' %}active{% endif %}" href="{% url 'inventory:change_password' %}">
+                            <a class="nav-link {% if 'change-password' in request.path %}active{% endif %}" href="{% url 'inventory:change_password' %}">
                                 <i class="bi bi-key me-2"></i> Ubah Password
                             </a>
                         </li>
                         <li class="nav-item">
-                            <a class="nav-link {% if request.path == '/webhook-settings/' %}active{% endif %}" href="{% url 'inventory:webhook_settings' %}">
+                            <a class="nav-link {% if 'webhook-settings' in request.path %}active{% endif %}" href="{% url 'inventory:webhook_settings' %}">
                                 <i class="bi bi-gear me-2"></i> Pengaturan Webhook
                             </a>
                         </li>
                         <li class="nav-item">
-                            <a class="nav-link {% if request.path == '/activity-logs/' %}active{% endif %}" href="{% url 'inventory:activity_logs' %}">
+                            <a class="nav-link {% if 'activity-logs' in request.path %}active{% endif %}" href="{% url 'inventory:activity_logs' %}">
                                 <i class="bi bi-list-check me-2"></i> Log Aktivitas
                             </a>
                         </li>
@@ -84,6 +114,25 @@
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
     <!-- Custom JS -->
     <script src="{% static 'js/main.js' %}"></script>
+    
+    <!-- Script untuk animasi dropdown -->
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Menangani animasi ikon dropdown
+            const dropdownToggles = document.querySelectorAll('.dropdown-toggle');
+            dropdownToggles.forEach(toggle => {
+                toggle.addEventListener('click', function() {
+                    const isExpanded = this.getAttribute('aria-expanded') === 'true';
+                    if (isExpanded) {
+                        this.classList.remove('collapsed');
+                    } else {
+                        this.classList.add('collapsed');
+                    }
+                });
+            });
+        });
+    </script>
+    
     {% block extra_js %}{% endblock %}
 </body>
 </html>

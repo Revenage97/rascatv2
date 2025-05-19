@@ -1,0 +1,553 @@
+{% extends 'base.html' %}
+
+{% load static %}
+
+{% block extra_head %}
+<!-- CSRF Token for JavaScript -->
+<meta name="csrf-token" content="{{ csrf_token }}">
+<script src="{% static 'js/csrf.js' %}"></script>
+{% endblock %}
+
+{% block content %}
+<input type="hidden" name="csrfmiddlewaretoken" value="{{ csrf_token }}">
+
+<div class="container-fluid py-4">
+    <h2 class="mb-4">Kelola Stok Barang</h2>
+    
+    <div class="row mb-4">
+        <div class="col-md-6">
+            <form method="get" class="d-flex">
+                <input type="text" name="query" class="form-control me-2" placeholder="Cari barang..." value="{{ query }}">
+                <button type="submit" class="btn btn-outline-secondary">
+                    <i class="bi bi-search"></i> Cari
+                </button>
+            </form>
+        </div>
+        <div class="col-md-6 text-end">
+            <button id="sendToTelegramBtn" class="btn btn-info" disabled>
+                <i class="bi bi-telegram"></i> Kirim ke Telegram
+            </button>
+            <div class="btn-group">
+                <button type="button" class="btn btn-outline-secondary dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
+                    <i class="bi bi-filter"></i> Filter
+                </button>
+                <ul class="dropdown-menu dropdown-menu-end">
+                    <li><a class="dropdown-item" href="?sort=name">Urutkan berdasarkan Nama (A-Z)</a></li>
+                    <li><a class="dropdown-item" href="?sort=name_desc">Urutkan berdasarkan Nama (Z-A)</a></li>
+                    <li><a class="dropdown-item" href="?sort=category">Urutkan berdasarkan Kategori (A-Z)</a></li>
+                    <li><a class="dropdown-item" href="?sort=category_desc">Urutkan berdasarkan Kategori (Z-A)</a></li>
+                    <li><a class="dropdown-item" href="?sort=stock_asc">Urutkan berdasarkan Stok (Terendah-Tertinggi)</a></li>
+                    <li><a class="dropdown-item" href="?sort=stock_desc">Urutkan berdasarkan Stok (Tertinggi-Terendah)</a></li>
+                    <li><a class="dropdown-item" href="?sort=price_asc">Urutkan berdasarkan Harga (Terendah-Tertinggi)</a></li>
+                    <li><a class="dropdown-item" href="?sort=price_desc">Urutkan berdasarkan Harga (Tertinggi-Terendah)</a></li>
+                    <li><hr class="dropdown-divider"></li>
+                    <li><a class="dropdown-item" href="?filter=low_stock">Stok di bawah minimum</a></li>
+                    <li><a class="dropdown-item" href="?">Reset Filter</a></li>
+                </ul>
+            </div>
+        </div>
+    </div>
+    
+    <div class="card">
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" id="selectAll">
+                                    <label class="form-check-label" for="selectAll">Pilih Semua</label>
+                                </div>
+                            </th>
+                            <th>Kode Barang</th>
+                            <th>Nama Barang</th>
+                            <th>Kategori</th>
+                            <th>Harga Jual</th>
+                            <th>Stok Saat Ini</th>
+                            <th>Stok Minimum</th>
+                            <th>Aksi</th>
+                            <th>Telegram</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for item in items %}
+                        <tr {% if item.current_stock < item.minimum_stock %}class="table-danger"{% endif %}>
+                            <td>
+                                <div class="form-check">
+                                    <input class="form-check-input item-checkbox" type="checkbox" value="{{ item.id }}" id="item{{ item.id }}">
+                                </div>
+                            </td>
+                            <td>{{ item.code }}</td>
+                            <td>{{ item.name }}</td>
+                            <td>{{ item.category }}</td>
+                            <td>Rp {{ item.selling_price|floatformat:0|stringformat:"s"|slice:":-3" }}.{{ item.selling_price|floatformat:0|stringformat:"s"|slice:"-3:" }}</td>
+                            <td>{{ item.current_stock }}</td>
+                            <td>
+                                <div class="input-group input-group-sm">
+                                    <input type="number" class="form-control form-control-sm min-stock-input" 
+                                           data-item-id="{{ item.id }}" value="{{ item.minimum_stock }}" min="0">
+                                    <button class="btn btn-outline-secondary save-min-stock" type="button" data-item-id="{{ item.id }}">
+                                        <i class="bi bi-save"></i>
+                                    </button>
+                                    <button class="btn btn-outline-danger delete-min-stock" type="button" data-item-id="{{ item.id }}">
+                                        <i class="bi bi-x"></i>
+                                    </button>
+                                </div>
+                            </td>
+                            <td>
+                                <div class="btn-group btn-group-sm">
+                                    <button type="button" class="btn btn-outline-primary edit-item" data-item-id="{{ item.id }}">
+                                        <i class="bi bi-pencil"></i>
+                                    </button>
+                                    <button type="button" class="btn btn-outline-danger delete-item" data-item-id="{{ item.id }}">
+                                        <i class="bi bi-trash"></i>
+                                    </button>
+                                </div>
+                            </td>
+                            <td>
+                                <button type="button" class="btn btn-sm btn-info send-single-item" data-item-id="{{ item.id }}">
+                                    <i class="bi bi-telegram"></i>
+                                </button>
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="9" class="text-center">Tidak ada data barang</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Edit Item -->
+<div class="modal fade" id="editItemModal" tabindex="-1" aria-labelledby="editItemModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="editItemModalLabel">Edit Item</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form id="editItemForm">
+                    <input type="hidden" id="editItemId">
+                    <div class="mb-3">
+                        <label for="editCode" class="form-label">Kode Barang</label>
+                        <input type="text" class="form-control" id="editCode" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="editName" class="form-label">Nama Barang</label>
+                        <input type="text" class="form-control" id="editName" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="editCategory" class="form-label">Kategori</label>
+                        <input type="text" class="form-control" id="editCategory" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="editStock" class="form-label">Stok Saat Ini</label>
+                        <input type="number" class="form-control" id="editStock" required min="0">
+                    </div>
+                    <div class="mb-3">
+                        <label for="editPrice" class="form-label">Harga Jual</label>
+                        <input type="number" class="form-control" id="editPrice" required min="0" step="0.01">
+                    </div>
+                    <div class="mb-3">
+                        <label for="editMinStock" class="form-label">Stok Minimum</label>
+                        <input type="number" class="form-control" id="editMinStock" required min="0">
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
+                <button type="button" class="btn btn-primary" id="saveItemChanges">Simpan</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Toast Notification -->
+<div class="position-fixed bottom-0 end-0 p-3" style="z-index: 11">
+    <div id="notificationToast" class="toast" role="alert" aria-live="assertive" aria-atomic="true">
+        <div class="toast-header">
+            <strong class="me-auto">Notifikasi</strong>
+            <button type="button" class="btn-close" data-bs-dismiss="toast" aria-label="Close"></button>
+        </div>
+        <div class="toast-body" id="toastMessage">
+            
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<!-- SweetAlert2 CDN -->
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Get CSRF token
+        const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+        const sendToTelegramBtn = document.getElementById('sendToTelegramBtn');
+        const toastEl = document.getElementById('notificationToast');
+        const toast = new bootstrap.Toast(toastEl);
+        const toastMessage = document.getElementById('toastMessage');
+        
+        // Completely rewritten Select All functionality
+        function setupSelectAll() {
+            const selectAllCheckbox = document.getElementById('selectAll');
+            if (!selectAllCheckbox) return;
+            
+            // Remove any existing event listeners by cloning and replacing
+            const newSelectAll = selectAllCheckbox.cloneNode(true);
+            selectAllCheckbox.parentNode.replaceChild(newSelectAll, selectAllCheckbox);
+            
+            // Add new event listener
+            newSelectAll.addEventListener('change', function() {
+                const isChecked = this.checked;
+                console.log('Select All clicked, setting all checkboxes to:', isChecked);
+                
+                const checkboxes = document.querySelectorAll('.item-checkbox');
+                checkboxes.forEach(function(checkbox) {
+                    checkbox.checked = isChecked;
+                });
+                
+                updateSendButtonState();
+            });
+        }
+        
+        // Setup select all on page load
+        setupSelectAll();
+        
+        // Individual checkbox change
+        document.addEventListener('change', function(e) {
+            if (e.target && e.target.classList.contains('item-checkbox')) {
+                updateSendButtonState();
+                
+                // Check if all checkboxes are checked and update selectAll accordingly
+                const allCheckboxes = document.querySelectorAll('.item-checkbox');
+                const checkedCheckboxes = document.querySelectorAll('.item-checkbox:checked');
+                const selectAllCheckbox = document.getElementById('selectAll');
+                
+                if (selectAllCheckbox) {
+                    selectAllCheckbox.checked = allCheckboxes.length === checkedCheckboxes.length;
+                }
+            }
+        });
+        
+        // Update send button state
+        function updateSendButtonState() {
+            const checkedItems = document.querySelectorAll('.item-checkbox:checked');
+            if (sendToTelegramBtn) {
+                sendToTelegramBtn.disabled = checkedItems.length === 0;
+            }
+        }
+        
+        // Send to Telegram button
+        if (sendToTelegramBtn) {
+            sendToTelegramBtn.addEventListener('click', function() {
+                const checkedItems = document.querySelectorAll('.item-checkbox:checked');
+                if (checkedItems.length === 0) {
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Error',
+                        text: 'Pilih minimal satu item untuk dikirim',
+                        confirmButtonColor: '#3085d6'
+                    });
+                    return;
+                }
+                
+                const itemIds = Array.from(checkedItems).map(checkbox => checkbox.value);
+                
+                fetch('{% url "inventory:send_to_telegram" %}', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': csrfToken
+                    },
+                    body: JSON.stringify({ item_ids: itemIds })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.status === 'success') {
+                        Swal.fire({
+                            icon: 'success',
+                            title: 'Sukses',
+                            text: 'Berhasil dikirim ke Telegram',
+                            confirmButtonColor: '#3085d6'
+                        });
+                    } else {
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'Error',
+                            text: 'Gagal: ' + data.message,
+                            confirmButtonColor: '#3085d6'
+                        });
+                    }
+                })
+                .catch(error => {
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Error',
+                        text: 'Error: ' + error,
+                        confirmButtonColor: '#3085d6'
+                    });
+                });
+            });
+        }
+        
+        // Single item send
+        document.addEventListener('click', function(e) {
+            if (e.target && e.target.closest('.send-single-item')) {
+                const button = e.target.closest('.send-single-item');
+                const itemId = button.getAttribute('data-item-id');
+                
+                fetch('{% url "inventory:send_to_telegram" %}', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': csrfToken
+                    },
+                    body: JSON.stringify({ item_ids: [itemId] })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.status === 'success') {
+                        Swal.fire({
+                            icon: 'success',
+                            title: 'Sukses',
+                            text: 'Berhasil dikirim ke Telegram',
+                            confirmButtonColor: '#3085d6'
+                        });
+                    } else {
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'Error',
+                            text: 'Gagal: ' + data.message,
+                            confirmButtonColor: '#3085d6'
+                        });
+                    }
+                })
+                .catch(error => {
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Error',
+                        text: 'Error: ' + error,
+                        confirmButtonColor: '#3085d6'
+                    });
+                });
+            }
+        });
+        
+        // Save minimum stock
+        document.addEventListener('click', function(e) {
+            if (e.target && e.target.closest('.save-min-stock')) {
+                const button = e.target.closest('.save-min-stock');
+                const itemId = button.getAttribute('data-item-id');
+                const input = document.querySelector(`.min-stock-input[data-item-id="${itemId}"]`);
+                const minStock = input.value;
+                
+                fetch('{% url "inventory:update_min_stock" %}', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': csrfToken
+                    },
+                    body: JSON.stringify({ 
+                        item_id: itemId,
+                        min_stock: minStock
+                    })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.status === 'success') {
+                        toastMessage.textContent = 'Stok minimum berhasil diperbarui';
+                        toast.show();
+                    } else {
+                        toastMessage.textContent = 'Gagal memperbarui stok minimum: ' + data.message;
+                        toast.show();
+                    }
+                })
+                .catch(error => {
+                    toastMessage.textContent = 'Error: ' + error;
+                    toast.show();
+                });
+            }
+        });
+        
+        // Delete minimum stock
+        document.addEventListener('click', function(e) {
+            if (e.target && e.target.closest('.delete-min-stock')) {
+                const button = e.target.closest('.delete-min-stock');
+                const itemId = button.getAttribute('data-item-id');
+                const input = document.querySelector(`.min-stock-input[data-item-id="${itemId}"]`);
+                
+                fetch('{% url "inventory:delete_min_stock" %}', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': csrfToken
+                    },
+                    body: JSON.stringify({ item_id: itemId })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.status === 'success') {
+                        input.value = 0;
+                        toastMessage.textContent = 'Stok minimum berhasil dihapus';
+                        toast.show();
+                    } else {
+                        toastMessage.textContent = 'Gagal menghapus stok minimum: ' + data.message;
+                        toast.show();
+                    }
+                })
+                .catch(error => {
+                    toastMessage.textContent = 'Error: ' + error;
+                    toast.show();
+                });
+            }
+        });
+        
+        // Edit item
+        document.addEventListener('click', function(e) {
+            if (e.target && e.target.closest('.edit-item')) {
+                const button = e.target.closest('.edit-item');
+                const itemId = button.getAttribute('data-item-id');
+                
+                fetch(`{% url "inventory:get_item" %}?item_id=${itemId}`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.status === 'success') {
+                        const item = data.item;
+                        document.getElementById('editItemId').value = item.id;
+                        document.getElementById('editCode').value = item.code;
+                        document.getElementById('editName').value = item.name;
+                        document.getElementById('editCategory').value = item.category;
+                        document.getElementById('editStock').value = item.current_stock;
+                        document.getElementById('editPrice').value = item.selling_price;
+                        document.getElementById('editMinStock').value = item.minimum_stock;
+                        
+                        const editModal = new bootstrap.Modal(document.getElementById('editItemModal'));
+                        editModal.show();
+                    } else {
+                        toastMessage.textContent = 'Gagal mendapatkan data item: ' + data.message;
+                        toast.show();
+                    }
+                })
+                .catch(error => {
+                    toastMessage.textContent = 'Error: ' + error;
+                    toast.show();
+                });
+            }
+        });
+        
+        // Save item changes
+        document.getElementById('saveItemChanges').addEventListener('click', function() {
+            const itemId = document.getElementById('editItemId').value;
+            const code = document.getElementById('editCode').value;
+            const name = document.getElementById('editName').value;
+            const category = document.getElementById('editCategory').value;
+            const stock = document.getElementById('editStock').value;
+            const price = document.getElementById('editPrice').value;
+            const minStock = document.getElementById('editMinStock').value;
+            
+            fetch('{% url "inventory:update_item" %}', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': csrfToken
+                },
+                body: JSON.stringify({
+                    item_id: itemId,
+                    code: code,
+                    name: name,
+                    category: category,
+                    current_stock: stock,
+                    selling_price: price,
+                    minimum_stock: minStock
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    // Close modal
+                    const editModal = bootstrap.Modal.getInstance(document.getElementById('editItemModal'));
+                    editModal.hide();
+                    
+                    // Reload page to show updated data
+                    window.location.reload();
+                } else {
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Error',
+                        text: 'Gagal memperbarui item: ' + data.message,
+                        confirmButtonColor: '#3085d6'
+                    });
+                }
+            })
+            .catch(error => {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Error',
+                    text: 'Error: ' + error,
+                    confirmButtonColor: '#3085d6'
+                });
+            });
+        });
+        
+        // Delete item
+        document.addEventListener('click', function(e) {
+            if (e.target && e.target.closest('.delete-item')) {
+                const button = e.target.closest('.delete-item');
+                const itemId = button.getAttribute('data-item-id');
+                
+                Swal.fire({
+                    title: 'Konfirmasi',
+                    text: 'Apakah Anda yakin ingin menghapus item ini?',
+                    icon: 'warning',
+                    showCancelButton: true,
+                    confirmButtonColor: '#d33',
+                    cancelButtonColor: '#3085d6',
+                    confirmButtonText: 'Ya, hapus!',
+                    cancelButtonText: 'Batal'
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        fetch('{% url "inventory:delete_item" %}', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'X-CSRFToken': csrfToken
+                            },
+                            body: JSON.stringify({ item_id: itemId })
+                        })
+                        .then(response => response.json())
+                        .then(data => {
+                            if (data.status === 'success') {
+                                // Reload page to show updated data
+                                window.location.reload();
+                            } else {
+                                Swal.fire({
+                                    icon: 'error',
+                                    title: 'Error',
+                                    text: 'Gagal menghapus item: ' + data.message,
+                                    confirmButtonColor: '#3085d6'
+                                });
+                            }
+                        })
+                        .catch(error => {
+                            Swal.fire({
+                                icon: 'error',
+                                title: 'Error',
+                                text: 'Error: ' + error,
+                                confirmButtonColor: '#3085d6'
+                            });
+                        });
+                    }
+                });
+            }
+        });
+    });
+</script>
+{% endblock %}
