@@ -141,22 +141,27 @@ def transfer_stok(request):
 # Existing views below
 def login_view(request):
     if request.method == 'POST':
-        username = request.POST.get('username')
-        password = request.POST.get('password')
-        user = authenticate(request, username=username, password=password)
-        
-        if user is not None:
-            login(request, user)
-            ActivityLog.objects.create(
-                user=user,
-                action='login',
-                notes=f'User {username} logged in'
-            )
-            return redirect('inventory:dashboard')
-        else:
-            messages.error(request, 'Username atau password salah')
+        form = LoginForm(request.POST)
+        if form.is_valid():
+            username = form.cleaned_data['username']
+            password = form.cleaned_data['password']
+            user = authenticate(request, username=username, password=password)
+            
+            if user is not None:
+                login(request, user)
+                ActivityLog.objects.create(
+                    user=user,
+                    action='login',
+                    status='success',
+                    notes=f'User {username} logged in'
+                )
+                return redirect('inventory:dashboard')
+            else:
+                messages.error(request, 'Username atau password salah')
+    else:
+        form = LoginForm()
     
-    return render(request, 'inventory/login.html')
+    return render(request, 'inventory/login.html', {'form': form})
 
 @login_required
 def logout_view(request):
