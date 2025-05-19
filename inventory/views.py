@@ -511,13 +511,7 @@ def backup_file(request):
         logger.error(f"Error in backup_file view: {str(e)}")
         logger.error(traceback.format_exc())
         messages.error(request, f"Terjadi kesalahan: {str(e)}")
-        return redirect('inventory:dashboard')        backup_dir = '/opt/render/project/data'
-                else:
-                    backup_dir = '/tmp'
-                
-                logger.info(f"Using backup directory: {backup_dir}")
-                
-                # Ensure directory exists
+        return redirect('inventory:dashboard')
                 os.makedirs(backup_dir, exist_ok=True)
                 
                 # Generate filename with timestamp
