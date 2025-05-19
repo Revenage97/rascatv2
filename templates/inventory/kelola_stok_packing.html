@@ -1,8 +1,45 @@
 {% extends 'base.html' %}
-
+{% load static %}
+{% block extra_head %}
+<!-- CSRF Token for JavaScript -->
+<meta name="csrf-token" content="{{ csrf_token }}">
+<script src="{% static 'js/csrf.js' %}"></script>
+{% endblock %}
 {% block content %}
+<input type="hidden" name="csrfmiddlewaretoken" value="{{ csrf_token }}">
 <div class="container-fluid py-4">
     <h2 class="mb-4">Kelola Stok Packing</h2>
+    
+    <div class="row mb-4">
+        <div class="col-md-6">
+            <form method="get" class="d-flex">
+                <input type="text" name="query" class="form-control me-2" placeholder="Cari barang..." value="{{ query }}">
+                <button type="submit" class="btn btn-outline-secondary">
+                    <i class="bi bi-search"></i> Cari
+                </button>
+            </form>
+        </div>
+        <div class="col-md-6 text-end">
+            <button id="sendToTelegramBtn" class="btn btn-info" disabled>
+                <i class="bi bi-telegram"></i> Kirim ke Telegram
+            </button>
+            <div class="btn-group">
+                <button type="button" class="btn btn-outline-secondary dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
+                    <i class="bi bi-filter"></i> Filter
+                </button>
+                <ul class="dropdown-menu dropdown-menu-end">
+                    <li><a class="dropdown-item" href="?sort=name">Urutkan berdasarkan Nama (A-Z)</a></li>
+                    <li><a class="dropdown-item" href="?sort=name_desc">Urutkan berdasarkan Nama (Z-A)</a></li>
+                    <li><a class="dropdown-item" href="?sort=category">Urutkan berdasarkan Kategori (A-Z)</a></li>
+                    <li><a class="dropdown-item" href="?sort=category_desc">Urutkan berdasarkan Kategori (Z-A)</a></li>
+                    <li><a class="dropdown-item" href="?sort=stock_asc">Urutkan berdasarkan Stok (Terendah-Tertinggi)</a></li>
+                    <li><a class="dropdown-item" href="?sort=stock_desc">Urutkan berdasarkan Stok (Tertinggi-Terendah)</a></li>
+                    <li><hr class="dropdown-divider"></li>
+                    <li><a class="dropdown-item" href="?">Reset Filter</a></li>
+                </ul>
+            </div>
+        </div>
+    </div>
     
     <div class="card">
         <div class="card-body">
