@@ -9,7 +9,7 @@ import json
 import pandas as pd
 import os
 from datetime import datetime
-from .models import InventoryItem, WebhookSettings, ActivityLog
+from .models import Item, WebhookSettings, ActivityLog
 from .forms import UploadFileForm, WebhookSettingsForm
 
 # Existing views
@@ -25,7 +25,7 @@ def kelola_stok_barang(request):
     sort = request.GET.get('sort', '')
     filter_option = request.GET.get('filter', '')
     
-    items = InventoryItem.objects.all()
+    items = Item.objects.all()
     
     # Search functionality
     if query:
@@ -148,7 +148,7 @@ def upload_file(request):
                     price = float(price) if not pd.isna(price) else 0
                     
                     # Update or create item
-                    item, created = InventoryItem.objects.update_or_create(
+                    item, created = Item.objects.update_or_create(
                         code=code,
                         defaults={
                             'name': name,
@@ -186,7 +186,7 @@ def backup_file(request):
     if request.method == 'POST':
         try:
             # Get all inventory items
-            items = InventoryItem.objects.all()
+            items = Item.objects.all()
             
             # Create DataFrame
             data = {
@@ -318,7 +318,7 @@ def send_to_telegram(request):
                 return JsonResponse({'status': 'error', 'message': 'Webhook URL not configured'})
             
             # Get selected items
-            items = InventoryItem.objects.filter(id__in=item_ids)
+            items = Item.objects.filter(id__in=item_ids)
             
             # Prepare data for Telegram
             telegram_data = {
@@ -376,7 +376,7 @@ def update_min_stock(request):
                 return JsonResponse({'status': 'error', 'message': 'Missing required parameters'})
             
             # Update item
-            item = InventoryItem.objects.get(id=item_id)
+            item = Item.objects.get(id=item_id)
             item.minimum_stock = min_stock
             item.save()
             
@@ -389,7 +389,7 @@ def update_min_stock(request):
             
             return JsonResponse({'status': 'success'})
             
-        except InventoryItem.DoesNotExist:
+        except Item.DoesNotExist:
             return JsonResponse({'status': 'error', 'message': 'Item not found'})
         except Exception as e:
             return JsonResponse({'status': 'error', 'message': str(e)})
@@ -408,7 +408,7 @@ def delete_min_stock(request):
                 return JsonResponse({'status': 'error', 'message': 'Missing item_id parameter'})
             
             # Update item
-            item = InventoryItem.objects.get(id=item_id)
+            item = Item.objects.get(id=item_id)
             item.minimum_stock = None
             item.save()
             
@@ -421,7 +421,7 @@ def delete_min_stock(request):
             
             return JsonResponse({'status': 'success'})
             
-        except InventoryItem.DoesNotExist:
+        except Item.DoesNotExist:
             return JsonResponse({'status': 'error', 'message': 'Item not found'})
         except Exception as e:
             return JsonResponse({'status': 'error', 'message': str(e)})
@@ -436,7 +436,7 @@ def get_item(request):
         if not item_id:
             return JsonResponse({'status': 'error', 'message': 'Missing item_id parameter'})
         
-        item = InventoryItem.objects.get(id=item_id)
+        item = Item.objects.get(id=item_id)
         
         return JsonResponse({
             'status': 'success',
@@ -451,7 +451,7 @@ def get_item(request):
             }
         })
         
-    except InventoryItem.DoesNotExist:
+    except Item.DoesNotExist:
         return JsonResponse({'status': 'error', 'message': 'Item not found'})
     except Exception as e:
         return JsonResponse({'status': 'error', 'message': str(e)})
@@ -468,7 +468,7 @@ def update_item(request):
                 return JsonResponse({'status': 'error', 'message': 'Missing item_id parameter'})
             
             # Get item
-            item = InventoryItem.objects.get(id=item_id)
+            item = Item.objects.get(id=item_id)
             
             # Update fields
             item.code = data.get('code', item.code)
@@ -490,7 +490,7 @@ def update_item(request):
             
             return JsonResponse({'status': 'success'})
             
-        except InventoryItem.DoesNotExist:
+        except Item.DoesNotExist:
             return JsonResponse({'status': 'error', 'message': 'Item not found'})
         except Exception as e:
             return JsonResponse({'status': 'error', 'message': str(e)})
@@ -509,7 +509,7 @@ def delete_item(request):
                 return JsonResponse({'status': 'error', 'message': 'Missing item_id parameter'})
             
             # Get item
-            item = InventoryItem.objects.get(id=item_id)
+            item = Item.objects.get(id=item_id)
             item_name = item.name
             
             # Delete item
@@ -524,7 +524,7 @@ def delete_item(request):
             
             return JsonResponse({'status': 'success'})
             
-        except InventoryItem.DoesNotExist:
+        except Item.DoesNotExist:
             return JsonResponse({'status': 'error', 'message': 'Item not found'})
         except Exception as e:
             return JsonResponse({'status': 'error', 'message': str(e)})
