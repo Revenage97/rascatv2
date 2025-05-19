@@ -1,9 +1,12 @@
 from django.urls import path
 from . import views
+from django.views.generic import RedirectView
 
 app_name = 'inventory'
-
 urlpatterns = [
+    # Tambahkan path untuk root URL yang redirect ke dashboard
+    path('', RedirectView.as_view(pattern_name='inventory:dashboard'), name='root'),
+    
     path('login/', views.login_view, name='login'),
     path('logout/', views.logout_view, name='logout'),
     path('dashboard/', views.dashboard, name='dashboard'),
