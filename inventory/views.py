@@ -498,7 +498,13 @@ def backup_file(request):
                         content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
                     )
                     response['Content-Disposition'] = f'attachment; filename="{filename}"'
-                    return response
+                
+                # Clean up temporary file if not using persistent storage
+                if backup_dir == '/tmp':
+                    os.remove(filepath)
+                
+                logger.info("Backup file created and ready for download")
+                return response
                 
             except Exception as inner_e:
                 logger.error(f"Error creating backup file: {str(inner_e)}")
@@ -512,48 +518,6 @@ def backup_file(request):
         logger.error(traceback.format_exc())
         messages.error(request, f"Terjadi kesalahan: {str(e)}")
         return redirect('inventory:dashboard')
-                
-                # Save to Excel
-                logger.info(f"Saving backup to: {filepath}")
-                df.to_excel(filepath, index=False)
-                
-                # Log activity
-                ActivityLog.objects.create(
-                    user=request.user,
-                    action='backup_file',
-                    status='success',
-                    notes=f'Created backup file: {filename}'
-                )
-                
-                # Prepare file for download
-                with open(filepath, 'rb') as f:
-                    response = HttpResponse(
-                        f.read(),
-                        content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
-                    )
-                    response['Content-Disposition'] = f'attachment; filename="{filename}"'
-                
-                # Clean up temporary file if not using persistent storage
-                if backup_dir == '/tmp':
-                    os.remove(filepath)
-                
-                logger.info("Backup file created and ready for download")
-                return response
-                
-            except Exception as e:
-                logger.error(f"Error in backup_file POST: {str(e)}")
-                logger.error(traceback.format_exc())
-                messages.error(request, f'Error: {str(e)}')
-                return redirect('inventory:kelola_stok_barang')
-        
-        logger.info("Rendering backup_file template")
-        return render(request, 'inventory/backup_file.html')
-    
-    except Exception as e:
-        logger.error(f"Error in backup_file view: {str(e)}")
-        logger.error(traceback.format_exc())
-        messages.error(request, f"Terjadi kesalahan: {str(e)}")
-        return redirect('inventory:kelola_stok_barang')
 
 @login_required
 def change_password(request):
