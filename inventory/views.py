@@ -370,13 +370,20 @@ def upload_transfer_file(request):
                             continue
                         
                         # Update or create item
+                        # Ensure minimum_stock is never null to avoid not-null constraint violation
+                        defaults = {
+                            'name': name,
+                            'current_stock': stock,
+                            'minimum_stock': 0  # Default to 0 if min_stock is None
+                        }
+                        
+                        # Only update minimum_stock if a valid value is provided
+                        if min_stock is not None:
+                            defaults['minimum_stock'] = min_stock
+                            
                         item, created = Item.objects.update_or_create(
                             code=code,
-                            defaults={
-                                'name': name,
-                                'current_stock': stock,
-                                'minimum_stock': min_stock
-                            }
+                            defaults=defaults
                         )
                         
                         if created:
