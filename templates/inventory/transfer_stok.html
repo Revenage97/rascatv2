@@ -91,26 +91,26 @@
     <div class="card">
         <div class="card-body">
             <div class="table-responsive">
-                <table class="table table-hover">
-                    <thead>
+                <table class="table table-bordered table-hover table-striped">
+                    <thead class="bg-light">
                         <tr>
-                            <th width="40">
+                            <th class="text-center" style="width: 40px;">
                                 <div class="form-check">
                                     <input class="form-check-input" type="checkbox" id="selectAll">
                                     <label class="form-check-label" for="selectAll">Pilih Semua</label>
                                 </div>
                             </th>
                             <th>Kode Barang</th>
-                            <th>Nama Barang</th>
-                            <th>Stok Saat Ini</th>
-                            <th>Stok Transfer</th>
-                            <th>Telegram</th>
+                            <th style="min-width: 200px;">Nama Barang</th>
+                            <th class="text-center">Stok Saat Ini</th>
+                            <th class="text-center">Stok Transfer</th>
+                            <th class="text-center">Telegram</th>
                         </tr>
                     </thead>
                     <tbody>
                         {% for item in items %}
                         <tr>
-                            <td>
+                            <td class="text-center">
                                 <div class="form-check">
                                     <input class="form-check-input item-checkbox" type="checkbox" value="{{ item.id }}" id="item{{ item.id }}">
                                     <label class="form-check-label" for="item{{ item.id }}"></label>
@@ -118,8 +118,8 @@
                             </td>
                             <td>{{ item.code }}</td>
                             <td>{{ item.name }}</td>
-                            <td>{{ item.current_stock }}</td>
-                            <td>
+                            <td class="text-center">{{ item.current_stock }}</td>
+                            <td class="text-center">
                                 {% if item.minimum_stock %}
                                     <span class="badge bg-secondary">{{ item.minimum_stock }}</span>
                                     <button class="btn btn-sm btn-outline-danger delete-min-stock" data-item-id="{{ item.id }}">
@@ -134,7 +134,7 @@
                                     </div>
                                 {% endif %}
                             </td>
-                            <td>
+                            <td class="text-center">
                                 <button class="btn btn-sm btn-info send-to-telegram" data-item-id="{{ item.id }}">
                                     <i class="bi bi-telegram"></i>
                                 </button>
