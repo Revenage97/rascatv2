@@ -12,6 +12,5 @@ class InventoryConfig(AppConfig):
         """
         from django.conf import settings
         
-        # Create upload and backup directories if they don't exist
-        os.makedirs(settings.UPLOAD_DIR, exist_ok=True)
-        os.makedirs(settings.BACKUP_DIR, exist_ok=True)
+        # Create media directory if it doesn't exist
+        os.makedirs(settings.MEDIA_ROOT, exist_ok=True)
