@@ -56,7 +56,7 @@
                             <th>Kode Barang</th>
                             <th>Nama Barang</th>
                             <th>Stok Saat Ini</th>
-                            <th>Stok Minimum</th>
+                            <th>Stok Transfer</th>
                             <th>Telegram</th>
                         </tr>
                     </thead>
@@ -131,7 +131,7 @@
                     <p id="viewStock" class="form-control-plaintext"></p>
                 </div>
                 <div class="mb-3">
-                    <label class="form-label">Stok Minimum</label>
+                    <label class="form-label">Stok Transfer</label>
                     <p id="viewMinStock" class="form-control-plaintext"></p>
                 </div>
             </div>
@@ -142,26 +142,12 @@
     </div>
 </div>
 
-<!-- Toast for notifications -->
-<div class="position-fixed bottom-0 end-0 p-3" style="z-index: 11">
-    <div id="liveToast" class="toast" role="alert" aria-live="assertive" aria-atomic="true">
-        <div class="toast-header">
-            <strong class="me-auto">Notifikasi</strong>
-            <button type="button" class="btn-close" data-bs-dismiss="toast" aria-label="Close"></button>
-        </div>
-        <div class="toast-body" id="toastMessage">
-            
-        </div>
-    </div>
-</div>
 {% endblock content %}
 
 {% block extra_js %}
 <script>
     document.addEventListener('DOMContentLoaded', function() {
         const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
-        const toast = new bootstrap.Toast(document.getElementById('liveToast'));
-        const toastMessage = document.getElementById('toastMessage');
         
         // Select all checkbox
         document.getElementById('selectAll').addEventListener('change', function() {
@@ -196,8 +182,12 @@
             const itemIds = Array.from(checkedBoxes).map(checkbox => checkbox.value);
             
             if (itemIds.length === 0) {
-                toastMessage.textContent = 'Pilih minimal satu item untuk dikirim ke Telegram';
-                toast.show();
+                Swal.fire({
+                    icon: 'warning',
+                    title: 'Perhatian',
+                    text: 'Pilih minimal satu item untuk dikirim ke Telegram',
+                    confirmButtonColor: '#3085d6'
+                });
                 return;
             }
             
@@ -207,7 +197,7 @@
                     'Content-Type': 'application/json',
                     'X-CSRFToken': csrfToken
                 },
-                body: JSON.stringify({ item_ids: itemIds })
+                body: JSON.stringify({ item_ids: itemIds, source: 'transfer_stok' })
             })
             .then(response => response.json())
             .then(data => {
@@ -249,7 +239,7 @@
                         'Content-Type': 'application/json',
                         'X-CSRFToken': csrfToken
                     },
-                    body: JSON.stringify({ item_ids: [itemId] })
+                    body: JSON.stringify({ item_ids: [itemId], source: 'transfer_stok' })
                 })
                 .then(response => response.json())
                 .then(data => {
@@ -289,18 +279,22 @@
                 const minStock = input.value;
                 
                 if (!minStock) {
-                    toastMessage.textContent = 'Masukkan nilai stok minimum';
-                    toast.show();
+                    Swal.fire({
+                        icon: 'warning',
+                        title: 'Perhatian',
+                        text: 'Masukkan nilai stok transfer',
+                        confirmButtonColor: '#3085d6'
+                    });
                     return;
                 }
                 
-                fetch('/api/items/' + itemId + '/update-min-stock/', {
+                fetch('{% url "inventory:update_min_stock" %}', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
                         'X-CSRFToken': csrfToken
                     },
-                    body: JSON.stringify({ minimum_stock: minStock })
+                    body: JSON.stringify({ item_id: itemId, min_stock: minStock })
                 })
                 .then(response => response.json())
                 .then(data => {
@@ -314,16 +308,28 @@
                             </button>
                         `;
                         
-                        toastMessage.textContent = 'Stok minimum berhasil disimpan';
-                        toast.show();
+                        Swal.fire({
+                            icon: 'success',
+                            title: 'Berhasil',
+                            text: 'Stok transfer berhasil disimpan',
+                            confirmButtonColor: '#3085d6'
+                        });
                     } else {
-                        toastMessage.textContent = 'Gagal menyimpan stok minimum: ' + data.message;
-                        toast.show();
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'Error',
+                            text: 'Gagal menyimpan stok transfer: ' + data.message,
+                            confirmButtonColor: '#3085d6'
+                        });
                     }
                 })
                 .catch(error => {
-                    toastMessage.textContent = 'Error: ' + error;
-                    toast.show();
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Error',
+                        text: 'Error: ' + error,
+                        confirmButtonColor: '#3085d6'
+                    });
                 });
             }
         });
@@ -334,13 +340,13 @@
                 const button = e.target.closest('.delete-min-stock');
                 const itemId = button.getAttribute('data-item-id');
                 
-                fetch('/api/items/' + itemId + '/update-min-stock/', {
+                fetch('{% url "inventory:update_min_stock" %}', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
                         'X-CSRFToken': csrfToken
                     },
-                    body: JSON.stringify({ minimum_stock: 0 })
+                    body: JSON.stringify({ item_id: itemId, min_stock: 0 })
                 })
                 .then(response => response.json())
                 .then(data => {
@@ -356,16 +362,28 @@
                             </div>
                         `;
                         
-                        toastMessage.textContent = 'Stok minimum berhasil dihapus';
-                        toast.show();
+                        Swal.fire({
+                            icon: 'success',
+                            title: 'Berhasil',
+                            text: 'Stok transfer berhasil dihapus',
+                            confirmButtonColor: '#3085d6'
+                        });
                     } else {
-                        toastMessage.textContent = 'Gagal menghapus stok minimum: ' + data.message;
-                        toast.show();
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'Error',
+                            text: 'Gagal menghapus stok transfer: ' + data.message,
+                            confirmButtonColor: '#3085d6'
+                        });
                     }
                 })
                 .catch(error => {
-                    toastMessage.textContent = 'Error: ' + error;
-                    toast.show();
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Error',
+                        text: 'Error: ' + error,
+                        confirmButtonColor: '#3085d6'
+                    });
                 });
             }
         });
