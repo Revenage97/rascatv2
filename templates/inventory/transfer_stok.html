@@ -51,10 +51,12 @@
     <div class="row mb-4">
         <div class="col-md-6">
             <form method="get" class="d-flex">
-                <input type="text" name="query" class="form-control me-2" placeholder="Cari barang..." value="{{ query }}">
-                <button type="submit" class="btn btn-outline-secondary">
-                    <i class="bi bi-search"></i> Cari
-                </button>
+                <div class="d-flex" style="max-width: 400px; width: 100%;">
+                    <input type="text" name="query" class="form-control me-2" placeholder="Cari barang..." value="{{ query }}">
+                    <button type="submit" class="btn btn-outline-secondary">
+                        <i class="bi bi-search"></i> Cari
+                    </button>
+                </div>
             </form>
         </div>
         <div class="col-md-6 text-end">
