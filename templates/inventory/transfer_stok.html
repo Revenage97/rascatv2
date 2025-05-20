@@ -11,50 +11,40 @@
 {% block content %}
 <input type="hidden" name="csrfmiddlewaretoken" value="{{ csrf_token }}">
 <div class="container-fluid py-4">
-    <h2 class="mb-4">Transfer Stok</h2>
+    <h2 class="mb-3">Transfer Stok</h2>
     
-    <!-- Asal dan Tujuan fields -->
-    <div class="row mb-4">
-        <div class="col-md-6">
-            <div class="mb-3">
-                <label for="asalSelect" class="form-label">Asal</label>
-                <select class="form-select" id="asalSelect">
-                    <option selected>Pilih Asal</option>
-                    <option value="1">rascat kucing</option>
-                    <option value="2">Dilayani Tokopedia</option>
-                    <option value="3">Rascat Warehouse</option>
-                </select>
+    <!-- Compact form layout -->
+    <div class="card mb-3">
+        <div class="card-body p-3">
+            <div class="row g-2">
+                <div class="col-md-6">
+                    <label for="asalSelect" class="form-label small mb-1">Asal</label>
+                    <select class="form-select form-select-sm" id="asalSelect">
+                        <option selected>Pilih Asal</option>
+                        <option value="1">rascat kucing</option>
+                        <option value="2">Dilayani Tokopedia</option>
+                        <option value="3">Rascat Warehouse</option>
+                    </select>
+                </div>
+                <div class="col-md-6">
+                    <label for="tujuanSelect" class="form-label small mb-1">Tujuan</label>
+                    <select class="form-select form-select-sm" id="tujuanSelect">
+                        <option selected>Pilih Tujuan</option>
+                        <option value="1">rascat kucing</option>
+                        <option value="2">Dilayani Tokopedia</option>
+                        <option value="3">Rascat Warehouse</option>
+                    </select>
+                </div>
+                <div class="col-12">
+                    <label for="keteranganTextarea" class="form-label small mb-1">Keterangan</label>
+                    <textarea class="form-control form-control-sm" id="keteranganTextarea" rows="2"></textarea>
+                </div>
+                <div class="col-12 mt-2">
+                    <button id="simpanBtn" class="btn btn-sm btn-primary">
+                        <i class="bi bi-save"></i> Simpan
+                    </button>
+                </div>
             </div>
-        </div>
-        <div class="col-md-6">
-            <div class="mb-3">
-                <label for="tujuanSelect" class="form-label">Tujuan</label>
-                <select class="form-select" id="tujuanSelect">
-                    <option selected>Pilih Tujuan</option>
-                    <option value="1">rascat kucing</option>
-                    <option value="2">Dilayani Tokopedia</option>
-                    <option value="3">Rascat Warehouse</option>
-                </select>
-            </div>
-        </div>
-    </div>
-    
-    <!-- Keterangan field -->
-    <div class="row mb-4">
-        <div class="col-12">
-            <div class="mb-3">
-                <label for="keteranganTextarea" class="form-label">Keterangan</label>
-                <textarea class="form-control" id="keteranganTextarea" rows="3"></textarea>
-            </div>
-        </div>
-    </div>
-    
-    <!-- Simpan button -->
-    <div class="row mb-4">
-        <div class="col-12">
-            <button id="simpanBtn" class="btn btn-primary">
-                <i class="bi bi-save"></i> Simpan
-            </button>
         </div>
     </div>
     
