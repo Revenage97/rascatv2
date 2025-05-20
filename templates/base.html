@@ -82,6 +82,11 @@
                                             <i class="bi bi-gear-fill submenu-icon"></i> Pengaturan Webhook
                                         </a>
                                     </li>
+                                    <li>
+                                        <a class="dropdown-item {% if 'kelola-pengguna' in request.path %}active{% endif %}" href="{% url 'inventory:kelola_pengguna' %}">
+                                            <i class="bi bi-people-fill submenu-icon"></i> Kelola Pengguna
+                                        </a>
+                                    </li>
                                 </ul>
                             </div>
                         </li>

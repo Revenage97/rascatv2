@@ -26,6 +26,13 @@ def dashboard(request):
 
 # New views for submenu pages
 @login_required
+def kelola_pengguna(request):
+    """
+    View for managing users - currently displays a placeholder page
+    """
+    return render(request, 'inventory/kelola_pengguna.html')
+
+@login_required
 def kelola_stok_barang(request):
     query = request.GET.get('query', '')
     sort = request.GET.get('sort', '')

@@ -18,6 +18,7 @@ urlpatterns = [
     path('upload-transfer/', views.upload_transfer_file, name='upload_transfer_file'),
     path('change-password/', views.change_password, name='change_password'),
     path('webhook-settings/', views.webhook_settings, name='webhook_settings'),
+    path('kelola-pengguna/', views.kelola_pengguna, name='kelola_pengguna'),
     path('activity-logs/', views.activity_logs, name='activity_logs'),
     path('api/send-to-telegram/', views.send_to_telegram, name='send_to_telegram'),
     path('api/update-min-stock/', views.update_min_stock, name='update_min_stock'),
