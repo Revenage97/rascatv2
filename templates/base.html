@@ -57,6 +57,12 @@
                                 </ul>
                             </div>
                         </li>
+                        <!-- Forecasting menu -->
+                        <li class="nav-item">
+                            <a class="nav-link {% if 'forecasting' in request.path %}active{% endif %}" href="{% url 'inventory:forecasting' %}">
+                                <i class="bi bi-graph-up me-2"></i> Forecasting
+                            </a>
+                        </li>
                         <li class="nav-item">
                             <a class="nav-link {% if 'upload' in request.path %}active{% endif %}" href="{% url 'inventory:upload_file' %}">
                                 <i class="bi bi-upload me-2"></i> Upload File

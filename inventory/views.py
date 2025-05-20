@@ -33,6 +33,14 @@ def is_admin(user):
     except (UserProfile.DoesNotExist, AttributeError):
         return False
 
+# Forecasting view
+@login_required
+def forecasting(request):
+    """
+    View for forecasting page - currently displays a placeholder message
+    """
+    return render(request, 'inventory/forecasting.html')
+
 # New views for submenu pages
 @login_required
 @user_passes_test(is_admin)
