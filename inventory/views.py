@@ -318,13 +318,19 @@ def upload_transfer_file(request):
             logger.info(f"Reading Excel file: {file.name}")
             try:
                 df = pd.read_excel(file_path)
+                
+                # Always remove the second row (index 1) from the Excel file before processing
+                if len(df) > 1:
+                    logger.info(f"Removing second row from Excel file as per requirements")
+                    df = pd.concat([df.iloc[:1], df.iloc[2:]], ignore_index=True)
+                    
             except Exception as e:
                 logger.error(f"Error reading Excel file: {str(e)}")
                 messages.error(request, f'Error membaca file Excel: {str(e)}')
                 return redirect('inventory:transfer_stok')
             
             # Check required columns
-            required_columns = ['Kode', 'Nama Barang', 'Kategori', 'Total Stok', 'Harga Jual']
+            required_columns = ['Kode', 'Nama Barang', 'Total Stok']
             missing_columns = [col for col in required_columns if col not in df.columns]
             if missing_columns:
                 logger.error(f"Required columns missing: {', '.join(missing_columns)}")
@@ -343,18 +349,12 @@ def upload_transfer_file(request):
                         # Extract data with robust error handling
                         code = str(row['Kode']).strip() if not pd.isna(row['Kode']) else None
                         name = str(row['Nama Barang']).strip() if not pd.isna(row['Nama Barang']) else None
-                        category = str(row['Kategori']).strip() if not pd.isna(row['Kategori']) else ''
                         
                         # Handle potential NaN values
                         try:
                             stock = int(row['Total Stok']) if not pd.isna(row['Total Stok']) else 0
                         except (ValueError, TypeError):
                             stock = 0
-                            
-                        try:
-                            price = float(row['Harga Jual']) if not pd.isna(row['Harga Jual']) else 0
-                        except (ValueError, TypeError):
-                            price = 0
                             
                         try:
                             min_stock = int(row['Stok Minimum']) if 'Stok Minimum' in df.columns and not pd.isna(row['Stok Minimum']) else None
@@ -373,9 +373,7 @@ def upload_transfer_file(request):
                             code=code,
                             defaults={
                                 'name': name,
-                                'category': category,
                                 'current_stock': stock,
-                                'selling_price': price,
                                 'minimum_stock': min_stock
                             }
                         )
