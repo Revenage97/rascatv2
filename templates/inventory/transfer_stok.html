@@ -13,6 +13,51 @@
 <div class="container-fluid py-4">
     <h2 class="mb-4">Transfer Stok</h2>
     
+    <!-- Asal dan Tujuan fields -->
+    <div class="row mb-4">
+        <div class="col-md-6">
+            <div class="mb-3">
+                <label for="asalSelect" class="form-label">Asal</label>
+                <select class="form-select" id="asalSelect">
+                    <option selected>Pilih Asal</option>
+                    <option value="1">Cabang Pusat : rascat kucing</option>
+                    <option value="2">Anak Cabang : Dilayani Tokopedia</option>
+                    <option value="3">Anak Cabang : Rascat Warehouse</option>
+                </select>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="mb-3">
+                <label for="tujuanSelect" class="form-label">Tujuan</label>
+                <select class="form-select" id="tujuanSelect">
+                    <option selected>Pilih Tujuan</option>
+                    <option value="1">Cabang Pusat : rascat kucing</option>
+                    <option value="2">Anak Cabang : Dilayani Tokopedia</option>
+                    <option value="3">Anak Cabang : Rascat Warehouse</option>
+                </select>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Keterangan field -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="mb-3">
+                <label for="keteranganTextarea" class="form-label">Keterangan</label>
+                <textarea class="form-control" id="keteranganTextarea" rows="3"></textarea>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Simpan button -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <button id="simpanBtn" class="btn btn-primary">
+                <i class="bi bi-save"></i> Simpan
+            </button>
+        </div>
+    </div>
+    
     <div class="row mb-4">
         <div class="col-md-6">
             <form method="get" class="d-flex">
