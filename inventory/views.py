@@ -585,37 +585,76 @@ def send_to_telegram(request):
             }
             
             for item in items:
-                # Format price with thousand separator
-                price_str = f"Rp {item.selling_price:,.0f}".replace(',', '.')
-                
-                telegram_data['produk'].append({
-                    'kode_barang': item.code,
-                    'nama_barang': item.name,
-                    'kategori': item.category,
-                    'stok': item.current_stock,
-                    'harga': price_str,
-                    'stok_minimum': item.minimum_stock or 0
-                })
+                # Different format based on source
+                if source == 'transfer_stok':
+                    # For transfer_stok, only include code, name, and minimum_stock (as stok_transfer)
+                    telegram_data['produk'].append({
+                        'kode_barang': item.code,
+                        'nama_barang': item.name,
+                        'stok_transfer': item.minimum_stock or 0
+                    })
+                else:
+                    # For kelola_stok, include all fields as before
+                    # Format price with thousand separator
+                    price_str = f"Rp {item.selling_price:,.0f}".replace(',', '.')
+                    
+                    telegram_data['produk'].append({
+                        'kode_barang': item.code,
+                        'nama_barang': item.name,
+                        'kategori': item.category,
+                        'stok': item.current_stock,
+                        'harga': price_str,
+                        'stok_minimum': item.minimum_stock or 0
+                    })
             
             # Send to webhook
             import requests
-            response = requests.post(
-                webhook_url,
-                json=telegram_data,
-                headers={'Content-Type': 'application/json'}
-            )
-            
-            if response.status_code == 200:
-                # Log activity
+            try:
+                # Add logging to debug webhook issues
+                logger.info(f"Sending to webhook URL: {webhook_url}")
+                logger.info(f"Webhook payload: {json.dumps(telegram_data)}")
+                
+                response = requests.post(
+                    webhook_url,
+                    json=telegram_data,
+                    headers={'Content-Type': 'application/json'},
+                    timeout=10  # Add timeout to prevent hanging
+                )
+                
+                logger.info(f"Webhook response status: {response.status_code}")
+                logger.info(f"Webhook response content: {response.text[:500]}")  # Log first 500 chars of response
+                
+                if response.status_code == 200:
+                    # Log activity
+                    ActivityLog.objects.create(
+                        user=request.user,
+                        action='send_to_telegram',
+                        status='success',
+                        notes=f'Sent {len(items)} items to Telegram via {source} webhook'
+                    )
+                    
+                    return JsonResponse({'status': 'success', 'message': 'Data berhasil dikirim ke Telegram'})
+                else:
+                    # Log failed activity
+                    ActivityLog.objects.create(
+                        user=request.user,
+                        action='send_to_telegram',
+                        status='error',
+                        notes=f'Failed to send to {source} webhook. Status code: {response.status_code}'
+                    )
+                    
+                    return JsonResponse({'status': 'error', 'message': f'Webhook returned status code {response.status_code}. Response: {response.text[:100]}'})
+            except requests.exceptions.RequestException as e:
+                # Log connection error
+                logger.error(f"Webhook connection error: {str(e)}")
                 ActivityLog.objects.create(
                     user=request.user,
                     action='send_to_telegram',
-                    notes=f'Sent {len(items)} items to Telegram via {source} webhook'
+                    status='error',
+                    notes=f'Connection error with {source} webhook: {str(e)}'
                 )
                 
-                return JsonResponse({'status': 'success'})
-            else:
-                return JsonResponse({'status': 'error', 'message': f'Webhook returned status code {response.status_code}'})
+                return JsonResponse({'status': 'error', 'message': f'Tidak dapat terhubung ke webhook: {str(e)}'})
             
         except Exception as e:
             return JsonResponse({'status': 'error', 'message': str(e)})
