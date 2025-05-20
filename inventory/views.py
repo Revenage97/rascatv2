@@ -649,21 +649,58 @@ def webhook_settings(request):
         settings = WebhookSettings.objects.create()
     
     if request.method == 'POST':
+        # Determine which webhook is being updated based on the URL parameter
+        webhook_type = request.GET.get('type', '')
+        
         form = WebhookSettingsForm(request.POST, instance=settings)
         if form.is_valid():
-            webhook = form.save(commit=False)
-            webhook.updated_by = request.user
-            webhook.save()
+            # Instead of saving the entire form, only update the specific field
+            if webhook_type == 'kelola_stok':
+                settings.webhook_kelola_stok = form.cleaned_data['webhook_kelola_stok']
+                settings.updated_by = request.user
+                settings.save(update_fields=['webhook_kelola_stok', 'updated_by', 'updated_at'])
+                
+                # Log activity
+                ActivityLog.objects.create(
+                    user=request.user,
+                    action='update_webhook',
+                    status='success',
+                    notes=f'Updated Kelola Stok webhook URL'
+                )
+                
+                messages.success(request, 'URL Webhook Kelola Stok berhasil disimpan', extra_tags='kelola_stok')
             
-            # Log activity
-            ActivityLog.objects.create(
-                user=request.user,
-                action='update_webhook',
-                status='success',
-                notes=f'Updated webhook URLs'
-            )
+            elif webhook_type == 'transfer_stok':
+                settings.webhook_transfer_stok = form.cleaned_data['webhook_transfer_stok']
+                settings.updated_by = request.user
+                settings.save(update_fields=['webhook_transfer_stok', 'updated_by', 'updated_at'])
+                
+                # Log activity
+                ActivityLog.objects.create(
+                    user=request.user,
+                    action='update_webhook',
+                    status='success',
+                    notes=f'Updated Transfer Stok webhook URL'
+                )
+                
+                messages.success(request, 'URL Webhook Transfer Stok berhasil disimpan', extra_tags='transfer_stok')
             
-            messages.success(request, 'Pengaturan webhook berhasil disimpan')
+            else:
+                # Fallback to original behavior if type is not specified
+                webhook = form.save(commit=False)
+                webhook.updated_by = request.user
+                webhook.save()
+                
+                # Log activity
+                ActivityLog.objects.create(
+                    user=request.user,
+                    action='update_webhook',
+                    status='success',
+                    notes=f'Updated all webhook URLs'
+                )
+                
+                messages.success(request, 'Pengaturan webhook berhasil disimpan')
+            
             return redirect('inventory:webhook_settings')
     else:
         form = WebhookSettingsForm(instance=settings)
