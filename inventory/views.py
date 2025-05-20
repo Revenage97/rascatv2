@@ -236,6 +236,26 @@ def upload_file(request):
                     else:
                         updated_count += 1
                 
+                # Save file to MEDIA_ROOT
+                upload_dir = settings.MEDIA_ROOT
+                timestamp = datetime.now().strftime('%Y%m%d%H%M%S')
+                file_name = f"kelola_stok_{timestamp}_{file.name}"
+                file_path = os.path.join(upload_dir, file_name)
+                
+                with open(file_path, 'wb+') as destination:
+                    for chunk in file.chunks():
+                        destination.write(chunk)
+                
+                # Save file metadata to database
+                upload_history = UploadHistory.objects.create(
+                    user=request.user,
+                    filename=file_name,
+                    file_path=file_path,
+                    file_size=file.size,
+                    success_count=created_count,
+                    error_count=0
+                )
+                
                 # Log activity
                 ActivityLog.objects.create(
                     user=request.user,
@@ -272,16 +292,21 @@ def upload_transfer_file(request):
                 messages.error(request, 'File harus berformat Excel (.xlsx, .xls)')
                 return redirect('inventory:transfer_stok')
             
-            # Use Render disk path if available, otherwise use settings
-            render_disk_path = '/opt/render/project/data'
-            upload_dir = os.path.join(render_disk_path, 'uploads') if os.path.exists(render_disk_path) else settings.UPLOAD_DIR
+            # Use MEDIA_ROOT from settings
+            upload_dir = settings.MEDIA_ROOT
             
-            # Create directory if it doesn't exist
-            os.makedirs(upload_dir, exist_ok=True)
-            
-            # Save the file temporarily
+            # Save the file
             timestamp = datetime.now().strftime('%Y%m%d%H%M%S')
-            file_path = os.path.join(upload_dir, f"transfer_{timestamp}_{file.name}")
+            file_name = f"transfer_{timestamp}_{file.name}"
+            file_path = os.path.join(upload_dir, file_name)
+            
+            # Save file path to database for later access
+            upload_history = UploadHistory.objects.create(
+                user=request.user,
+                filename=file_name,
+                file_path=file_path,
+                file_size=file.size
+            )
             
             with open(file_path, 'wb+') as destination:
                 for chunk in file.chunks():
@@ -427,97 +452,7 @@ def upload_transfer_file(request):
     
     return redirect('inventory:transfer_stok')
 
-@login_required
-def backup_file(request):
-    try:
-        logger.info("Accessing backup_file view")
-        
-        if request.method == 'POST':
-            try:
-                # Get all inventory items
-                items = Item.objects.all()
-                logger.info(f"Retrieved {items.count()} items for backup")
-                
-                # Convert Decimal to float for Excel compatibility
-                items_list = []
-                for item in items:
-                    try:
-                        items_list.append({
-                            'code': item.code,
-                            'name': item.name,
-                            'category': item.category,
-                            'current_stock': item.current_stock,
-                            'selling_price': float(item.selling_price) if item.selling_price else 0,
-                            'minimum_stock': item.minimum_stock if item.minimum_stock else 0
-                        })
-                    except Exception as item_error:
-                        logger.error(f"Error processing item {item.code}: {str(item_error)}")
-                        # Continue with other items even if one fails
-                        continue
-                
-                # Create DataFrame
-                data = {
-                    'Kode': [item['code'] for item in items_list],
-                    'Nama Barang': [item['name'] for item in items_list],
-                    'Kategori': [item['category'] for item in items_list],
-                    'Total Stok': [item['current_stock'] for item in items_list],
-                    'Harga Jual': [item['selling_price'] for item in items_list],
-                    'Stok Minimum': [item['minimum_stock'] for item in items_list],
-                }
-                
-                df = pd.DataFrame(data)
-                
-                # Use Render disk path if available, otherwise use temp directory
-                render_disk_path = '/opt/render/project/data'
-                backup_dir = os.path.join(render_disk_path, 'backups') if os.path.exists(render_disk_path) else settings.BACKUP_DIR
-                
-                # Create directory if it doesn't exist
-                os.makedirs(backup_dir, exist_ok=True)
-                
-                # Generate filename with timestamp
-                timestamp = datetime.now().strftime('%Y_%m_%d_%H_%M_%S')
-                filename = f"Laporan_Manajemen_Barang_Cabang_{timestamp}.xlsx"
-                filepath = os.path.join(backup_dir, filename)
-                
-                # Save to Excel
-                logger.info(f"Saving backup to {filepath}")
-                df.to_excel(filepath, index=False)
-                
-                # Log activity
-                ActivityLog.objects.create(
-                    user=request.user,
-                    action='backup_file',
-                    status='success',
-                    notes=f'Created backup file: {filename}'
-                )
-                
-                # Prepare file for download
-                with open(filepath, 'rb') as excel_file:
-                    response = HttpResponse(
-                        excel_file.read(),
-                        content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
-                    )
-                    response['Content-Disposition'] = f'attachment; filename="{filename}"'
-                
-                # Clean up temporary file if not using persistent storage
-                if backup_dir == '/tmp':
-                    os.remove(filepath)
-                
-                logger.info("Backup file created and ready for download")
-                return response
-                
-            except Exception as inner_e:
-                logger.error(f"Error creating backup file: {str(inner_e)}")
-                logger.error(traceback.format_exc())
-                messages.error(request, f"Terjadi kesalahan saat membuat file backup: {str(inner_e)}")
-                return redirect('inventory:backup_file')
-        
-        return render(request, 'inventory/backup_file.html')
-    except Exception as e:
-        logger.error(f"Error in backup_file view: {str(e)}")
-        logger.error(traceback.format_exc())
-        messages.error(request, f"Terjadi kesalahan: {str(e)}")
-        return redirect('inventory:dashboard')
+# Backup file view has been removed as per requirements
 
 @login_required
 def change_password(request):
@@ -592,8 +527,23 @@ def webhook_settings(request):
 
 @login_required
 def activity_logs(request):
+    # Get activity logs
     logs = ActivityLog.objects.all().order_by('-timestamp')
-    return render(request, 'inventory/activity_logs.html', {'logs': logs})
+    
+    # Get uploaded files
+    uploads = UploadHistory.objects.all().order_by('-upload_date')
+    
+    # Create media URL for each upload
+    for upload in uploads:
+        # Extract just the filename from the full path
+        filename = os.path.basename(upload.file_path)
+        # Create the download URL using MEDIA_URL
+        upload.download_url = f"{settings.MEDIA_URL}{filename}"
+    
+    return render(request, 'inventory/activity_logs.html', {
+        'logs': logs,
+        'uploads': uploads
+    })
 
 @login_required
 @csrf_exempt

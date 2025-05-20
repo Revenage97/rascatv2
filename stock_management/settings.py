@@ -17,9 +17,16 @@ import dj_database_url
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-# Define upload and backup directories
-UPLOAD_DIR = os.path.join(BASE_DIR, 'uploads')
-BACKUP_DIR = os.path.join(BASE_DIR, 'backups')
+# Define media directories for file uploads
+MEDIA_ROOT = '/opt/render/project/data/uploads'
+MEDIA_URL = '/media/'
+
+# Fallback to local directories if not on Render
+if not os.path.exists('/opt/render/project'):
+    MEDIA_ROOT = os.path.join(BASE_DIR, 'uploads')
+
+# Create uploads directory if it doesn't exist
+os.makedirs(MEDIA_ROOT, exist_ok=True)
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/4.2/howto/deployment/checklist/

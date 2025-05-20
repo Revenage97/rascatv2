@@ -16,7 +16,6 @@ urlpatterns = [
     path('transfer-stok/', views.transfer_stok, name='transfer_stok'),
     path('upload/', views.upload_file, name='upload_file'),
     path('upload-transfer/', views.upload_transfer_file, name='upload_transfer_file'),
-    path('backup/', views.backup_file, name='backup_file'),
     path('change-password/', views.change_password, name='change_password'),
     path('webhook-settings/', views.webhook_settings, name='webhook_settings'),
     path('activity-logs/', views.activity_logs, name='activity_logs'),

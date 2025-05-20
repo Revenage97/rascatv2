@@ -4,7 +4,11 @@
 <div class="container-fluid py-4">
     <h2 class="mb-4">Log Aktivitas</h2>
     
-    <div class="card">
+    <!-- Activity Logs Table -->
+    <div class="card mb-4">
+        <div class="card-header">
+            <h5 class="mb-0">Riwayat Aktivitas</h5>
+        </div>
         <div class="card-body">
             <div class="table-responsive">
                 <table class="table table-hover">
@@ -35,6 +39,55 @@
                         {% empty %}
                         <tr>
                             <td colspan="5" class="text-center">Tidak ada log aktivitas dalam 7 hari terakhir</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Uploaded Files Table -->
+    <div class="card">
+        <div class="card-header">
+            <h5 class="mb-0">File yang Diupload</h5>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th>Tanggal Upload</th>
+                            <th>Nama File</th>
+                            <th>Ukuran</th>
+                            <th>User</th>
+                            <th>Status</th>
+                            <th>Aksi</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for upload in uploads %}
+                        <tr>
+                            <td>{{ upload.upload_date|date:"d/m/Y H:i:s" }}</td>
+                            <td>{{ upload.filename }}</td>
+                            <td>{{ upload.get_file_size_display }}</td>
+                            <td>{{ upload.user.username|default:"System" }}</td>
+                            <td>
+                                {% if upload.error_count == 0 %}
+                                <span class="badge bg-success">Berhasil</span>
+                                {% else %}
+                                <span class="badge bg-warning">{{ upload.success_count }} berhasil, {{ upload.error_count }} gagal</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <a href="{{ upload.download_url }}" class="btn btn-sm btn-primary" target="_blank">
+                                    <i class="bi bi-download"></i> Download
+                                </a>
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="6" class="text-center">Tidak ada file yang diupload</td>
                         </tr>
                         {% endfor %}
                     </tbody>
