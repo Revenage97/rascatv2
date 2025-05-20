@@ -602,14 +602,23 @@ def send_to_telegram(request):
         try:
             data = json.loads(request.body)
             item_ids = data.get('item_ids', [])
+            source = data.get('source', 'kelola_stok')  # Default to kelola_stok if not specified
             
             if not item_ids:
                 return JsonResponse({'status': 'error', 'message': 'No items selected'})
             
-            # Get webhook URL
+            # Get webhook URL based on source
             webhook_settings = WebhookSettings.objects.first()
-            if not webhook_settings or not webhook_settings.telegram_webhook_url:
-                return JsonResponse({'status': 'error', 'message': 'Webhook URL not configured'})
+            if not webhook_settings:
+                return JsonResponse({'status': 'error', 'message': 'Webhook settings not configured'})
+            
+            # Determine which webhook URL to use based on source
+            if source == 'transfer_stok' and webhook_settings.webhook_transfer_stok:
+                webhook_url = webhook_settings.webhook_transfer_stok
+            elif source == 'kelola_stok' and webhook_settings.webhook_kelola_stok:
+                webhook_url = webhook_settings.webhook_kelola_stok
+            else:
+                return JsonResponse({'status': 'error', 'message': f'Webhook URL for {source} not configured'})
             
             # Get selected items
             items = Item.objects.filter(id__in=item_ids)
@@ -635,7 +644,7 @@ def send_to_telegram(request):
             # Send to webhook
             import requests
             response = requests.post(
-                webhook_settings.telegram_webhook_url,
+                webhook_url,
                 json=telegram_data,
                 headers={'Content-Type': 'application/json'}
             )
@@ -645,7 +654,7 @@ def send_to_telegram(request):
                 ActivityLog.objects.create(
                     user=request.user,
                     action='send_to_telegram',
-                    notes=f'Sent {len(items)} items to Telegram'
+                    notes=f'Sent {len(items)} items to Telegram via {source} webhook'
                 )
                 
                 return JsonResponse({'status': 'success'})

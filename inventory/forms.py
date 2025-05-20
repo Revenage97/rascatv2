@@ -27,9 +27,8 @@ class ItemForm(forms.ModelForm):
 class WebhookSettingsForm(forms.ModelForm):
     class Meta:
         model = WebhookSettings
-        fields = ['telegram_webhook_url', 'webhook_kelola_stok', 'webhook_transfer_stok']
+        fields = ['webhook_kelola_stok', 'webhook_transfer_stok']
         widgets = {
-            'telegram_webhook_url': forms.URLInput(attrs={'class': 'form-control', 'placeholder': 'https://api.telegram.org/bot<token>/sendMessage?chat_id=<chat_id>'}),
             'webhook_kelola_stok': forms.URLInput(attrs={'class': 'form-control', 'placeholder': 'https://hooks.zapier.com/hooks/catch/...'}),
             'webhook_transfer_stok': forms.URLInput(attrs={'class': 'form-control', 'placeholder': 'https://hooks.zapier.com/hooks/catch/...'}),
         }
