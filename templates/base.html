@@ -57,6 +57,8 @@
                                 </ul>
                             </div>
                         </li>
+                        
+                        {% if not user.profile.is_staff_gudang %}
                         <!-- Forecasting menu -->
                         <li class="nav-item">
                             <a class="nav-link {% if 'forecasting' in request.path %}active{% endif %}" href="{% url 'inventory:forecasting' %}">
@@ -70,13 +72,13 @@
                         </li>
                         <!-- Pengaturan dengan dropdown -->
                         <li class="nav-item">
-                            <a class="nav-link dropdown-toggle {% if 'change-password' in request.path or 'webhook-settings' in request.path %}active{% endif %}" 
+                            <a class="nav-link dropdown-toggle {% if 'change-password' in request.path or 'webhook-settings' in request.path or 'kelola-pengguna' in request.path %}active{% endif %}" 
                                href="#pengaturanSubmenu" 
                                data-bs-toggle="collapse" 
-                               aria-expanded="{% if 'change-password' in request.path or 'webhook-settings' in request.path %}true{% else %}false{% endif %}">
+                               aria-expanded="{% if 'change-password' in request.path or 'webhook-settings' in request.path or 'kelola-pengguna' in request.path %}true{% else %}false{% endif %}">
                                 <i class="bi bi-gear me-2"></i> Pengaturan
                             </a>
-                            <div class="collapse {% if 'change-password' in request.path or 'webhook-settings' in request.path %}show{% endif %}" id="pengaturanSubmenu">
+                            <div class="collapse {% if 'change-password' in request.path or 'webhook-settings' in request.path or 'kelola-pengguna' in request.path %}show{% endif %}" id="pengaturanSubmenu">
                                 <ul class="nav flex-column dropdown-menu">
                                     <li>
                                         <a class="dropdown-item {% if 'change-password' in request.path %}active{% endif %}" href="{% url 'inventory:change_password' %}">
@@ -88,11 +90,13 @@
                                             <i class="bi bi-gear-fill submenu-icon"></i> Pengaturan Webhook
                                         </a>
                                     </li>
+                                    {% if user.profile.is_admin %}
                                     <li>
                                         <a class="dropdown-item {% if 'kelola-pengguna' in request.path %}active{% endif %}" href="{% url 'inventory:kelola_pengguna' %}">
                                             <i class="bi bi-people-fill submenu-icon"></i> Kelola Pengguna
                                         </a>
                                     </li>
+                                    {% endif %}
                                 </ul>
                             </div>
                         </li>
@@ -101,6 +105,8 @@
                                 <i class="bi bi-list-check me-2"></i> Log Aktivitas
                             </a>
                         </li>
+                        {% endif %}
+                        
                         <li class="nav-item">
                             <a class="nav-link" href="{% url 'inventory:logout' %}">
                                 <i class="bi bi-box-arrow-right me-2"></i> Logout
