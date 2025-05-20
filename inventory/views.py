@@ -11,7 +11,7 @@ import os
 import logging
 import traceback
 from datetime import datetime
-from .models import Item, WebhookSettings, ActivityLog
+from .models import Item, WebhookSettings, ActivityLog, UploadHistory
 from .forms import ExcelUploadForm, WebhookSettingsForm, LoginForm
 
 # Configure logging
