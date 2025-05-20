@@ -31,7 +31,6 @@
                                data-bs-toggle="collapse" 
                                aria-expanded="{% if 'dashboard' in request.path or 'kelola-stok-barang' in request.path or 'kelola-harga' in request.path or 'kelola-stok-packing' in request.path or 'transfer-stok' in request.path %}true{% else %}false{% endif %}">
                                 <i class="bi bi-speedometer2 me-2"></i> Dashboard
-                                <i class="bi bi-chevron-down float-end collapse-icon"></i>
                             </a>
                             <div class="collapse {% if 'dashboard' in request.path or 'kelola-stok-barang' in request.path or 'kelola-harga' in request.path or 'kelola-stok-packing' in request.path or 'transfer-stok' in request.path %}show{% endif %}" id="dashboardSubmenu">
                                 <ul class="nav flex-column dropdown-menu">
@@ -75,7 +74,6 @@
                                data-bs-toggle="collapse" 
                                aria-expanded="{% if 'change-password' in request.path or 'webhook-settings' in request.path %}true{% else %}false{% endif %}">
                                 <i class="bi bi-gear me-2"></i> Pengaturan
-                                <i class="bi bi-chevron-down float-end collapse-icon"></i>
                             </a>
                             <div class="collapse {% if 'change-password' in request.path or 'webhook-settings' in request.path %}show{% endif %}" id="pengaturanSubmenu">
                                 <ul class="nav flex-column dropdown-menu">
