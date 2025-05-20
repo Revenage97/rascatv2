@@ -20,9 +20,9 @@
                 <label for="asalSelect" class="form-label">Asal</label>
                 <select class="form-select" id="asalSelect">
                     <option selected>Pilih Asal</option>
-                    <option value="1">Cabang Pusat : rascat kucing</option>
-                    <option value="2">Anak Cabang : Dilayani Tokopedia</option>
-                    <option value="3">Anak Cabang : Rascat Warehouse</option>
+                    <option value="1">rascat kucing</option>
+                    <option value="2">Dilayani Tokopedia</option>
+                    <option value="3">Rascat Warehouse</option>
                 </select>
             </div>
         </div>
@@ -31,9 +31,9 @@
                 <label for="tujuanSelect" class="form-label">Tujuan</label>
                 <select class="form-select" id="tujuanSelect">
                     <option selected>Pilih Tujuan</option>
-                    <option value="1">Cabang Pusat : rascat kucing</option>
-                    <option value="2">Anak Cabang : Dilayani Tokopedia</option>
-                    <option value="3">Anak Cabang : Rascat Warehouse</option>
+                    <option value="1">rascat kucing</option>
+                    <option value="2">Dilayani Tokopedia</option>
+                    <option value="3">Rascat Warehouse</option>
                 </select>
             </div>
         </div>
@@ -196,6 +196,37 @@
     document.addEventListener('DOMContentLoaded', function() {
         const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
         
+        // Function to reset transfer stock to 0
+        function resetTransferStock(itemId) {
+            fetch('{% url "inventory:update_min_stock" %}', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': csrfToken
+                },
+                body: JSON.stringify({ item_id: itemId, min_stock: 0 })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    // Update UI to show reset stock
+                    const row = document.querySelector(`.item-checkbox[value="${itemId}"]`).closest('tr');
+                    const stockCell = row.querySelector('td:nth-child(5)');
+                    stockCell.innerHTML = `
+                        <div class="input-group input-group-sm">
+                            <input type="number" class="form-control form-control-sm min-stock-input" min="0" placeholder="Min">
+                            <button class="btn btn-sm btn-outline-primary save-min-stock" data-item-id="${itemId}">
+                                <i class="bi bi-check"></i>
+                            </button>
+                        </div>
+                    `;
+                }
+            })
+            .catch(error => {
+                console.error('Error resetting stock:', error);
+            });
+        }
+        
         // Select all checkbox
         document.getElementById('selectAll').addEventListener('change', function() {
             const checkboxes = document.querySelectorAll('.item-checkbox');
@@ -254,6 +285,11 @@
                         title: 'Berhasil',
                         text: 'Data berhasil dikirim ke Telegram',
                         confirmButtonColor: '#3085d6'
+                    }).then(() => {
+                        // Reset transfer stock values to 0 after successful send
+                        itemIds.forEach(itemId => {
+                            resetTransferStock(itemId);
+                        });
                     });
                 } else {
                     Swal.fire({
