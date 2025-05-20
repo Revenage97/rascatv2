@@ -4,12 +4,151 @@
 <div class="container-fluid py-4">
     <h2 class="mb-4">Kelola Pengguna</h2>
     
+    <div class="row mb-4">
+        <div class="col-md-12">
+            <div class="card">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="card-title mb-0">Tambah Pengguna Baru</h5>
+                </div>
+                <div class="card-body">
+                    <form method="post" action="{% url 'inventory:kelola_pengguna' %}">
+                        {% csrf_token %}
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="id_full_name" class="form-label">Nama Lengkap</label>
+                                {{ form.full_name }}
+                                {% if form.full_name.errors %}
+                                <div class="text-danger">
+                                    {% for error in form.full_name.errors %}
+                                    {{ error }}
+                                    {% endfor %}
+                                </div>
+                                {% endif %}
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="id_username" class="form-label">Username</label>
+                                {{ form.username }}
+                                {% if form.username.errors %}
+                                <div class="text-danger">
+                                    {% for error in form.username.errors %}
+                                    {{ error }}
+                                    {% endfor %}
+                                </div>
+                                {% endif %}
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="id_email" class="form-label">Email (Opsional)</label>
+                                {{ form.email }}
+                                {% if form.email.errors %}
+                                <div class="text-danger">
+                                    {% for error in form.email.errors %}
+                                    {{ error }}
+                                    {% endfor %}
+                                </div>
+                                {% endif %}
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="id_role" class="form-label">Role/Akses</label>
+                                {{ form.role }}
+                                {% if form.role.errors %}
+                                <div class="text-danger">
+                                    {% for error in form.role.errors %}
+                                    {{ error }}
+                                    {% endfor %}
+                                </div>
+                                {% endif %}
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="id_password1" class="form-label">Password</label>
+                                {{ form.password1 }}
+                                {% if form.password1.errors %}
+                                <div class="text-danger">
+                                    {% for error in form.password1.errors %}
+                                    {{ error }}
+                                    {% endfor %}
+                                </div>
+                                {% endif %}
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="id_password2" class="form-label">Konfirmasi Password</label>
+                                {{ form.password2 }}
+                                {% if form.password2.errors %}
+                                <div class="text-danger">
+                                    {% for error in form.password2.errors %}
+                                    {{ error }}
+                                    {% endfor %}
+                                </div>
+                                {% endif %}
+                            </div>
+                        </div>
+                        <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="bi bi-person-plus"></i> Tambah Pengguna
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+    
     <div class="card">
+        <div class="card-header bg-light">
+            <h5 class="card-title mb-0">Daftar Pengguna</h5>
+        </div>
         <div class="card-body">
-            <div class="text-center py-5">
-                <i class="bi bi-people-fill fs-1 text-muted mb-3"></i>
-                <h3 class="text-muted">Fitur Kelola Pengguna sedang disiapkan</h3>
-                <p class="text-muted">Halaman ini masih dalam tahap pengembangan.</p>
+            <div class="table-responsive">
+                <table class="table table-bordered table-hover table-striped">
+                    <thead class="bg-light">
+                        <tr>
+                            <th>Nama</th>
+                            <th>Username</th>
+                            <th>Role</th>
+                            <th class="text-center">Aksi</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for user_obj in users %}
+                        <tr>
+                            <td>{{ user_obj.profile.full_name }}</td>
+                            <td>{{ user_obj.username }}</td>
+                            <td>
+                                {% if user_obj.profile.role == 'admin' %}
+                                <span class="badge bg-danger">Admin</span>
+                                {% elif user_obj.profile.role == 'staff_gudang' %}
+                                <span class="badge bg-info">Staff Gudang</span>
+                                {% elif user_obj.profile.role == 'manajer' %}
+                                <span class="badge bg-success">Manajer</span>
+                                {% else %}
+                                <span class="badge bg-secondary">{{ user_obj.profile.get_role_display }}</span>
+                                {% endif %}
+                            </td>
+                            <td class="text-center">
+                                <div class="btn-group btn-group-sm">
+                                    <a href="{% url 'inventory:edit_user' user_obj.id %}" class="btn btn-outline-primary">
+                                        <i class="bi bi-pencil"></i> Edit
+                                    </a>
+                                    <a href="{% url 'inventory:delete_user' user_obj.id %}" class="btn btn-outline-danger">
+                                        <i class="bi bi-trash"></i> Hapus
+                                    </a>
+                                </div>
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="4" class="text-center py-4">
+                                <i class="bi bi-people fs-1 text-muted mb-3 d-block"></i>
+                                <h5 class="text-muted">Belum ada pengguna</h5>
+                                <p class="text-muted">Tambahkan pengguna baru menggunakan form di atas.</p>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
             </div>
         </div>
     </div>

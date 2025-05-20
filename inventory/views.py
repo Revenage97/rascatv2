@@ -1,19 +1,21 @@
-from django.shortcuts import render, redirect
+from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth import authenticate, login, logout, update_session_auth_hash
-from django.contrib.auth.decorators import login_required
+from django.contrib.auth.decorators import login_required, user_passes_test
+from django.contrib.auth.models import User
 from django.contrib import messages
 from django.http import JsonResponse, HttpResponse
 from django.shortcuts import render, redirect
 from django.views.decorators.csrf import csrf_exempt
 from django.conf import settings
+from django.db import transaction
 import json
 import pandas as pd
 import os
 import logging
 import traceback
 from datetime import datetime
-from .models import Item, WebhookSettings, ActivityLog, UploadHistory
-from .forms import ExcelUploadForm, WebhookSettingsForm, LoginForm
+from .models import Item, WebhookSettings, ActivityLog, UploadHistory, UserProfile
+from .forms import ExcelUploadForm, WebhookSettingsForm, LoginForm, UserRegistrationForm, UserEditForm
 
 # Configure logging
 logger = logging.getLogger(__name__)
@@ -24,13 +26,143 @@ def dashboard(request):
     # Redirect to kelola_stok_barang view
     return redirect('inventory:kelola_stok_barang')
 
+# Helper function to check if user is admin
+def is_admin(user):
+    try:
+        return user.profile.is_admin
+    except (UserProfile.DoesNotExist, AttributeError):
+        return False
+
 # New views for submenu pages
 @login_required
+@user_passes_test(is_admin)
 def kelola_pengguna(request):
     """
-    View for managing users - currently displays a placeholder page
+    View for managing users - allows admin to create, edit, and delete users
     """
-    return render(request, 'inventory/kelola_pengguna.html')
+    users = User.objects.all().select_related('profile')
+    
+    if request.method == 'POST':
+        form = UserRegistrationForm(request.POST)
+        if form.is_valid():
+            try:
+                with transaction.atomic():
+                    # Create user
+                    user = form.save()
+                    
+                    # Create user profile
+                    UserProfile.objects.create(
+                        user=user,
+                        full_name=form.cleaned_data['full_name'],
+                        role=form.cleaned_data['role']
+                    )
+                    
+                    # Log activity
+                    ActivityLog.objects.create(
+                        user=request.user,
+                        action='create_user',
+                        status='success',
+                        notes=f'User {user.username} created with role {form.cleaned_data["role"]}'
+                    )
+                    
+                    messages.success(request, f'User {user.username} berhasil dibuat')
+                    return redirect('inventory:kelola_pengguna')
+            except Exception as e:
+                messages.error(request, f'Error: {str(e)}')
+    else:
+        form = UserRegistrationForm()
+    
+    context = {
+        'users': users,
+        'form': form
+    }
+    
+    return render(request, 'inventory/kelola_pengguna.html', context)
+
+@login_required
+@user_passes_test(is_admin)
+def edit_user(request, user_id):
+    """
+    View for editing an existing user
+    """
+    user_obj = get_object_or_404(User, id=user_id)
+    
+    if request.method == 'POST':
+        form = UserEditForm(request.POST, instance=user_obj)
+        if form.is_valid():
+            try:
+                with transaction.atomic():
+                    # Update user
+                    user = form.save()
+                    
+                    # Update or create user profile
+                    profile, created = UserProfile.objects.update_or_create(
+                        user=user,
+                        defaults={
+                            'full_name': form.cleaned_data['full_name'],
+                            'role': form.cleaned_data['role']
+                        }
+                    )
+                    
+                    # Log activity
+                    ActivityLog.objects.create(
+                        user=request.user,
+                        action='edit_user',
+                        status='success',
+                        notes=f'User {user.username} updated'
+                    )
+                    
+                    messages.success(request, f'User {user.username} berhasil diperbarui')
+                    return redirect('inventory:kelola_pengguna')
+            except Exception as e:
+                messages.error(request, f'Error: {str(e)}')
+    else:
+        form = UserEditForm(instance=user_obj)
+    
+    context = {
+        'form': form,
+        'user_obj': user_obj
+    }
+    
+    return render(request, 'inventory/edit_user.html', context)
+
+@login_required
+@user_passes_test(is_admin)
+def delete_user(request, user_id):
+    """
+    View for deleting a user
+    """
+    user_obj = get_object_or_404(User, id=user_id)
+    
+    # Prevent self-deletion
+    if user_obj == request.user:
+        messages.error(request, 'Anda tidak dapat menghapus akun Anda sendiri')
+        return redirect('inventory:kelola_pengguna')
+    
+    if request.method == 'POST':
+        try:
+            username = user_obj.username
+            user_obj.delete()
+            
+            # Log activity
+            ActivityLog.objects.create(
+                user=request.user,
+                action='delete_user',
+                status='success',
+                notes=f'User {username} deleted'
+            )
+            
+            messages.success(request, f'User {username} berhasil dihapus')
+        except Exception as e:
+            messages.error(request, f'Error: {str(e)}')
+        
+        return redirect('inventory:kelola_pengguna')
+    
+    context = {
+        'user_obj': user_obj
+    }
+    
+    return render(request, 'inventory/delete_user.html', context)
 
 @login_required
 def kelola_stok_barang(request):

@@ -3,6 +3,36 @@ from django.contrib.auth.models import User
 from django.utils import timezone
 import os
 
+class UserProfile(models.Model):
+    ROLE_CHOICES = (
+        ('admin', 'Admin'),
+        ('staff_gudang', 'Staff Gudang'),
+        ('manajer', 'Manajer'),
+    )
+    
+    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='profile')
+    full_name = models.CharField(max_length=255, verbose_name="Nama Lengkap")
+    role = models.CharField(max_length=20, choices=ROLE_CHOICES, default='staff_gudang', verbose_name="Role/Akses")
+    
+    def __str__(self):
+        return f"{self.user.username} - {self.get_role_display()}"
+    
+    class Meta:
+        verbose_name = "User Profile"
+        verbose_name_plural = "User Profiles"
+    
+    @property
+    def is_admin(self):
+        return self.role == 'admin'
+    
+    @property
+    def is_staff_gudang(self):
+        return self.role == 'staff_gudang'
+    
+    @property
+    def is_manajer(self):
+        return self.role == 'manajer'
+
 class Item(models.Model):
     code = models.CharField(max_length=50, unique=True, verbose_name="Kode Barang")
     name = models.CharField(max_length=255, verbose_name="Nama Barang")

@@ -1,0 +1,61 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <h2 class="mb-4">Hapus Pengguna</h2>
+    
+    <div class="card">
+        <div class="card-header bg-danger text-white">
+            <h5 class="card-title mb-0">Konfirmasi Penghapusan</h5>
+        </div>
+        <div class="card-body">
+            <div class="alert alert-warning">
+                <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                <strong>Perhatian!</strong> Tindakan ini tidak dapat dibatalkan.
+            </div>
+            
+            <div class="mb-4">
+                <h5>Anda yakin ingin menghapus pengguna berikut?</h5>
+                <div class="card bg-light p-3 mt-3">
+                    <div class="row">
+                        <div class="col-md-4">
+                            <p class="mb-1"><strong>Nama Lengkap:</strong></p>
+                            <p>{{ user_obj.profile.full_name }}</p>
+                        </div>
+                        <div class="col-md-4">
+                            <p class="mb-1"><strong>Username:</strong></p>
+                            <p>{{ user_obj.username }}</p>
+                        </div>
+                        <div class="col-md-4">
+                            <p class="mb-1"><strong>Role:</strong></p>
+                            <p>
+                                {% if user_obj.profile.role == 'admin' %}
+                                <span class="badge bg-danger">Admin</span>
+                                {% elif user_obj.profile.role == 'staff_gudang' %}
+                                <span class="badge bg-info">Staff Gudang</span>
+                                {% elif user_obj.profile.role == 'manajer' %}
+                                <span class="badge bg-success">Manajer</span>
+                                {% else %}
+                                <span class="badge bg-secondary">{{ user_obj.profile.get_role_display }}</span>
+                                {% endif %}
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <form method="post" action="{% url 'inventory:delete_user' user_obj.id %}">
+                {% csrf_token %}
+                <div class="d-flex justify-content-between">
+                    <a href="{% url 'inventory:kelola_pengguna' %}" class="btn btn-secondary">
+                        <i class="bi bi-arrow-left"></i> Batal
+                    </a>
+                    <button type="submit" class="btn btn-danger">
+                        <i class="bi bi-trash"></i> Hapus Pengguna
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock content %}
