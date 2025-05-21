@@ -29,6 +29,12 @@
     .exp-safe {
         background-color: #e3ffe3;
     }
+    .select-all-container {
+        margin-bottom: 10px;
+    }
+    .bulk-actions {
+        margin-bottom: 15px;
+    }
 </style>
 {% endblock %}
 
@@ -62,15 +68,34 @@
         </div>
     </div>
 
+    <!-- Bulk Actions -->
+    <div class="row bulk-actions">
+        <div class="col-12">
+            <button id="sendAllTelegram" class="btn btn-primary btn-sm" disabled>
+                <i class="bi bi-telegram"></i> Kirim Semua ke Telegram
+            </button>
+            <span id="selectedCount" class="ms-2 text-muted">0 item dipilih</span>
+        </div>
+    </div>
+
     <!-- Main Table Card -->
     <div class="card">
         <div class="card-body">
+            <div class="select-all-container">
+                <div class="form-check">
+                    <input class="form-check-input" type="checkbox" id="selectAll">
+                    <label class="form-check-label" for="selectAll">
+                        Pilih Semua
+                    </label>
+                </div>
+            </div>
             <div class="table-responsive">
                 <table class="table table-bordered table-hover">
                     <thead>
                         <tr>
+                            <th style="width: 5%">Pilih</th>
                             <th style="width: 15%">Kode Barang</th>
-                            <th style="width: 30%">Nama Barang</th>
+                            <th style="width: 25%">Nama Barang</th>
                             <th style="width: 10%">Stok</th>
                             <th style="width: 20%">Tanggal Expired</th>
                             <th style="width: 15%">Aksi</th>
@@ -86,6 +111,9 @@
                             {% elif item.expiry_date %}
                                 class="exp-safe"
                             {% endif %}>
+                            <td class="text-center">
+                                <input class="form-check-input item-checkbox" type="checkbox" data-id="{{ item.id }}">
+                            </td>
                             <td>{{ item.code }}</td>
                             <td>{{ item.name }}</td>
                             <td>{{ item.current_stock }}</td>
@@ -109,7 +137,7 @@
                         </tr>
                         {% empty %}
                         <tr>
-                            <td colspan="5" class="text-center py-4">
+                            <td colspan="6" class="text-center py-4">
                                 <i class="bi bi-inbox fs-1 text-muted d-block mb-2"></i>
                                 <p class="text-muted">Tidak ada data produk yang tersedia.</p>
                             </td>
@@ -146,6 +174,28 @@
         </div>
     </div>
 </div>
+
+<!-- Modal for Bulk Telegram Confirmation -->
+<div class="modal fade" id="bulkTelegramModal" tabindex="-1" aria-labelledby="bulkTelegramModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="bulkTelegramModalLabel">Konfirmasi Kirim Massal ke Telegram</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p>Apakah Anda yakin ingin mengirim notifikasi untuk <span id="bulkCount">0</span> produk ke Telegram?</p>
+                <div class="alert alert-info">
+                    <i class="bi bi-info-circle"></i> Semua produk yang dipilih akan dikirim sebagai notifikasi terpisah ke Telegram.
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
+                <button type="button" class="btn btn-primary" id="confirmBulkTelegram">Kirim Semua</button>
+            </div>
+        </div>
+    </div>
+</div>
 {% endblock %}
 
 {% block extra_js %}
@@ -158,6 +208,88 @@
             flatpickr(input, {
                 dateFormat: "Y-m-d",
                 allowInput: true
+            });
+        });
+
+        // Select All functionality
+        const selectAllCheckbox = document.getElementById('selectAll');
+        const itemCheckboxes = document.querySelectorAll('.item-checkbox');
+        const sendAllButton = document.getElementById('sendAllTelegram');
+        const selectedCountSpan = document.getElementById('selectedCount');
+        
+        // Update selected count and button state
+        function updateSelectedCount() {
+            const checkedCount = document.querySelectorAll('.item-checkbox:checked').length;
+            selectedCountSpan.textContent = `${checkedCount} item dipilih`;
+            
+            if (checkedCount > 0) {
+                sendAllButton.removeAttribute('disabled');
+            } else {
+                sendAllButton.setAttribute('disabled', 'disabled');
+            }
+        }
+        
+        // Select All checkbox event
+        selectAllCheckbox.addEventListener('change', function() {
+            itemCheckboxes.forEach(checkbox => {
+                checkbox.checked = this.checked;
+            });
+            updateSelectedCount();
+        });
+        
+        // Individual checkbox events
+        itemCheckboxes.forEach(checkbox => {
+            checkbox.addEventListener('change', function() {
+                // Update "Select All" checkbox
+                const allChecked = document.querySelectorAll('.item-checkbox:checked').length === itemCheckboxes.length;
+                selectAllCheckbox.checked = allChecked;
+                
+                updateSelectedCount();
+            });
+        });
+        
+        // Bulk Send to Telegram button
+        sendAllButton.addEventListener('click', function() {
+            const checkedItems = document.querySelectorAll('.item-checkbox:checked');
+            const itemIds = Array.from(checkedItems).map(checkbox => checkbox.getAttribute('data-id'));
+            
+            // Update modal with count
+            document.getElementById('bulkCount').textContent = itemIds.length;
+            
+            // Show bulk confirmation modal
+            const bulkModal = new bootstrap.Modal(document.getElementById('bulkTelegramModal'));
+            bulkModal.show();
+        });
+        
+        // Confirm bulk telegram send
+        document.getElementById('confirmBulkTelegram').addEventListener('click', function() {
+            const checkedItems = document.querySelectorAll('.item-checkbox:checked');
+            const itemIds = Array.from(checkedItems).map(checkbox => checkbox.getAttribute('data-id'));
+            
+            // Hide modal
+            const bulkModal = bootstrap.Modal.getInstance(document.getElementById('bulkTelegramModal'));
+            bulkModal.hide();
+            
+            // Send each item to Telegram
+            let successCount = 0;
+            let errorCount = 0;
+            let processedCount = 0;
+            
+            itemIds.forEach(itemId => {
+                sendToTelegram(itemId)
+                    .then(success => {
+                        processedCount++;
+                        if (success) {
+                            successCount++;
+                        } else {
+                            errorCount++;
+                        }
+                        
+                        // When all items are processed, show summary
+                        if (processedCount === itemIds.length) {
+                            alert(`Pengiriman selesai: ${successCount} berhasil, ${errorCount} gagal.`);
+                        }
+                    });
             });
         });
 
@@ -190,8 +322,8 @@
                 const row = document.querySelector(`tr[data-id="${itemId}"]`);
                 
                 // Get item details for preview
-                const name = row.cells[1].textContent.trim();
-                const stock = row.cells[2].textContent.trim();
+                const name = row.cells[2].textContent.trim();
+                const stock = row.cells[3].textContent.trim();
                 const expDate = row.querySelector('.datepicker').value;
                 
                 // Update modal preview
@@ -256,7 +388,7 @@
 
         // Function to send to Telegram
         function sendToTelegram(itemId) {
-            fetch('{% url "inventory:send_exp_to_telegram" %}', {
+            return fetch('{% url "inventory:send_exp_to_telegram" %}', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -270,15 +402,26 @@
             .then(response => response.json())
             .then(data => {
                 if (data.status === 'success') {
-                    // Show success message
-                    alert('Notifikasi berhasil dikirim ke Telegram!');
+                    // For individual sends, show success message
+                    if (!document.querySelector('.item-checkbox:checked') || document.querySelectorAll('.item-checkbox:checked').length === 1) {
+                        alert('Notifikasi berhasil dikirim ke Telegram!');
+                    }
+                    return true;
                 } else {
-                    alert('Error: ' + data.message);
+                    // For individual sends, show error message
+                    if (!document.querySelector('.item-checkbox:checked') || document.querySelectorAll('.item-checkbox:checked').length === 1) {
+                        alert('Error: ' + data.message);
+                    }
+                    return false;
                 }
             })
             .catch(error => {
                 console.error('Error:', error);
-                alert('Terjadi kesalahan saat mengirim ke Telegram.');
+                // For individual sends, show error message
+                if (!document.querySelector('.item-checkbox:checked') || document.querySelectorAll('.item-checkbox:checked').length === 1) {
+                    alert('Terjadi kesalahan saat mengirim ke Telegram.');
+                }
+                return false;
             });
         }
 

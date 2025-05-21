@@ -45,7 +45,7 @@ def upload_exp_produk_file(request):
             df = pd.read_excel(file_path)
             
             # Check required columns
-            required_columns = ['Kode Barang', 'Nama Barang', 'Total Stok', 'Tanggal Expired']
+            required_columns = ['Kode Barang', 'Nama Barang', 'Total Stok']
             missing_columns = [col for col in required_columns if col not in df.columns]
             
             if missing_columns:
@@ -65,7 +65,7 @@ def upload_exp_produk_file(request):
                     
                     # Handle expiry date
                     expiry_date = None
-                    if pd.notna(row['Tanggal Expired']):
+                    if 'Tanggal Expired' in df.columns and pd.notna(row['Tanggal Expired']):
                         if isinstance(row['Tanggal Expired'], str):
                             try:
                                 expiry_date = datetime.strptime(row['Tanggal Expired'], '%Y-%m-%d').date()
