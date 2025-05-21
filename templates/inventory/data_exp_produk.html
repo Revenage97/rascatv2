@@ -50,40 +50,35 @@
     <div class="row mb-3">
         <div class="col-md-6">
             <form method="GET" action="{% url 'inventory:data_exp_produk' %}" class="d-flex">
-                <div class="input-group" style="max-width: 400px;">
-                    <input type="text" name="query" class="form-control form-control-sm py-1" placeholder="Cari kode atau nama produk..." value="{{ query|default:'' }}">
-                    <button type="submit" class="btn btn-primary btn-sm py-1 px-2">
-                        <i class="bi bi-search"></i> Cari
+                <div class="d-flex" style="max-width: 400px; width: 100%;">
+                    <input type="text" name="query" class="form-control form-control-sm me-2 py-1" placeholder="Cari barang..." value="{{ query|default:'' }}" style="height: auto; font-size: 0.875rem;">
+                    <button type="submit" class="btn btn-sm btn-outline-secondary py-1 px-2" style="font-size: 0.875rem;">
+                        <i class="bi bi-search" style="font-size: 0.875rem;"></i> Cari
                     </button>
                 </div>
             </form>
         </div>
-        <div class="col-md-6 text-md-end">
-            <button id="sortAsc" class="btn btn-outline-secondary btn-sm sort-btn">
-                <i class="bi bi-arrow-down"></i> Urutkan Exp Terdekat (ASC)
+        <div class="col-md-6 text-end">
+            <button id="sendAllTelegram" class="btn btn-info" disabled>
+                <i class="bi bi-telegram"></i> Kirim ke Telegram
             </button>
-            <button id="sortDesc" class="btn btn-outline-secondary btn-sm sort-btn">
-                <i class="bi bi-arrow-up"></i> Urutkan Exp Terjauh (DESC)
-            </button>
+            <div class="btn-group">
+                <button type="button" class="btn btn-outline-secondary dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
+                    <i class="bi bi-filter"></i> Filter
+                </button>
+                <ul class="dropdown-menu dropdown-menu-end">
+                    <li><a class="dropdown-item" href="?sort=exp_asc">Urutkan Exp Terdekat (ASC)</a></li>
+                    <li><a class="dropdown-item" href="?sort=exp_desc">Urutkan Exp Terjauh (DESC)</a></li>
+                    <li><a class="dropdown-item" href="?sort=name">Urutkan berdasarkan Nama (A-Z)</a></li>
+                    <li><a class="dropdown-item" href="?sort=name_desc">Urutkan berdasarkan Nama (Z-A)</a></li>
+                    <li><a class="dropdown-item" href="?sort=stock_asc">Urutkan berdasarkan Stok (Terendah-Tertinggi)</a></li>
+                    <li><a class="dropdown-item" href="?sort=stock_desc">Urutkan berdasarkan Stok (Tertinggi-Terendah)</a></li>
+                    <li><hr class="dropdown-divider"></li>
+                    <li><a class="dropdown-item" href="?">Reset Filter</a></li>
+                </ul>
+            </div>
             {% if user.profile.is_admin %}
-            <button id="resetFilterBtn" class="btn btn-outline-danger btn-sm">
-                <i class="bi bi-x-circle"></i> Reset Filter
-            </button>
-            {% endif %}
-        </div>
-    </div>
-
-    <!-- Bulk Actions -->
-    <div class="row bulk-actions">
-        <div class="col-md-6">
-            <button id="sendAllTelegram" class="btn btn-primary btn-sm" disabled>
-                <i class="bi bi-telegram"></i> Kirim Semua ke Telegram
-            </button>
-            <span id="selectedCount" class="ms-2 text-muted">0 item dipilih</span>
-        </div>
-        <div class="col-md-6 text-md-end">
-            {% if user.profile.is_admin %}
-            <button id="resetDataBtn" class="btn btn-danger btn-sm">
+            <button id="resetDataBtn" class="btn btn-danger ms-2">
                 <i class="bi bi-trash"></i> Reset Data
             </button>
             {% endif %}
@@ -254,7 +249,10 @@
         if (resetDataBtn) {
             resetDataBtn.addEventListener('click', function() {
                 resetDataModal.show();
-           // Confirm Reset Data button click handler
+            });
+        }
+        
+        // Confirm Reset Data button click handler
         if (confirmResetDataBtn) {
             confirmResetDataBtn.addEventListener('click', function() {
                 // Show disabled feature popup directly without making API call

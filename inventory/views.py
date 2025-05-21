@@ -732,19 +732,89 @@ def webhook_settings(request):
             try:
                 webhook = form.save(commit=False)
                 webhook.updated_by = request.user
-                webhook.save()
                 
-                # Log activity
+                # Get the webhook type from query parameters
+                webhook_type = request.GET.get('type', '')
+                
+                # Determine which field was updated based on the webhook type
+                if webhook_type == 'kelola_stok':
+                    # Get the new URL value
+                    new_url = form.cleaned_data.get('webhook_kelola_stok', '')
+                    
+                    # Update only the kelola_stok field
+                    webhook.webhook_kelola_stok = new_url
+                    
+                    # Log activity with specific details
+                    ActivityLog.objects.create(
+                        user=request.user,
+                        action='update_webhook_settings',
+                        status='success',
+                        notes=f'Webhook Kelola Stok diperbarui: {new_url}'
+                    )
+                    
+                    messages.success(request, 'Webhook Kelola Stok berhasil diperbarui', extra_tags='kelola_stok')
+                
+                elif webhook_type == 'transfer_stok':
+                    # Get the new URL value
+                    new_url = form.cleaned_data.get('webhook_transfer_stok', '')
+                    
+                    # Update only the transfer_stok field
+                    webhook.webhook_transfer_stok = new_url
+                    
+                    # Log activity with specific details
+                    ActivityLog.objects.create(
+                        user=request.user,
+                        action='update_webhook_settings',
+                        status='success',
+                        notes=f'Webhook Transfer Stok diperbarui: {new_url}'
+                    )
+                    
+                    messages.success(request, 'Webhook Transfer Stok berhasil diperbarui', extra_tags='transfer_stok')
+                
+                elif webhook_type == 'data_exp_produk':
+                    # Get the new URL value
+                    new_url = form.cleaned_data.get('webhook_data_exp_produk', '')
+                    
+                    # Update only the data_exp_produk field
+                    webhook.webhook_data_exp_produk = new_url
+                    
+                    # Log activity with specific details
+                    ActivityLog.objects.create(
+                        user=request.user,
+                        action='update_webhook_settings',
+                        status='success',
+                        notes=f'Webhook Data Exp Produk diperbarui: {new_url}'
+                    )
+                    
+                    messages.success(request, 'Webhook Data Exp Produk berhasil diperbarui', extra_tags='data_exp_produk')
+                
+                else:
+                    # If no specific type, save all fields (fallback)
+                    webhook.save()
+                    
+                    # Log activity with general message
+                    ActivityLog.objects.create(
+                        user=request.user,
+                        action='update_webhook_settings',
+                        status='success',
+                        notes='Semua pengaturan webhook diperbarui'
+                    )
+                    
+                    messages.success(request, 'Webhook settings berhasil diperbarui')
+                    
+                # Save the webhook settings
+                webhook.save(update_fields=['webhook_kelola_stok', 'webhook_transfer_stok', 'webhook_data_exp_produk', 'updated_by'])
+                
+                return redirect('inventory:webhook_settings')
+            except Exception as e:
+                # Log activity with error details
                 ActivityLog.objects.create(
                     user=request.user,
                     action='update_webhook_settings',
-                    status='success',
-                    notes='Webhook settings updated'
+                    status='failed',
+                    notes=f'Gagal memperbarui webhook: {str(e)}'
                 )
                 
-                messages.success(request, 'Webhook settings berhasil diperbarui')
-                return redirect('inventory:webhook_settings')
-            except Exception as e:
                 messages.error(request, f'Error: {str(e)}')
     else:
         form = WebhookSettingsForm(instance=webhook_settings)
