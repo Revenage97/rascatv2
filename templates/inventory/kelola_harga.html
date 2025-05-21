@@ -74,12 +74,12 @@
                             <td>{{ item.code }}</td>
                             <td>{{ item.name }}</td>
                             <td>{{ item.category }}</td>
-                            <td class="text-center">{{ item.selling_price }}</td>
+                            <td class="text-center">{{ item.selling_price|floatformat:"0" }}</td>
                             <td class="text-center">
                                 <div class="editable-field" data-item-id="{{ item.id }}">
-                                    <span class="editable-display">{{ item.latest_price|default:"" }}</span>
+                                    <span class="editable-display">{{ item.latest_price|floatformat:"0"|default:"" }}</span>
                                     <input type="number" class="form-control form-control-sm editable-input" 
-                                           style="display: none;" step="0.01" min="0"
+                                           style="display: none;" step="1" min="0"
                                            value="{{ item.latest_price|default:"" }}">
                                 </div>
                             </td>
@@ -226,7 +226,7 @@
                 
                 if (data.status === 'success') {
                     // Update display and hide input
-                    display.textContent = latestPrice ? latestPrice : '';
+                    display.textContent = latestPrice ? Math.round(latestPrice) : '';
                     display.style.display = 'inline';
                     input.style.display = 'none';
                     
