@@ -38,9 +38,9 @@ def update_min_stock(request):
                     logger.error(f"Invalid minimum stock format: {min_stock}")
                     return JsonResponse({'status': 'error', 'message': 'Invalid minimum stock format'})
             else:
-                # Clear minimum stock if empty
-                item.minimum_stock = None
-                logger.info(f"Clearing minimum stock for item {item.id}")
+                # Set minimum stock to 0 if empty to avoid NOT NULL constraint
+                item.minimum_stock = 0
+                logger.info(f"Setting minimum stock to 0 for item {item.id}")
             
             # Save with transaction
             try:
@@ -94,9 +94,9 @@ def delete_min_stock(request):
             
             item = Item.objects.get(id=item_id)
             
-            # Clear minimum stock
-            item.minimum_stock = None
-            logger.info(f"Deleting minimum stock for item {item.id}")
+            # Set minimum stock to 0 instead of None to avoid NOT NULL constraint
+            item.minimum_stock = 0
+            logger.info(f"Setting minimum stock to 0 for item {item.id}")
             
             # Save with transaction
             try:
