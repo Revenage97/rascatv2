@@ -29,4 +29,5 @@ urlpatterns = [
     path('api/get-item/', views.get_item, name='get_item'),
     path('api/update-item/', views.update_item, name='update_item'),
     path('api/delete-item/', views.delete_item, name='delete_item'),
+    path('api/save-transfer/', views.save_transfer, name='save_transfer'),
 ]
