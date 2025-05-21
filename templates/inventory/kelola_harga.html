@@ -10,13 +10,15 @@
 <div class="container-fluid py-4">
     <h2 class="mb-4">Kelola Harga</h2>
     
-    <div class="row mb-4">
+    <div class="row mb-3">
         <div class="col-md-6">
             <form method="get" class="d-flex">
-                <input type="text" name="query" class="form-control me-2" placeholder="Cari barang..." value="{{ query }}">
-                <button type="submit" class="btn btn-outline-secondary">
-                    <i class="bi bi-search"></i> Cari
-                </button>
+                <div class="d-flex" style="max-width: 400px; width: 100%;">
+                    <input type="text" name="query" class="form-control form-control-sm me-2 py-1" placeholder="Cari barang..." value="{{ query }}" style="height: auto; font-size: 0.875rem;">
+                    <button type="submit" class="btn btn-sm btn-outline-secondary py-1 px-2" style="font-size: 0.875rem;">
+                        <i class="bi bi-search" style="font-size: 0.875rem;"></i> Cari
+                    </button>
+                </div>
             </form>
         </div>
         <div class="col-md-6 text-end">
@@ -43,12 +45,125 @@
     
     <div class="card">
         <div class="card-body">
-            <div class="text-center py-5">
-                <i class="bi bi-currency-dollar fs-1 text-muted mb-3"></i>
-                <h4 class="text-muted">Halaman Kelola Harga</h4>
-                <p class="text-muted">Halaman ini masih dalam pengembangan.</p>
+            <div class="table-responsive">
+                <table class="table table-bordered table-hover table-striped">
+                    <thead class="bg-light">
+                        <tr>
+                            <th class="text-center" style="width: 40px;">
+                                <div class="d-flex align-items-center justify-content-center">
+                                    <input class="form-check-input" type="checkbox" id="selectAll">
+                                </div>
+                            </th>
+                            <th>Kode Barang</th>
+                            <th style="min-width: 200px;">Nama Barang</th>
+                            <th style="min-width: 150px;">Kategori</th>
+                            <th class="text-center">Harga Saat Ini</th>
+                            <th class="text-center">Telegram</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for item in items %}
+                        <tr>
+                            <td class="text-center">
+                                <div class="form-check">
+                                    <input class="form-check-input item-checkbox" type="checkbox" value="{{ item.id }}" id="item{{ item.id }}">
+                                </div>
+                            </td>
+                            <td>{{ item.code }}</td>
+                            <td>{{ item.name }}</td>
+                            <td>{{ item.category }}</td>
+                            <td class="text-center">{{ item.price }}</td>
+                            <td class="text-center">
+                                <button type="button" class="btn btn-sm btn-info send-single-item" data-item-id="{{ item.id }}">
+                                    <i class="bi bi-telegram"></i>
+                                </button>
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="6" class="text-center">Tidak ada data barang</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
             </div>
         </div>
     </div>
 </div>
+
+<!-- Toast Notification -->
+<div class="position-fixed bottom-0 end-0 p-3" style="z-index: 11">
+    <div id="notificationToast" class="toast" role="alert" aria-live="assertive" aria-atomic="true">
+        <div class="toast-header">
+            <strong class="me-auto">Notifikasi</strong>
+            <button type="button" class="btn-close" data-bs-dismiss="toast" aria-label="Close"></button>
+        </div>
+        <div class="toast-body" id="toastMessage">
+            
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Get CSRF token
+        const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+        const sendToTelegramBtn = document.getElementById('sendToTelegramBtn');
+        const toastEl = document.getElementById('notificationToast');
+        const toast = new bootstrap.Toast(toastEl);
+        const toastMessage = document.getElementById('toastMessage');
+        
+        // Select All functionality
+        function setupSelectAll() {
+            const selectAllCheckbox = document.getElementById('selectAll');
+            if (!selectAllCheckbox) return;
+            
+            // Remove any existing event listeners by cloning and replacing
+            const newSelectAll = selectAllCheckbox.cloneNode(true);
+            selectAllCheckbox.parentNode.replaceChild(newSelectAll, selectAllCheckbox);
+            
+            // Add new event listener
+            newSelectAll.addEventListener('change', function() {
+                const isChecked = this.checked;
+                console.log('Select All clicked, setting all checkboxes to:', isChecked);
+                
+                const checkboxes = document.querySelectorAll('.item-checkbox');
+                checkboxes.forEach(function(checkbox) {
+                    checkbox.checked = isChecked;
+                });
+                
+                updateSendButtonState();
+            });
+        }
+        
+        // Setup select all on page load
+        setupSelectAll();
+        
+        // Individual checkbox change
+        document.addEventListener('change', function(e) {
+            if (e.target && e.target.classList.contains('item-checkbox')) {
+                updateSendButtonState();
+                
+                // Check if all checkboxes are checked and update selectAll accordingly
+                const allCheckboxes = document.querySelectorAll('.item-checkbox');
+                const checkedCheckboxes = document.querySelectorAll('.item-checkbox:checked');
+                const selectAllCheckbox = document.getElementById('selectAll');
+                
+                if (selectAllCheckbox) {
+                    selectAllCheckbox.checked = allCheckboxes.length === checkedCheckboxes.length;
+                }
+            }
+        });
+        
+        // Update send button state
+        function updateSendButtonState() {
+            const checkedItems = document.querySelectorAll('.item-checkbox:checked');
+            if (sendToTelegramBtn) {
+                sendToTelegramBtn.disabled = checkedItems.length === 0;
+            }
+        }
+    });
+</script>
 {% endblock %}
