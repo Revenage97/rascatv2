@@ -146,7 +146,7 @@ def send_exp_to_telegram(request):
             if not webhook_settings:
                 return JsonResponse({'status': 'error', 'message': 'Webhook settings not found'})
             
-            webhook_url = webhook_settings.webhook_kelola_stok
+            webhook_url = webhook_settings.webhook_data_exp_produk
             if not webhook_url:
                 return JsonResponse({'status': 'error', 'message': 'Webhook URL not configured'})
             
@@ -754,6 +754,19 @@ def webhook_settings(request):
             )
             
             messages.success(request, 'Webhook Transfer Stok berhasil disimpan', extra_tags='transfer_stok')
+        elif webhook_type == 'data_exp_produk':
+            webhook_url = request.POST.get('webhook_data_exp_produk', '')
+            settings_obj.webhook_data_exp_produk = webhook_url
+            settings_obj.save(update_fields=['webhook_data_exp_produk'])
+            
+            # Log activity
+            ActivityLog.objects.create(
+                user=request.user,
+                action='update_webhook_settings',
+                notes=f'Updated webhook settings for Data Exp Produk: {webhook_url}'
+            )
+            
+            messages.success(request, 'Webhook Data Exp Produk berhasil disimpan', extra_tags='data_exp_produk')
         else:
             form = WebhookSettingsForm(request.POST, instance=settings_obj)
             if form.is_valid():

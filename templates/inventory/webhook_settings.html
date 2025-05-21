@@ -36,7 +36,7 @@
                     </form>
                     
                     <!-- Transfer Stok Webhook Form -->
-                    <form method="post" action="{% url 'inventory:webhook_settings' %}?type=transfer_stok">
+                    <form method="post" action="{% url 'inventory:webhook_settings' %}?type=transfer_stok" class="mb-4">
                         {% csrf_token %}
                         <div class="mb-3">
                             <label for="{{ form.webhook_transfer_stok.id_for_label }}" class="form-label">URL Webhook Telegram - Transfer Stok</label>
@@ -50,6 +50,30 @@
                             {% if messages %}
                                 {% for message in messages %}
                                     {% if 'transfer_stok' in message.extra_tags %}
+                                        <div class="mt-2 {% if message.tags %}alert alert-{{ message.level_tag }}{% endif %} py-1 px-2 small">
+                                            {{ message }}
+                                        </div>
+                                    {% endif %}
+                                {% endfor %}
+                            {% endif %}
+                        </div>
+                    </form>
+                    
+                    <!-- Data Exp Produk Webhook Form -->
+                    <form method="post" action="{% url 'inventory:webhook_settings' %}?type=data_exp_produk">
+                        {% csrf_token %}
+                        <div class="mb-3">
+                            <label for="{{ form.webhook_data_exp_produk.id_for_label }}" class="form-label">URL Webhook Telegram - Data Exp Produk</label>
+                            <div class="input-group">
+                                {{ form.webhook_data_exp_produk }}
+                                <button type="submit" class="btn btn-primary">
+                                    <i class="bi bi-save"></i> Simpan
+                                </button>
+                            </div>
+                            <div class="form-text">Contoh: https://hooks.zapier.com/hooks/catch/...</div>
+                            {% if messages %}
+                                {% for message in messages %}
+                                    {% if 'data_exp_produk' in message.extra_tags %}
                                         <div class="mt-2 {% if message.tags %}alert alert-{{ message.level_tag }}{% endif %} py-1 px-2 small">
                                             {{ message }}
                                         </div>
