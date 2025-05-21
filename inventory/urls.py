@@ -56,11 +56,10 @@ urlpatterns = [
     path('api/reset-exp-data/', reset_exp_data, name='reset_exp_data'),
     path('api/reset-transfer-data/', reset_transfer_data, name='reset_transfer_data'),
     path('api/reset-all-items/', reset_all_items, name='reset_all_items'),
-    
-    # Save latest price endpoint
+       # API endpoints for latest price
     path('api/save-latest-price/', save_latest_price, name='save_latest_price'),
-    path('api/send-price-to-telegram/', send_price_to_telegram, name='send_price_to_telegram'),
-    
+    path('api/delete-latest-price/', save_latest_price, name='delete_latest_price'),  # Reusing same view with different param
+    path('api/send-price-to-telegram/', send_price_to_telegram, name='send_price_to_telegram'),   
     # Dashboard send to telegram endpoint
     path('api/send-to-telegram/', send_to_telegram, name='send_to_telegram'),
     

@@ -105,10 +105,17 @@
                             <td class="text-center">{{ item.selling_price|floatformat:"0" }}</td>
                             <td class="text-center">
                                 <div class="editable-field" data-item-id="{{ item.id }}">
-                                    <span class="editable-display">{{ item.latest_price|floatformat:"0"|default:"" }}</span>
-                                    <input type="number" class="form-control form-control-sm editable-input" 
-                                           style="display: none;" step="1" min="0"
-                                           value="{{ item.latest_price|floatformat:'0'|default:"" }}">
+                                    <div class="input-group input-group-sm">
+                                        <input type="number" class="form-control form-control-sm latest-price-input" 
+                                               step="1" min="0" data-item-id="{{ item.id }}"
+                                               value="{{ item.latest_price|floatformat:'0'|default:"" }}">
+                                        <button class="btn btn-outline-secondary save-latest-price" type="button" data-item-id="{{ item.id }}">
+                                            <i class="bi bi-save"></i>
+                                        </button>
+                                        <button class="btn btn-outline-danger delete-latest-price" type="button" data-item-id="{{ item.id }}">
+                                            <i class="bi bi-x"></i>
+                                        </button>
+                                    </div>
                                     <span class="saving-indicator text-info">
                                         <i class="bi bi-arrow-repeat spin"></i>
                                     </span>
@@ -226,144 +233,145 @@
             }
         }
 
-        // Inline editing for Harga Terbaru
-        const editableFields = document.querySelectorAll('.editable-field');
-        console.log('Found editable fields:', editableFields.length);
-        
-        editableFields.forEach(field => {
-            const display = field.querySelector('.editable-display');
-            const input = field.querySelector('.editable-input');
-            const savingIndicator = field.querySelector('.saving-indicator');
-            const itemId = field.dataset.itemId;
-            
-            console.log('Setting up editable field for item:', itemId);
-            
-            // Click on display to show input
-            display.addEventListener('click', function(e) {
-                console.log('Display clicked for item:', itemId);
-                display.style.display = 'none';
-                input.style.display = 'inline-block';
-                input.focus();
-                input.select(); // Select all text for easy editing
-                e.stopPropagation(); // Prevent event bubbling
-            });
-            
-            // Save on blur and Enter key
-            input.addEventListener('blur', function() {
-                console.log('Input blur for item:', itemId, 'value:', input.value);
-                saveLatestPrice(itemId, input.value, display, input, savingIndicator);
-            });
-            
-            input.addEventListener('keydown', function(e) {
-                if (e.key === 'Enter') {
-                    console.log('Enter key pressed for item:', itemId);
-                    e.preventDefault(); // Prevent form submission
-                    input.blur(); // Trigger blur event which saves
-                }
-                e.stopPropagation(); // Prevent event bubbling
-            });
-            
-            // Prevent clicks on input from bubbling to parent elements
-            input.addEventListener('click', function(e) {
-                e.stopPropagation();
+        // Save latest price functionality
+        const saveButtons = document.querySelectorAll('.save-latest-price');
+        saveButtons.forEach(button => {
+            button.addEventListener('click', function() {
+                const itemId = this.getAttribute('data-item-id');
+                const priceInput = document.querySelector(`.latest-price-input[data-item-id="${itemId}"]`);
+                const latestPrice = priceInput.value;
+                
+                // Disable button and show loading state
+                button.disabled = true;
+                const originalContent = button.innerHTML;
+                button.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>';
+                
+                // Make API call to save latest price
+                fetch('/api/save-latest-price/', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': csrfToken
+                    },
+                    body: JSON.stringify({
+                        item_id: itemId,
+                        latest_price: latestPrice
+                    })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    // Re-enable button and restore content
+                    button.disabled = false;
+                    button.innerHTML = originalContent;
+                    
+                    if (data.status === 'success') {
+                        // Show success message
+                        Swal.fire({
+                            icon: 'success',
+                            title: 'Berhasil',
+                            text: 'Harga terbaru berhasil disimpan',
+                            confirmButtonColor: '#3085d6',
+                            timer: 1500,
+                            showConfirmButton: false
+                        });
+                    } else {
+                        // Show error message
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'Gagal',
+                            text: data.message || 'Gagal menyimpan harga terbaru',
+                            confirmButtonColor: '#3085d6'
+                        });
+                    }
+                })
+                .catch(error => {
+                    // Re-enable button and restore content
+                    button.disabled = false;
+                    button.innerHTML = originalContent;
+                    
+                    console.error('Error saving latest price:', error);
+                    
+                    // Show error message
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Gagal',
+                        text: 'Terjadi kesalahan saat menyimpan harga terbaru',
+                        confirmButtonColor: '#3085d6'
+                    });
+                });
             });
         });
         
-        // Function to save latest price via AJAX
-        function saveLatestPrice(itemId, latestPrice, display, input, savingIndicator) {
-            console.log('Saving latest price for item:', itemId, 'value:', latestPrice);
-            
-            // Show loading indicator
-            input.disabled = true;
-            savingIndicator.style.display = 'inline-block';
-            
-            // Show loading toast
-            toastMessage.textContent = 'Menyimpan harga terbaru...';
-            toastEl.classList.remove('bg-success', 'bg-danger');
-            toastEl.classList.add('bg-info', 'text-white');
-            toast.show();
-            
-            // Ensure we have a valid number or empty string
-            let priceToSave = latestPrice;
-            if (latestPrice !== "") {
-                // Parse as integer to remove any decimal places
-                priceToSave = parseInt(latestPrice, 10);
-                if (isNaN(priceToSave)) {
-                    // If parsing fails, use original value
-                    priceToSave = latestPrice;
-                }
-            }
-            
-            // FIXED URL: Changed from /inventory/api/save-latest-price/ to /api/save-latest-price/
-            fetch('/api/save-latest-price/', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRFToken': csrfToken
-                },
-                body: JSON.stringify({
-                    item_id: itemId,
-                    latest_price: priceToSave
+        // Delete latest price functionality
+        const deleteButtons = document.querySelectorAll('.delete-latest-price');
+        deleteButtons.forEach(button => {
+            button.addEventListener('click', function() {
+                const itemId = this.getAttribute('data-item-id');
+                const priceInput = document.querySelector(`.latest-price-input[data-item-id="${itemId}"]`);
+                
+                // Disable button and show loading state
+                button.disabled = true;
+                const originalContent = button.innerHTML;
+                button.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>';
+                
+                // Make API call to delete latest price
+                fetch('/api/delete-latest-price/', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': csrfToken
+                    },
+                    body: JSON.stringify({
+                        item_id: itemId,
+                        latest_price: ''  // Empty string to clear the price
+                    })
                 })
-            })
-            .then(response => {
-                console.log('Response status:', response.status);
-                return response.json();
-            })
-            .then(data => {
-                console.log('Save response:', data);
-                
-                // Hide loading indicator
-                savingIndicator.style.display = 'none';
-                
-                if (data.status === 'success') {
-                    // Update display and hide input
-                    display.textContent = priceToSave ? priceToSave : '';
-                    display.style.display = 'inline-block';
-                    input.style.display = 'none';
+                .then(response => response.json())
+                .then(data => {
+                    // Re-enable button and restore content
+                    button.disabled = false;
+                    button.innerHTML = originalContent;
                     
-                    // Show success toast
-                    toastMessage.textContent = 'Harga terbaru berhasil disimpan';
-                    toastEl.classList.remove('bg-info', 'bg-danger');
-                    toastEl.classList.add('bg-success', 'text-white');
-                    toast.show();
-                } else {
-                    // Show error toast
-                    toastMessage.textContent = data.message || 'Gagal menyimpan harga terbaru';
-                    toastEl.classList.remove('bg-info', 'bg-success');
-                    toastEl.classList.add('bg-danger', 'text-white');
-                    toast.show();
+                    if (data.status === 'success') {
+                        // Clear input value
+                        priceInput.value = '';
+                        
+                        // Show success message
+                        Swal.fire({
+                            icon: 'success',
+                            title: 'Berhasil',
+                            text: 'Harga terbaru berhasil dihapus',
+                            confirmButtonColor: '#3085d6',
+                            timer: 1500,
+                            showConfirmButton: false
+                        });
+                    } else {
+                        // Show error message
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'Gagal',
+                            text: data.message || 'Gagal menghapus harga terbaru',
+                            confirmButtonColor: '#3085d6'
+                        });
+                    }
+                })
+                .catch(error => {
+                    // Re-enable button and restore content
+                    button.disabled = false;
+                    button.innerHTML = originalContent;
                     
-                    // Revert to previous value
-                    input.value = display.textContent;
-                    display.style.display = 'inline-block';
-                    input.style.display = 'none';
-                }
-                
-                // Re-enable input
-                input.disabled = false;
-            })
-            .catch(error => {
-                console.error('Error saving latest price:', error);
-                
-                // Hide loading indicator
-                savingIndicator.style.display = 'none';
-                
-                // Show error toast
-                toastMessage.textContent = 'Terjadi kesalahan saat menyimpan harga terbaru';
-                toastEl.classList.remove('bg-info', 'bg-success');
-                toastEl.classList.add('bg-danger', 'text-white');
-                toast.show();
-                
-                // Revert UI
-                input.value = display.textContent;
-                display.style.display = 'inline-block';
-                input.style.display = 'none';
-                
-                // Re-enable input
-                input.disabled = false;
+                    console.error('Error deleting latest price:', error);
+                    
+                    // Show error message
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Gagal',
+                        text: 'Terjadi kesalahan saat menghapus harga terbaru',
+                        confirmButtonColor: '#3085d6'
+                    });
+                });
             });
-        }
+        });
         
         // Send to Telegram button click handler
         if (sendToTelegramBtn) {

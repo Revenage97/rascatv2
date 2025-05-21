@@ -39,9 +39,9 @@ def save_latest_price(request):
                     logger.error(f"Invalid price format: {latest_price}")
                     return JsonResponse({'status': 'error', 'message': 'Invalid price format'})
             else:
-                # Clear latest price if empty
-                item.latest_price = None
-                logger.info(f"Clearing latest price for item {item.id}")
+                # Set latest price to 0 if empty to avoid NULL constraint issues
+                item.latest_price = 0
+                logger.info(f"Setting latest price to 0 for item {item.id}")
             
             # Save with transaction
             try:
