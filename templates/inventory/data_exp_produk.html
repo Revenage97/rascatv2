@@ -56,13 +56,13 @@
     
     /* Expiry warning states */
     .exp-warning {
-        background-color: #ffebee;
+        background-color: #ffcdd2; /* Light pink for < 6 months */
     }
     .exp-soon {
-        background-color: #fffacc;
+        background-color: #fff9c4; /* Light yellow for 6-12 months */
     }
     .exp-safe {
-        background-color: #e3ffe3;
+        background-color: #c8e6c9; /* Light green for > 12 months */
     }
     
     /* Bulk actions spacing */
@@ -145,6 +145,8 @@
                             {% if item.expiry_date and item.expiry_date|date:'Y-m-d' < today|date:'Y-m-d' %}
                                 class="exp-warning"
                             {% elif item.expiry_date and item.expiry_date|date:'Y-m-d' <= six_months_future|date:'Y-m-d' %}
+                                class="exp-warning"
+                            {% elif item.expiry_date and item.expiry_date|date:'Y-m-d' <= twelve_months_future|date:'Y-m-d' %}
                                 class="exp-soon"
                             {% elif item.expiry_date %}
                                 class="exp-safe"

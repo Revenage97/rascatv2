@@ -123,6 +123,9 @@ def data_exp_produk(request):
     """
     View for managing expired products
     """
+    from datetime import datetime, timedelta
+    from django.utils import timezone
+    
     query = request.GET.get('query', '')
     sort = request.GET.get('sort', '')
     
@@ -141,10 +144,22 @@ def data_exp_produk(request):
         items = items.order_by('name')
     elif sort == 'name_desc':
         items = items.order_by('-name')
+    elif sort == 'stock_asc':
+        items = items.order_by('current_stock')
+    elif sort == 'stock_desc':
+        items = items.order_by('-current_stock')
+    
+    # Calculate dates for expiry coloring
+    today = timezone.now().date()
+    six_months_future = today + timedelta(days=180)  # ~6 months
+    twelve_months_future = today + timedelta(days=365)  # ~12 months
     
     context = {
         'items': items,
         'query': query,
+        'today': today,
+        'six_months_future': six_months_future,
+        'twelve_months_future': twelve_months_future,
     }
     
     return render(request, 'inventory/data_exp_produk.html', context)
