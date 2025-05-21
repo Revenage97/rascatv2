@@ -514,9 +514,10 @@ def upload_file(request):
                 # Record upload history
                 UploadHistory.objects.create(
                     user=request.user,
-                    file_name=excel_file.name,
+                    filename=excel_file.name,
                     file_path=file_path,
-                    status='success'
+                    file_size=excel_file.size,
+                    success_count=df.shape[0]
                 )
                 
                 # Log activity
@@ -538,10 +539,10 @@ def upload_file(request):
                 # Record upload history with error
                 UploadHistory.objects.create(
                     user=request.user,
-                    file_name=excel_file.name if 'excel_file' in request.FILES else 'Unknown',
+                    filename=excel_file.name if 'excel_file' in request.FILES else 'Unknown',
                     file_path=file_path if 'file_path' in locals() else 'Unknown',
-                    status='failed',
-                    error_message=str(e)
+                    file_size=excel_file.size if 'excel_file' in request.FILES else 0,
+                    error_count=1
                 )
                 
                 # Log activity
@@ -565,98 +566,91 @@ def upload_file(request):
 @login_required
 def upload_transfer_file(request):
     if request.method == 'POST':
-        form = ExcelUploadForm(request.POST, request.FILES)
-        if form.is_valid():
-            try:
-                # Save the uploaded file
-                excel_file = request.FILES['excel_file']
-                file_path = os.path.join(settings.MEDIA_ROOT, 'uploads', excel_file.name)
-                os.makedirs(os.path.dirname(file_path), exist_ok=True)
-                
-                with open(file_path, 'wb+') as destination:
-                    for chunk in excel_file.chunks():
-                        destination.write(chunk)
-                
-                # Process the Excel file
-                df = pd.read_excel(file_path, engine='openpyxl')
-                
-                # Skip the first row (header) and second row (usually contains instructions)
-                df = df.iloc[2:]
-                
-                # Reset index after skipping rows
-                df = df.reset_index(drop=True)
-                
-                # Map DataFrame columns to model fields
-                with transaction.atomic():
-                    for _, row in df.iterrows():
-                        # Extract data from row
-                        code = str(row.iloc[0]).strip() if not pd.isna(row.iloc[0]) else None
-                        name = str(row.iloc[1]).strip() if not pd.isna(row.iloc[1]) else None
-                        current_stock = int(row.iloc[2]) if not pd.isna(row.iloc[2]) else 0
-                        
-                        # Skip rows with empty code or name
-                        if not code or not name:
-                            continue
-                        
-                        # Update or create item
-                        item, created = Item.objects.update_or_create(
-                            code=code,
-                            defaults={
-                                'name': name,
-                                'current_stock': current_stock,
-                            }
-                        )
-                
-                # Record upload history
-                UploadHistory.objects.create(
-                    user=request.user,
-                    file_name=excel_file.name,
-                    file_path=file_path,
-                    status='success'
-                )
-                
-                # Log activity
-                ActivityLog.objects.create(
-                    user=request.user,
-                    action='upload_transfer_file',
-                    status='success',
-                    notes=f'Uploaded transfer file: {excel_file.name}'
-                )
-                
-                messages.success(request, 'File transfer berhasil diupload dan data telah diperbarui.')
-                return redirect('inventory:transfer_stok')
-                
-            except Exception as e:
-                # Log error
-                logger.error(f"Error processing Excel file: {str(e)}")
-                logger.error(traceback.format_exc())
-                
-                # Record upload history with error
-                UploadHistory.objects.create(
-                    user=request.user,
-                    file_name=excel_file.name if 'excel_file' in request.FILES else 'Unknown',
-                    file_path=file_path if 'file_path' in locals() else 'Unknown',
-                    status='failed',
-                    error_message=str(e)
-                )
-                
-                # Log activity
-                ActivityLog.objects.create(
-                    user=request.user,
-                    action='upload_transfer_file',
-                    status='failed',
-                    notes=f'Failed to upload transfer file: {str(e)}'
-                )
-                
-                messages.error(request, f'Error: {str(e)}')
-    else:
-        form = ExcelUploadForm()
+        try:
+            # Save the uploaded file
+            excel_file = request.FILES['transfer_file']
+            file_path = os.path.join(settings.MEDIA_ROOT, 'uploads', excel_file.name)
+            os.makedirs(os.path.dirname(file_path), exist_ok=True)
+            
+            with open(file_path, 'wb+') as destination:
+                for chunk in excel_file.chunks():
+                    destination.write(chunk)
+            
+            # Process the Excel file
+            df = pd.read_excel(file_path, engine='openpyxl')
+            
+            # Skip the first row (header) and second row (usually contains instructions)
+            df = df.iloc[2:]
+            
+            # Reset index after skipping rows
+            df = df.reset_index(drop=True)
+            
+            # Map DataFrame columns to model fields
+            with transaction.atomic():
+                for _, row in df.iterrows():
+                    # Extract data from row
+                    code = str(row.iloc[0]).strip() if not pd.isna(row.iloc[0]) else None
+                    name = str(row.iloc[1]).strip() if not pd.isna(row.iloc[1]) else None
+                    current_stock = int(row.iloc[2]) if not pd.isna(row.iloc[2]) else 0
+                    
+                    # Skip rows with empty code or name
+                    if not code or not name:
+                        continue
+                    
+                    # Update or create item
+                    item, created = Item.objects.update_or_create(
+                        code=code,
+                        defaults={
+                            'name': name,
+                            'current_stock': current_stock,
+                        }
+                    )
+            
+            # Record upload history
+            UploadHistory.objects.create(
+                user=request.user,
+                filename=excel_file.name,
+                file_path=file_path,
+                file_size=excel_file.size,
+                success_count=df.shape[0]
+            )
+            
+            # Log activity
+            ActivityLog.objects.create(
+                user=request.user,
+                action='upload_transfer_file',
+                status='success',
+                notes=f'Uploaded transfer file: {excel_file.name}'
+            )
+            
+            messages.success(request, 'File transfer berhasil diupload dan data telah diperbarui.')
+            return redirect('inventory:transfer_stok')
+            
+        except Exception as e:
+            # Log error
+            logger.error(f"Error processing Excel file: {str(e)}")
+            logger.error(traceback.format_exc())
+            
+            # Record upload history with error
+            UploadHistory.objects.create(
+                user=request.user,
+                filename=excel_file.name if 'excel_file' in locals() else 'Unknown',
+                file_path=file_path if 'file_path' in locals() else 'Unknown',
+                file_size=excel_file.size if 'excel_file' in locals() else 0,
+                error_count=1
+            )
+            
+            # Log activity
+            ActivityLog.objects.create(
+                user=request.user,
+                action='upload_transfer_file',
+                status='failed',
+                notes=f'Failed to upload transfer file: {str(e)}'
+            )
+            
+            messages.error(request, f'Error: {str(e)}')
     
-    context = {
-        'form': form
-    }
-    
-    return render(request, 'inventory/upload_file.html', context)
+    return redirect('inventory:upload_file')
 
 @login_required
 def change_password(request):
@@ -701,25 +695,43 @@ def change_password(request):
     return render(request, 'inventory/change_password.html')
 
 @login_required
+def activity_logs(request):
+    logs = ActivityLog.objects.all().order_by('-timestamp')
+    
+    context = {
+        'logs': logs
+    }
+    
+    return render(request, 'inventory/activity_logs.html', context)
+
+@login_required
+@user_passes_test(is_admin)
 def webhook_settings(request):
-    # Get or create webhook settings
-    webhook_settings, created = WebhookSettings.objects.get_or_create(pk=1)
+    webhook_settings = WebhookSettings.objects.first()
+    
+    if not webhook_settings:
+        webhook_settings = WebhookSettings.objects.create()
     
     if request.method == 'POST':
         form = WebhookSettingsForm(request.POST, instance=webhook_settings)
         if form.is_valid():
-            form.save()
-            
-            # Log activity
-            ActivityLog.objects.create(
-                user=request.user,
-                action='update_webhook_settings',
-                status='success',
-                notes='Webhook settings updated'
-            )
-            
-            messages.success(request, 'Pengaturan webhook berhasil diperbarui')
-            return redirect('inventory:webhook_settings')
+            try:
+                webhook = form.save(commit=False)
+                webhook.updated_by = request.user
+                webhook.save()
+                
+                # Log activity
+                ActivityLog.objects.create(
+                    user=request.user,
+                    action='update_webhook_settings',
+                    status='success',
+                    notes='Webhook settings updated'
+                )
+                
+                messages.success(request, 'Webhook settings berhasil diperbarui')
+                return redirect('inventory:webhook_settings')
+            except Exception as e:
+                messages.error(request, f'Error: {str(e)}')
     else:
         form = WebhookSettingsForm(instance=webhook_settings)
     
@@ -730,26 +742,9 @@ def webhook_settings(request):
     
     return render(request, 'inventory/webhook_settings.html', context)
 
-@login_required
-def activity_logs(request):
-    logs = ActivityLog.objects.all().order_by('-timestamp')
-    
-    context = {
-        'logs': logs
-    }
-    
-    return render(request, 'inventory/activity_logs.html', context)
-
 def login_view(request):
-    # Redirect to dashboard if already logged in
     if request.user.is_authenticated:
-        return redirect('inventory:kelola_stok_barang')
-    
-    # Get the next parameter, but sanitize it to prevent redirect loops
-    next_url = request.GET.get('next', '')
-    # If next contains 'login' or is too long, reset it to prevent loops
-    if 'login' in next_url or len(next_url) > 100:
-        next_url = ''
+        return redirect('inventory:dashboard')
     
     if request.method == 'POST':
         form = LoginForm(request.POST)
@@ -769,25 +764,28 @@ def login_view(request):
                     notes='User logged in'
                 )
                 
-                # Redirect to next URL if it's safe, otherwise to kelola_stok_barang
-                if next_url and not 'login' in next_url and len(next_url) <= 100:
+                # Get next URL from query parameters
+                next_url = request.GET.get('next', '')
+                
+                # Sanitize next URL to prevent redirect loops
+                if next_url and len(next_url) <= 100 and 'login' not in next_url:
                     return redirect(next_url)
-                return redirect('inventory:kelola_stok_barang')
+                else:
+                    return redirect('inventory:kelola_stok_barang')
             else:
-                messages.error(request, 'Username atau password tidak valid')
+                messages.error(request, 'Username atau password salah')
     else:
         form = LoginForm()
     
     context = {
-        'form': form,
-        'next': next_url if next_url and not 'login' in next_url else ''
+        'form': form
     }
     
     return render(request, 'inventory/login.html', context)
 
 @login_required
 def logout_view(request):
-    # Log activity before logout
+    # Log activity
     ActivityLog.objects.create(
         user=request.user,
         action='logout',
@@ -798,357 +796,6 @@ def logout_view(request):
     logout(request)
     return redirect('inventory:login')
 
-# API endpoints
 @login_required
-@csrf_exempt
-def send_to_telegram(request):
-    if request.method == 'POST':
-        try:
-            data = json.loads(request.body)
-            item_id = data.get('item_id')
-            
-            if not item_id:
-                return JsonResponse({'status': 'error', 'message': 'Item ID is required'})
-            
-            # Get item
-            item = Item.objects.get(id=item_id)
-            
-            # Get webhook URL
-            webhook_settings = WebhookSettings.objects.first()
-            if not webhook_settings:
-                return JsonResponse({'status': 'error', 'message': 'Webhook settings not found'})
-            
-            webhook_url = webhook_settings.webhook_url
-            if not webhook_url:
-                return JsonResponse({'status': 'error', 'message': 'Webhook URL not configured'})
-            
-            # Prepare message
-            message = f"🔔 *Stok Menipis:*\n"
-            message += f"Kode: {item['code']}\n"
-            message += f"Nama: {item['name']}\n"
-            message += f"Kategori: {item['category']}\n"
-            message += f"Stok: {item['current_stock']}\n"
-            
-            if item['minimum_stock']:
-                message += f"Stok Minimum: {item['minimum_stock']}\n"
-            
-            # Send to webhook
-            import requests
-            response = requests.post(
-                webhook_url,
-                json={'text': message, 'parse_mode': 'Markdown'},
-                headers={'Content-Type': 'application/json'}
-            )
-            
-            if response.status_code == 200:
-                # Log activity
-                ActivityLog.objects.create(
-                    user=request.user,
-                    action='send_to_telegram',
-                    status='success',
-                    notes=f'Sent notification for {item["name"]} to Telegram'
-                )
-                
-                return JsonResponse({'status': 'success'})
-            else:
-                # Log activity
-                ActivityLog.objects.create(
-                    user=request.user,
-                    action='send_to_telegram',
-                    status='failed',
-                    notes=f'Failed to send notification for {item["name"]} to Telegram: {response.text}'
-                )
-                
-                return JsonResponse({'status': 'error', 'message': f'Failed to send notification: {response.text}'})
-            
-        except Item.DoesNotExist:
-            return JsonResponse({'status': 'error', 'message': 'Item not found'})
-        except Exception as e:
-            return JsonResponse({'status': 'error', 'message': str(e)})
-    
-    return JsonResponse({'status': 'error', 'message': 'Invalid request method'})
-
-@login_required
-@csrf_exempt
-def update_min_stock(request):
-    if request.method == 'POST':
-        try:
-            data = json.loads(request.body)
-            item_id = data.get('item_id')
-            min_stock = data.get('min_stock')
-            
-            if not item_id:
-                return JsonResponse({'status': 'error', 'message': 'Item ID is required'})
-            
-            # Get item
-            item = Item.objects.get(id=item_id)
-            
-            # Update minimum stock
-            item.minimum_stock = min_stock
-            item.save(update_fields=['minimum_stock'])
-            
-            # Log activity
-            ActivityLog.objects.create(
-                user=request.user,
-                action='update_min_stock',
-                status='success',
-                notes=f'Updated minimum stock for {item.name} to {min_stock}'
-            )
-            
-            return JsonResponse({'status': 'success'})
-            
-        except Item.DoesNotExist:
-            return JsonResponse({'status': 'error', 'message': 'Item not found'})
-        except Exception as e:
-            return JsonResponse({'status': 'error', 'message': str(e)})
-    
-    return JsonResponse({'status': 'error', 'message': 'Invalid request method'})
-
-@login_required
-@csrf_exempt
-def delete_min_stock(request):
-    if request.method == 'POST':
-        try:
-            data = json.loads(request.body)
-            item_id = data.get('item_id')
-            
-            if not item_id:
-                return JsonResponse({'status': 'error', 'message': 'Item ID is required'})
-            
-            # Get item
-            item = Item.objects.get(id=item_id)
-            
-            # Clear minimum stock
-            item.minimum_stock = None
-            item.save(update_fields=['minimum_stock'])
-            
-            # Log activity
-            ActivityLog.objects.create(
-                user=request.user,
-                action='delete_min_stock',
-                status='success',
-                notes=f'Removed minimum stock for {item.name}'
-            )
-            
-            return JsonResponse({'status': 'success'})
-            
-        except Item.DoesNotExist:
-            return JsonResponse({'status': 'error', 'message': 'Item not found'})
-        except Exception as e:
-            return JsonResponse({'status': 'error', 'message': str(e)})
-    
-    return JsonResponse({'status': 'error', 'message': 'Invalid request method'})
-
-@login_required
-@csrf_exempt
-def get_item(request):
-    if request.method == 'GET':
-        try:
-            item_id = request.GET.get('item_id')
-            
-            if not item_id:
-                return JsonResponse({'status': 'error', 'message': 'Item ID is required'})
-            
-            # Get item
-            item = Item.objects.get(id=item_id)
-            
-            # Convert to dict
-            item_dict = {
-                'id': item.id,
-                'code': item.code,
-                'name': item.name,
-                'category': item.category,
-                'current_stock': item.current_stock,
-                'selling_price': float(item.selling_price) if item.selling_price else 0,
-                'minimum_stock': item.minimum_stock
-            }
-            
-            return JsonResponse({'status': 'success', 'item': item_dict})
-            
-        except Item.DoesNotExist:
-            return JsonResponse({'status': 'error', 'message': 'Item not found'})
-        except Exception as e:
-            return JsonResponse({'status': 'error', 'message': str(e)})
-    
-    return JsonResponse({'status': 'error', 'message': 'Invalid request method'})
-
-@login_required
-@csrf_exempt
-def update_item(request):
-    if request.method == 'POST':
-        try:
-            data = json.loads(request.body)
-            item_id = data.get('item_id')
-            
-            if not item_id:
-                return JsonResponse({'status': 'error', 'message': 'Item ID is required'})
-            
-            # Get item
-            item = Item.objects.get(id=item_id)
-            
-            # Update fields
-            if 'code' in data:
-                item.code = data['code']
-            if 'name' in data:
-                item.name = data['name']
-            if 'category' in data:
-                item.category = data['category']
-            if 'current_stock' in data:
-                item.current_stock = data['current_stock']
-            if 'selling_price' in data:
-                item.selling_price = data['selling_price']
-            if 'minimum_stock' in data:
-                item.minimum_stock = data['minimum_stock']
-            
-            item.save()
-            
-            # Log activity
-            ActivityLog.objects.create(
-                user=request.user,
-                action='update_item',
-                status='success',
-                notes=f'Updated item: {item.name}'
-            )
-            
-            return JsonResponse({'status': 'success'})
-            
-        except Item.DoesNotExist:
-            return JsonResponse({'status': 'error', 'message': 'Item not found'})
-        except json.JSONDecodeError:
-            return JsonResponse({'status': 'error', 'message': 'Invalid JSON data'})
-        except Exception as e:
-            return JsonResponse({'status': 'error', 'message': str(e)})
-    
-    return JsonResponse({'status': 'error', 'message': 'Invalid request method'})
-
-@login_required
-@csrf_exempt
-def delete_item(request):
-    if request.method == 'POST':
-        try:
-            data = json.loads(request.body)
-            item_id = data.get('item_id')
-            
-            if not item_id:
-                return JsonResponse({'status': 'error', 'message': 'Item ID is required'})
-            
-            # Get item
-            item = Item.objects.get(id=item_id)
-            item_name = item.name
-            
-            # Delete item
-            item.delete()
-            
-            # Log activity
-            ActivityLog.objects.create(
-                user=request.user,
-                action='delete_item',
-                notes=f'Deleted item: {item_name}'
-            )
-            
-            return JsonResponse({'status': 'success'})
-            
-        except Item.DoesNotExist:
-            return JsonResponse({'status': 'error', 'message': 'Item not found'})
-        except Exception as e:
-            return JsonResponse({'status': 'error', 'message': str(e)})
-    
-    return JsonResponse({'status': 'error', 'message': 'Invalid request method'})
-
-@login_required
-@csrf_exempt
-def save_transfer(request):
-    """
-    View for saving transfer data (asal and tujuan)
-    """
-    if request.method == 'POST':
-        try:
-            logger.info("Processing save_transfer request")
-            data = json.loads(request.body)
-            
-            asal = data.get('asal')
-            tujuan = data.get('tujuan')
-            
-            if not asal or not tujuan:
-                logger.error("Missing asal or tujuan in save_transfer request")
-                return JsonResponse({'status': 'error', 'message': 'Asal and tujuan are required'})
-            
-            if asal == tujuan:
-                logger.error("Asal and tujuan are the same in save_transfer request")
-                return JsonResponse({'status': 'error', 'message': 'Asal and tujuan cannot be the same'})
-            
-            # Log the transfer request
-            logger.info(f"Transfer request from {asal} to {tujuan}")
-            
-            # Log activity
-            ActivityLog.objects.create(
-                user=request.user,
-                action='save_transfer',
-                status='success',
-                notes=f'Transfer from {asal} to {tujuan}'
-            )
-            
-            return JsonResponse({'status': 'success'})
-            
-        except json.JSONDecodeError:
-            logger.error("Invalid JSON in save_transfer request")
-            return JsonResponse({'status': 'error', 'message': 'Invalid JSON data'})
-        except Exception as e:
-            logger.error(f"Error in save_transfer view: {str(e)}")
-            logger.error(traceback.format_exc())
-            return JsonResponse({'status': 'error', 'message': str(e)})
-    
-    return JsonResponse({'status': 'error', 'message': 'Invalid request method'})
-
-@login_required
-@user_passes_test(is_admin)
-@csrf_exempt
-def reset_all_items(request):
-    """
-    View for deleting all items from the database that are used in Kelola Stok Barang
-    Only accessible by admin users
-    """
-    if request.method == 'POST':
-        try:
-            # Get all items that don't have expiry_date set (Kelola Stok Barang items)
-            # This ensures we don't delete items used in Data Exp Produk
-            items_to_delete = Item.objects.filter(
-                Q(expiry_date__isnull=True) | 
-                Q(expiry_date='')
-            )
-            
-            # Count items before deletion for logging
-            item_count = items_to_delete.count()
-            
-            # Delete only Kelola Stok Barang items
-            items_to_delete.delete()
-            
-            # Log activity
-            ActivityLog.objects.create(
-                user=request.user,
-                action='reset_kelola_stok_items',
-                status='success',
-                notes=f'Reset Kelola Stok Barang data ({item_count} items deleted)'
-            )
-            
-            return JsonResponse({
-                'status': 'success', 
-                'message': f'Successfully deleted {item_count} items from Kelola Stok Barang',
-                'count': item_count
-            })
-            
-        except Exception as e:
-            logger.error(f"Error in reset_all_items view: {str(e)}")
-            logger.error(traceback.format_exc())
-            
-            # Log activity
-            ActivityLog.objects.create(
-                user=request.user,
-                action='reset_kelola_stok_items',
-                status='failed',
-                notes=f'Failed to reset Kelola Stok Barang items: {str(e)}'
-            )
-            
-            return JsonResponse({'status': 'error', 'message': str(e)})
-    
-    return JsonResponse({'status': 'error', 'message': 'Invalid request method'})
+def backup_history(request):
+    return render(request, 'inventory/backup_history.html')
