@@ -327,6 +327,15 @@
                 return;
             }
             
+            // Get asal and tujuan from localStorage
+            const asal = localStorage.getItem('transferStok_asal') ? 
+                document.getElementById('asalSelect').options[document.getElementById('asalSelect').selectedIndex].text : 
+                'Tidak Ditentukan';
+            
+            const tujuan = localStorage.getItem('transferStok_tujuan') ? 
+                document.getElementById('tujuanSelect').options[document.getElementById('tujuanSelect').selectedIndex].text : 
+                'Tidak Ditentukan';
+            
             // Show loading
             Swal.fire({
                 title: 'Mengirim notifikasi...',
@@ -345,7 +354,9 @@
                     'X-CSRFToken': csrfToken
                 },
                 body: JSON.stringify({
-                    item_ids: itemIds
+                    item_ids: itemIds,
+                    asal: asal,
+                    tujuan: tujuan
                 })
             })
             .then(response => response.json())
