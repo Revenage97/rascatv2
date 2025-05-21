@@ -328,8 +328,8 @@
                 const originalContent = button.innerHTML;
                 button.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>';
                 
-                // Send API request
-                fetch('/api/update-min-stock-disabled/', {
+                // Send API request - FIXED URL from -disabled to active endpoint
+                fetch('/api/update-min-stock/', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
@@ -340,14 +340,28 @@
                         min_stock: minStock
                     })
                 })
-                .then(response => {
+                .then(response => response.json())
+                .then(data => {
                     // Re-enable button and restore content
                     button.disabled = false;
                     button.innerHTML = originalContent;
                     
-                    // Show notification
-                    toastMessage.textContent = 'Fitur update stok minimum dinonaktifkan';
-                    toast.show();
+                    if (data.status === 'success') {
+                        // Show success notification
+                        toastMessage.textContent = data.message || 'Stok minimum berhasil disimpan';
+                        toast.show();
+                        
+                        // Reset button style
+                        button.classList.remove('btn-primary');
+                        button.classList.add('btn-outline-secondary');
+                        
+                        // Update row styling if needed
+                        checkLowStock();
+                    } else {
+                        // Show error notification
+                        toastMessage.textContent = data.message || 'Gagal menyimpan stok minimum';
+                        toast.show();
+                    }
                 })
                 .catch(error => {
                     // Re-enable button and restore content
@@ -375,8 +389,8 @@
                 const originalContent = button.innerHTML;
                 button.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>';
                 
-                // Send API request
-                fetch('/api/delete-min-stock-disabled/', {
+                // Send API request - FIXED URL from -disabled to active endpoint
+                fetch('/api/delete-min-stock/', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
@@ -386,207 +400,39 @@
                         item_id: itemId
                     })
                 })
-                .then(response => {
+                .then(response => response.json())
+                .then(data => {
                     // Re-enable button and restore content
                     button.disabled = false;
                     button.innerHTML = originalContent;
                     
-                    // Clear input value
-                    input.value = '';
-                    
-                    // Show notification
-                    toastMessage.textContent = 'Fitur hapus stok minimum dinonaktifkan';
-                    toast.show();
-                })
-                .catch(error => {
-                    // Re-enable button and restore content
-                    button.disabled = false;
-                    button.innerHTML = originalContent;
-                    
-                    // Show error notification
-                    toastMessage.textContent = 'Terjadi kesalahan: ' + error.message;
-                    toast.show();
-                });
-            }
-        });
-        
-        // Edit Item button click handler
-        document.addEventListener('click', function(e) {
-            if (e.target && e.target.classList.contains('edit-item') || 
-                (e.target.parentElement && e.target.parentElement.classList.contains('edit-item'))) {
-                
-                const button = e.target.classList.contains('edit-item') ? e.target : e.target.parentElement;
-                const itemId = button.getAttribute('data-item-id');
-                
-                // Show loading state
-                button.disabled = true;
-                const originalContent = button.innerHTML;
-                button.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>';
-                
-                // Get item data
-                fetch('/api/get-item-disabled/', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRFToken': csrfToken
-                    },
-                    body: JSON.stringify({
-                        item_id: itemId
-                    })
-                })
-                .then(response => {
-                    // Re-enable button and restore content
-                    button.disabled = false;
-                    button.innerHTML = originalContent;
-                    
-                    // Show notification
-                    toastMessage.textContent = 'Fitur edit item dinonaktifkan';
-                    toast.show();
-                })
-                .catch(error => {
-                    // Re-enable button and restore content
-                    button.disabled = false;
-                    button.innerHTML = originalContent;
-                    
-                    // Show error notification
-                    toastMessage.textContent = 'Terjadi kesalahan: ' + error.message;
-                    toast.show();
-                });
-            }
-        });
-        
-        // Delete Item button click handler
-        document.addEventListener('click', function(e) {
-            if (e.target && e.target.classList.contains('delete-item') || 
-                (e.target.parentElement && e.target.parentElement.classList.contains('delete-item'))) {
-                
-                const button = e.target.classList.contains('delete-item') ? e.target : e.target.parentElement;
-                const itemId = button.getAttribute('data-item-id');
-                
-                // Show confirmation dialog
-                Swal.fire({
-                    title: 'Konfirmasi',
-                    text: 'Apakah Anda yakin ingin menghapus item ini?',
-                    icon: 'warning',
-                    showCancelButton: true,
-                    confirmButtonColor: '#d33',
-                    cancelButtonColor: '#3085d6',
-                    confirmButtonText: 'Ya, hapus',
-                    cancelButtonText: 'Batal'
-                }).then((result) => {
-                    if (result.isConfirmed) {
-                        // Show loading state
-                        button.disabled = true;
-                        const originalContent = button.innerHTML;
-                        button.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>';
+                    if (data.status === 'success') {
+                        // Clear input value
+                        input.value = '';
                         
-                        // Send API request
-                        fetch('/api/delete-item-disabled/', {
-                            method: 'POST',
-                            headers: {
-                                'Content-Type': 'application/json',
-                                'X-CSRFToken': csrfToken
-                            },
-                            body: JSON.stringify({
-                                item_id: itemId
-                            })
-                        })
-                        .then(response => {
-                            // Re-enable button and restore content
-                            button.disabled = false;
-                            button.innerHTML = originalContent;
-                            
-                            // Show notification
-                            toastMessage.textContent = 'Fitur hapus item dinonaktifkan';
-                            toast.show();
-                        })
-                        .catch(error => {
-                            // Re-enable button and restore content
-                            button.disabled = false;
-                            button.innerHTML = originalContent;
-                            
-                            // Show error notification
-                            toastMessage.textContent = 'Terjadi kesalahan: ' + error.message;
-                            toast.show();
-                        });
+                        // Show success notification
+                        toastMessage.textContent = data.message || 'Stok minimum berhasil dihapus';
+                        toast.show();
+                        
+                        // Update row styling if needed
+                        checkLowStock();
+                    } else {
+                        // Show error notification
+                        toastMessage.textContent = data.message || 'Gagal menghapus stok minimum';
+                        toast.show();
                     }
-                });
-            }
-        });
-        
-        // Save Item Changes button click handler
-        const saveItemChangesBtn = document.getElementById('saveItemChanges');
-        if (saveItemChangesBtn) {
-            saveItemChangesBtn.addEventListener('click', function() {
-                const itemId = document.getElementById('editItemId').value;
-                const code = document.getElementById('editCode').value;
-                const name = document.getElementById('editName').value;
-                const category = document.getElementById('editCategory').value;
-                const stock = document.getElementById('editStock').value;
-                const price = document.getElementById('editPrice').value;
-                const minStock = document.getElementById('editMinStock').value;
-                
-                // Validate input
-                if (!code || !name || !category || !stock || !price) {
-                    Swal.fire({
-                        icon: 'error',
-                        title: 'Error',
-                        text: 'Semua field harus diisi',
-                        confirmButtonColor: '#3085d6'
-                    });
-                    return;
-                }
-                
-                // Show loading state
-                saveItemChangesBtn.disabled = true;
-                const originalContent = saveItemChangesBtn.innerHTML;
-                saveItemChangesBtn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Menyimpan...';
-                
-                // Send API request
-                fetch('/api/update-item-disabled/', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRFToken': csrfToken
-                    },
-                    body: JSON.stringify({
-                        item_id: itemId,
-                        code: code,
-                        name: name,
-                        category: category,
-                        current_stock: stock,
-                        selling_price: price,
-                        minimum_stock: minStock
-                    })
-                })
-                .then(response => {
-                    // Re-enable button and restore content
-                    saveItemChangesBtn.disabled = false;
-                    saveItemChangesBtn.innerHTML = originalContent;
-                    
-                    // Close modal
-                    const editItemModal = bootstrap.Modal.getInstance(document.getElementById('editItemModal'));
-                    editItemModal.hide();
-                    
-                    // Show notification
-                    toastMessage.textContent = 'Fitur update item dinonaktifkan';
-                    toast.show();
                 })
                 .catch(error => {
                     // Re-enable button and restore content
-                    saveItemChangesBtn.disabled = false;
-                    saveItemChangesBtn.innerHTML = originalContent;
+                    button.disabled = false;
+                    button.innerHTML = originalContent;
                     
                     // Show error notification
-                    Swal.fire({
-                        icon: 'error',
-                        title: 'Error',
-                        text: 'Terjadi kesalahan: ' + error.message,
-                        confirmButtonColor: '#3085d6'
-                    });
+                    toastMessage.textContent = 'Terjadi kesalahan: ' + error.message;
+                    toast.show();
                 });
-            });
-        }
+            }
+        });
         
         // Send to Telegram button click handler
         if (sendToTelegramBtn) {
@@ -598,13 +444,13 @@
                     return;
                 }
                 
-                // Show loading state
+                // Disable button and show loading state
                 sendToTelegramBtn.disabled = true;
                 const originalContent = sendToTelegramBtn.innerHTML;
                 sendToTelegramBtn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Mengirim...';
                 
                 // Send API request
-                fetch('/api/send-to-telegram-disabled/', {
+                fetch('/api/send-to-telegram/', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
@@ -614,24 +460,36 @@
                         item_ids: itemIds
                     })
                 })
-                .then(response => {
+                .then(response => response.json())
+                .then(data => {
                     // Re-enable button and restore content
-                    sendToTelegramBtn.disabled = true; // Keep disabled until new selection
+                    sendToTelegramBtn.disabled = false;
                     sendToTelegramBtn.innerHTML = originalContent;
                     
-                    // Uncheck all checkboxes
-                    const selectAllCheckbox = document.getElementById('selectAll');
-                    if (selectAllCheckbox) {
-                        selectAllCheckbox.checked = false;
+                    if (data.status === 'success' || data.status === 'partial') {
+                        // Show success notification
+                        Swal.fire({
+                            icon: 'success',
+                            title: 'Berhasil',
+                            text: data.message,
+                            confirmButtonColor: '#3085d6'
+                        });
+                        
+                        // Uncheck all checkboxes
+                        document.querySelectorAll('.item-checkbox:checked').forEach(function(checkbox) {
+                            checkbox.checked = false;
+                        });
+                        document.getElementById('selectAll').checked = false;
+                        updateSendButtonState();
+                    } else {
+                        // Show error notification
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'Error',
+                            text: data.message || 'Gagal mengirim data ke Telegram',
+                            confirmButtonColor: '#3085d6'
+                        });
                     }
-                    
-                    checkedItems.forEach(function(checkbox) {
-                        checkbox.checked = false;
-                    });
-                    
-                    // Show notification
-                    toastMessage.textContent = 'Fitur kirim ke Telegram dinonaktifkan';
-                    toast.show();
                 })
                 .catch(error => {
                     // Re-enable button and restore content
@@ -639,13 +497,17 @@
                     sendToTelegramBtn.innerHTML = originalContent;
                     
                     // Show error notification
-                    toastMessage.textContent = 'Terjadi kesalahan: ' + error.message;
-                    toast.show();
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Error',
+                        text: 'Terjadi kesalahan saat menghubungi server: ' + error.message,
+                        confirmButtonColor: '#3085d6'
+                    });
                 });
             });
         }
         
-        // Send Single Item to Telegram button click handler
+        // Send single item to Telegram
         document.addEventListener('click', function(e) {
             if (e.target && e.target.classList.contains('send-single-item') || 
                 (e.target.parentElement && e.target.parentElement.classList.contains('send-single-item'))) {
@@ -653,13 +515,13 @@
                 const button = e.target.classList.contains('send-single-item') ? e.target : e.target.parentElement;
                 const itemId = button.getAttribute('data-item-id');
                 
-                // Show loading state
+                // Disable button and show loading state
                 button.disabled = true;
                 const originalContent = button.innerHTML;
                 button.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>';
                 
                 // Send API request
-                fetch('/api/send-to-telegram-disabled/', {
+                fetch('/api/send-to-telegram/', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
@@ -669,14 +531,21 @@
                         item_ids: [itemId]
                     })
                 })
-                .then(response => {
+                .then(response => response.json())
+                .then(data => {
                     // Re-enable button and restore content
                     button.disabled = false;
                     button.innerHTML = originalContent;
                     
-                    // Show notification
-                    toastMessage.textContent = 'Fitur kirim ke Telegram dinonaktifkan';
-                    toast.show();
+                    if (data.status === 'success') {
+                        // Show success notification
+                        toastMessage.textContent = 'Data berhasil dikirim ke Telegram';
+                        toast.show();
+                    } else {
+                        // Show error notification
+                        toastMessage.textContent = data.message || 'Gagal mengirim data ke Telegram';
+                        toast.show();
+                    }
                 })
                 .catch(error => {
                     // Re-enable button and restore content
@@ -689,6 +558,43 @@
                 });
             }
         });
+        
+        // Function to check for items below minimum stock
+        function checkLowStock() {
+            const rows = document.querySelectorAll('tbody tr');
+            let lowStockCount = 0;
+            
+            rows.forEach(function(row) {
+                const currentStockCell = row.querySelector('td:nth-child(5)');
+                const minStockInput = row.querySelector('.min-stock-input');
+                
+                if (currentStockCell && minStockInput) {
+                    const currentStock = parseInt(currentStockCell.textContent, 10);
+                    const minStock = parseInt(minStockInput.value, 10) || 0;
+                    
+                    if (!isNaN(currentStock) && !isNaN(minStock) && minStock > 0 && currentStock < minStock) {
+                        row.classList.add('table-danger');
+                        lowStockCount++;
+                    } else {
+                        row.classList.remove('table-danger');
+                    }
+                }
+            });
+            
+            // Update low stock badge if exists
+            const lowStockBadge = document.getElementById('lowStockBadge');
+            if (lowStockBadge) {
+                if (lowStockCount > 0) {
+                    lowStockBadge.textContent = lowStockCount;
+                    lowStockBadge.style.display = 'inline-block';
+                } else {
+                    lowStockBadge.style.display = 'none';
+                }
+            }
+        }
+        
+        // Run on page load
+        checkLowStock();
     });
 </script>
 {% endblock %}

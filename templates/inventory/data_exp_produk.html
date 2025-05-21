@@ -335,7 +335,7 @@
                 const expiryDate = dateInput.value;
                 
                 // Make API call to save expiry date
-                fetch('/inventory/api/save-expiry-date/', {
+                fetch('/api/save-expiry-date/', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
@@ -446,7 +446,7 @@
             telegramModal.hide();
             
             // Make API call to send to Telegram
-            fetch('/inventory/api/send-expiry-to-telegram/', {
+            fetch('/api/send-exp-to-telegram/', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
