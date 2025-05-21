@@ -19,6 +19,7 @@ urlpatterns = [
     path('data-exp-produk/', views.data_exp_produk, name='data_exp_produk'),
     path('upload/', views.upload_file, name='upload_file'),
     path('upload-transfer/', views.upload_transfer_file, name='upload_transfer_file'),
+    path('upload-exp-produk/', views.upload_exp_produk_file, name='upload_exp_produk_file'),
     path('change-password/', views.change_password, name='change_password'),
     path('webhook-settings/', views.webhook_settings, name='webhook_settings'),
     path('kelola-pengguna/', views.kelola_pengguna, name='kelola_pengguna'),

@@ -8,18 +8,23 @@ from django.shortcuts import render, redirect, get_object_or_404
 from django.views.decorators.csrf import csrf_exempt
 from django.conf import settings
 from django.db import transaction, models
+from django.db.models import Q
 from django.utils import timezone
 import json
 import pandas as pd
 import os
 import logging
 import traceback
-from datetime import datetime
+from datetime import datetime, timedelta
+from dateutil.relativedelta import relativedelta
 from .models import Item, WebhookSettings, ActivityLog, UploadHistory, UserProfile
 from .forms import ExcelUploadForm, WebhookSettingsForm, LoginForm, UserRegistrationForm, UserEditForm
 
 # Configure logging
 logger = logging.getLogger(__name__)
+
+# Import upload_exp_produk_file view
+from .views_upload_exp_produk import upload_exp_produk_file
 
 # Existing views
 @login_required
@@ -1091,28 +1096,35 @@ def save_transfer(request):
 @csrf_exempt
 def reset_all_items(request):
     """
-    View for deleting all items from the database
+    View for deleting all items from the database that are used in Kelola Stok Barang
     Only accessible by admin users
     """
     if request.method == 'POST':
         try:
-            # Count items before deletion for logging
-            item_count = Item.objects.count()
+            # Get all items that don't have expiry_date set (Kelola Stok Barang items)
+            # This ensures we don't delete items used in Data Exp Produk
+            items_to_delete = Item.objects.filter(
+                Q(expiry_date__isnull=True) | 
+                Q(expiry_date='')
+            )
             
-            # Delete all items
-            Item.objects.all().delete()
+            # Count items before deletion for logging
+            item_count = items_to_delete.count()
+            
+            # Delete only Kelola Stok Barang items
+            items_to_delete.delete()
             
             # Log activity
             ActivityLog.objects.create(
                 user=request.user,
-                action='reset_all_items',
+                action='reset_kelola_stok_items',
                 status='success',
-                notes=f'Reset all items data ({item_count} items deleted)'
+                notes=f'Reset Kelola Stok Barang data ({item_count} items deleted)'
             )
             
             return JsonResponse({
                 'status': 'success', 
-                'message': f'Successfully deleted all {item_count} items',
+                'message': f'Successfully deleted {item_count} items from Kelola Stok Barang',
                 'count': item_count
             })
             
@@ -1123,9 +1135,9 @@ def reset_all_items(request):
             # Log activity
             ActivityLog.objects.create(
                 user=request.user,
-                action='reset_all_items',
+                action='reset_kelola_stok_items',
                 status='failed',
-                notes=f'Failed to reset all items: {str(e)}'
+                notes=f'Failed to reset Kelola Stok Barang items: {str(e)}'
             )
             
             return JsonResponse({'status': 'error', 'message': str(e)})
