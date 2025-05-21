@@ -7,6 +7,13 @@
 <style>
     .editable-field {
         cursor: pointer;
+        position: relative;
+    }
+    .editable-display {
+        display: inline-block;
+        min-height: 24px;
+        min-width: 60px;
+        padding: 2px 5px;
     }
     .editable-display:hover {
         background-color: #f8f9fa;
@@ -17,6 +24,12 @@
         width: 40px !important;
         min-width: 40px !important;
         max-width: 40px !important;
+    }
+    .saving-indicator {
+        position: absolute;
+        top: 0;
+        right: -20px;
+        display: none;
     }
 </style>
 {% endblock %}
@@ -95,7 +108,10 @@
                                     <span class="editable-display">{{ item.latest_price|floatformat:"0"|default:"" }}</span>
                                     <input type="number" class="form-control form-control-sm editable-input" 
                                            style="display: none;" step="1" min="0"
-                                           value="{{ item.latest_price|default:"" }}">
+                                           value="{{ item.latest_price|floatformat:'0'|default:"" }}">
+                                    <span class="saving-indicator text-info">
+                                        <i class="bi bi-arrow-repeat spin"></i>
+                                    </span>
                                 </div>
                             </td>
                             <td class="text-center">
@@ -146,6 +162,19 @@
         const toastEl = document.getElementById('notificationToast');
         const toast = new bootstrap.Toast(toastEl);
         const toastMessage = document.getElementById('toastMessage');
+        
+        // Add spin animation for loading indicator
+        const style = document.createElement('style');
+        style.textContent = `
+            @keyframes spin {
+                0% { transform: rotate(0deg); }
+                100% { transform: rotate(360deg); }
+            }
+            .spin {
+                animation: spin 1s linear infinite;
+            }
+        `;
+        document.head.appendChild(style);
         
         // Select All functionality
         function setupSelectAll() {
@@ -204,6 +233,7 @@
         editableFields.forEach(field => {
             const display = field.querySelector('.editable-display');
             const input = field.querySelector('.editable-input');
+            const savingIndicator = field.querySelector('.saving-indicator');
             const itemId = field.dataset.itemId;
             
             console.log('Setting up editable field for item:', itemId);
@@ -214,40 +244,55 @@
                 display.style.display = 'none';
                 input.style.display = 'inline-block';
                 input.focus();
+                input.select(); // Select all text for easy editing
                 e.stopPropagation(); // Prevent event bubbling
             });
             
             // Save on blur and Enter key
             input.addEventListener('blur', function() {
                 console.log('Input blur for item:', itemId, 'value:', input.value);
-                saveLatestPrice(itemId, input.value);
+                saveLatestPrice(itemId, input.value, display, input, savingIndicator);
             });
             
             input.addEventListener('keydown', function(e) {
                 if (e.key === 'Enter') {
                     console.log('Enter key pressed for item:', itemId);
+                    e.preventDefault(); // Prevent form submission
                     input.blur(); // Trigger blur event which saves
                 }
+                e.stopPropagation(); // Prevent event bubbling
+            });
+            
+            // Prevent clicks on input from bubbling to parent elements
+            input.addEventListener('click', function(e) {
+                e.stopPropagation();
             });
         });
         
         // Function to save latest price via AJAX
-        function saveLatestPrice(itemId, latestPrice) {
+        function saveLatestPrice(itemId, latestPrice, display, input, savingIndicator) {
             console.log('Saving latest price for item:', itemId, 'value:', latestPrice);
             
             // Show loading indicator
-            const field = document.querySelector(`.editable-field[data-item-id="${itemId}"]`);
-            const display = field.querySelector('.editable-display');
-            const input = field.querySelector('.editable-input');
-            
-            // Temporarily disable input
             input.disabled = true;
+            savingIndicator.style.display = 'inline-block';
             
             // Show loading toast
             toastMessage.textContent = 'Menyimpan harga terbaru...';
             toastEl.classList.remove('bg-success', 'bg-danger');
             toastEl.classList.add('bg-info', 'text-white');
             toast.show();
+            
+            // Ensure we have a valid number or empty string
+            let priceToSave = latestPrice;
+            if (latestPrice !== "") {
+                // Parse as integer to remove any decimal places
+                priceToSave = parseInt(latestPrice, 10);
+                if (isNaN(priceToSave)) {
+                    // If parsing fails, use original value
+                    priceToSave = latestPrice;
+                }
+            }
             
             fetch('/inventory/api/save-latest-price/', {
                 method: 'POST',
@@ -257,7 +302,7 @@
                 },
                 body: JSON.stringify({
                     item_id: itemId,
-                    latest_price: latestPrice
+                    latest_price: priceToSave
                 })
             })
             .then(response => {
@@ -267,10 +312,13 @@
             .then(data => {
                 console.log('Save response:', data);
                 
+                // Hide loading indicator
+                savingIndicator.style.display = 'none';
+                
                 if (data.status === 'success') {
                     // Update display and hide input
-                    display.textContent = latestPrice ? Math.round(latestPrice) : '';
-                    display.style.display = 'inline';
+                    display.textContent = priceToSave ? priceToSave : '';
+                    display.style.display = 'inline-block';
                     input.style.display = 'none';
                     
                     // Show success toast
@@ -287,7 +335,7 @@
                     
                     // Revert to previous value
                     input.value = display.textContent;
-                    display.style.display = 'inline';
+                    display.style.display = 'inline-block';
                     input.style.display = 'none';
                 }
                 
@@ -297,6 +345,9 @@
             .catch(error => {
                 console.error('Error saving latest price:', error);
                 
+                // Hide loading indicator
+                savingIndicator.style.display = 'none';
+                
                 // Show error toast
                 toastMessage.textContent = 'Terjadi kesalahan saat menyimpan harga terbaru';
                 toastEl.classList.remove('bg-info', 'bg-success');
@@ -305,7 +356,7 @@
                 
                 // Revert UI
                 input.value = display.textContent;
-                display.style.display = 'inline';
+                display.style.display = 'inline-block';
                 input.style.display = 'none';
                 
                 // Re-enable input
@@ -384,15 +435,11 @@
             });
         }
         
-        // Individual send to Telegram buttons
-        document.addEventListener('click', function(e) {
-            if (e.target && (e.target.classList.contains('send-single-item') || 
-                (e.target.parentElement && e.target.parentElement.classList.contains('send-single-item')))) {
-                
-                const button = e.target.classList.contains('send-single-item') ? 
-                    e.target : e.target.parentElement;
-                
-                const itemId = button.dataset.itemId;
+        // Send single item to Telegram
+        const singleItemButtons = document.querySelectorAll('.send-single-item');
+        singleItemButtons.forEach(button => {
+            button.addEventListener('click', function() {
+                const itemId = this.dataset.itemId;
                 
                 // Show loading
                 Swal.fire({
@@ -446,7 +493,7 @@
                         confirmButtonColor: '#3085d6'
                     });
                 });
-            }
+            });
         });
     });
 </script>

@@ -5,6 +5,7 @@ from django.views.decorators.csrf import csrf_exempt
 import json
 import logging
 import requests
+import traceback
 from .models import Item, ActivityLog, WebhookSettings
 
 # Configure logging
@@ -30,31 +31,50 @@ def save_latest_price(request):
             # Update latest price
             if latest_price:
                 try:
-                    # Convert to float to validate
+                    # Convert to float to validate, then to int to remove decimals
                     latest_price = float(latest_price)
-                    item.latest_price = latest_price
+                    item.latest_price = int(latest_price)
+                    logger.info(f"Saving latest price for item {item.id}: {item.latest_price}")
                 except ValueError:
+                    logger.error(f"Invalid price format: {latest_price}")
                     return JsonResponse({'status': 'error', 'message': 'Invalid price format'})
             else:
                 # Clear latest price if empty
                 item.latest_price = None
+                logger.info(f"Clearing latest price for item {item.id}")
             
-            item.save(update_fields=['latest_price'])
-            
-            # Log activity
-            ActivityLog.objects.create(
-                user=request.user,
-                action='update_latest_price',
-                status='success',
-                notes=f'Updated latest price for {item.name} to {latest_price}'
-            )
-            
-            return JsonResponse({'status': 'success', 'message': 'Latest price updated successfully'})
+            # Save with transaction
+            try:
+                item.save(update_fields=['latest_price'])
+                
+                # Verify the save was successful by re-fetching
+                refreshed_item = Item.objects.get(id=item_id)
+                logger.info(f"Verification - Latest price after save: {refreshed_item.latest_price}")
+                
+                # Log activity
+                ActivityLog.objects.create(
+                    user=request.user,
+                    action='update_latest_price',
+                    status='success',
+                    notes=f'Updated latest price for {item.name} to {item.latest_price}'
+                )
+                
+                return JsonResponse({
+                    'status': 'success', 
+                    'message': 'Latest price updated successfully',
+                    'latest_price': str(refreshed_item.latest_price) if refreshed_item.latest_price is not None else ""
+                })
+            except Exception as e:
+                logger.error(f"Error saving item: {str(e)}")
+                logger.error(traceback.format_exc())
+                return JsonResponse({'status': 'error', 'message': f'Error saving: {str(e)}'})
             
         except Item.DoesNotExist:
+            logger.error(f"Item not found: {item_id}")
             return JsonResponse({'status': 'error', 'message': 'Item not found'})
         except Exception as e:
             logger.error(f"Error in save_latest_price view: {str(e)}")
+            logger.error(traceback.format_exc())
             return JsonResponse({'status': 'error', 'message': str(e)})
     
     return JsonResponse({'status': 'error', 'message': 'Invalid request method'})
@@ -94,14 +114,17 @@ def send_price_to_telegram(request):
                 message += f"Kategori: {item.category}\n"
                 
                 # Use Harga Terbaru if available, otherwise fallback to Harga Saat Ini
-                if item.latest_price:
+                if item.latest_price is not None:
                     message += f"Harga: Rp {int(item.latest_price):,}\n"
+                    logger.info(f"Using latest_price for item {item.id}: {item.latest_price}")
                 else:
                     message += f"Harga: Rp {int(item.selling_price):,}\n"
+                    logger.info(f"Using selling_price for item {item.id}: {item.selling_price}")
                 
                 message += "\n"
             
             # Send to webhook
+            logger.info(f"Sending to webhook: {webhook_url}")
             response = requests.post(
                 webhook_url,
                 json={'text': message, 'parse_mode': 'Markdown'},
@@ -131,6 +154,7 @@ def send_price_to_telegram(request):
             
         except Exception as e:
             logger.error(f"Error in send_price_to_telegram view: {str(e)}")
+            logger.error(traceback.format_exc())
             return JsonResponse({'status': 'error', 'message': str(e)})
     
     return JsonResponse({'status': 'error', 'message': 'Invalid request method'})
