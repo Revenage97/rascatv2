@@ -1,5 +1,6 @@
 from django.urls import path
-from . import views, views_reset_data, views_reset_all_items
+from . import views, views_reset_data
+from .views_reset_all_items import reset_all_items
 from django.views.generic import RedirectView
 
 app_name = 'inventory'
@@ -38,5 +39,5 @@ urlpatterns = [
     # Reset data endpoints
     path('api/reset-exp-data/', views_reset_data.reset_exp_data, name='reset_exp_data'),
     path('api/reset-transfer-data/', views_reset_data.reset_transfer_data, name='reset_transfer_data'),
-    path('api/reset-all-items/', views_reset_all_items.reset_all_items, name='reset_all_items'),
+    path('api/reset-all-items/', reset_all_items, name='reset_all_items'),
 ]
