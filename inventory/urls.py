@@ -40,6 +40,7 @@ urlpatterns = [
     
     # API endpoints for expiry date
     path('api/save-expiry-date/', save_expiry_date, name='save_expiry_date'),
+    path('api/delete-expiry-date/', save_expiry_date, name='delete_expiry_date'),  # Reusing same view with different param
     path('api/send-exp-to-telegram/', send_exp_to_telegram, name='send_exp_to_telegram'),
     
     # API endpoints for minimum stock

@@ -73,6 +73,7 @@
 {% endblock %}
 
 {% block content %}
+<input type="hidden" name="csrfmiddlewaretoken" value="{{ csrf_token }}">
 <div class="container-fluid py-4">
     <div class="row mb-4">
         <div class="col">
@@ -163,8 +164,11 @@
                                            value="{% if item.expiry_date %}{{ item.expiry_date|date:'Y-m-d' }}{% endif %}" 
                                            placeholder="Pilih tanggal"
                                            data-item-id="{{ item.id }}">
-                                    <button class="btn btn-outline-secondary btn-sm save-exp-date" data-item-id="{{ item.id }}">
-                                        <i class="bi bi-check"></i>
+                                    <button class="btn btn-outline-secondary save-exp-date" type="button" data-item-id="{{ item.id }}">
+                                        <i class="bi bi-save"></i>
+                                    </button>
+                                    <button class="btn btn-outline-danger delete-exp-date" type="button" data-item-id="{{ item.id }}">
+                                        <i class="bi bi-x"></i>
                                     </button>
                                 </div>
                             </td>
@@ -334,6 +338,11 @@
                 const dateInput = document.querySelector(`.datepicker[data-item-id="${itemId}"]`);
                 const expiryDate = dateInput.value;
                 
+                // Disable button and show loading state
+                button.disabled = true;
+                const originalContent = button.innerHTML;
+                button.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>';
+                
                 // Make API call to save expiry date
                 fetch('/api/save-expiry-date/', {
                     method: 'POST',
@@ -348,6 +357,10 @@
                 })
                 .then(response => response.json())
                 .then(data => {
+                    // Re-enable button and restore content
+                    button.disabled = false;
+                    button.innerHTML = originalContent;
+                    
                     if (data.status === 'success') {
                         // Show success message
                         Swal.fire({
@@ -389,6 +402,10 @@
                     }
                 })
                 .catch(error => {
+                    // Re-enable button and restore content
+                    button.disabled = false;
+                    button.innerHTML = originalContent;
+                    
                     console.error('Error saving expiry date:', error);
                     
                     // Show error message
@@ -396,6 +413,81 @@
                         icon: 'error',
                         title: 'Gagal',
                         text: 'Terjadi kesalahan saat menyimpan tanggal expired',
+                        confirmButtonColor: '#3085d6'
+                    });
+                });
+            });
+        });
+        
+        // Delete expiry date functionality
+        const deleteButtons = document.querySelectorAll('.delete-exp-date');
+        deleteButtons.forEach(button => {
+            button.addEventListener('click', function() {
+                const itemId = this.getAttribute('data-item-id');
+                const dateInput = document.querySelector(`.datepicker[data-item-id="${itemId}"]`);
+                
+                // Disable button and show loading state
+                button.disabled = true;
+                const originalContent = button.innerHTML;
+                button.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>';
+                
+                // Make API call to delete expiry date
+                fetch('/api/delete-expiry-date/', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+                    },
+                    body: JSON.stringify({
+                        item_id: itemId,
+                        expiry_date: ''  // Empty string to clear the date
+                    })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    // Re-enable button and restore content
+                    button.disabled = false;
+                    button.innerHTML = originalContent;
+                    
+                    if (data.status === 'success') {
+                        // Clear input value
+                        dateInput.value = '';
+                        
+                        // Show success message
+                        Swal.fire({
+                            icon: 'success',
+                            title: 'Berhasil',
+                            text: 'Tanggal expired berhasil dihapus',
+                            confirmButtonColor: '#3085d6',
+                            timer: 1500,
+                            showConfirmButton: false
+                        });
+                        
+                        // Update row color - remove all expiry classes
+                        const row = document.querySelector(`tr[data-id="${itemId}"]`);
+                        row.classList.remove('exp-warning', 'exp-soon', 'exp-safe');
+                    } else {
+                        // Show error message
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'Gagal',
+                            text: data.message || 'Gagal menghapus tanggal expired',
+                            confirmButtonColor: '#3085d6'
+                        });
+                    }
+                })
+                .catch(error => {
+                    // Re-enable button and restore content
+                    button.disabled = false;
+                    button.innerHTML = originalContent;
+                    
+                    console.error('Error deleting expiry date:', error);
+                    
+                    // Show error message
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Gagal',
+                        text: 'Terjadi kesalahan saat menghapus tanggal expired',
                         confirmButtonColor: '#3085d6'
                     });
                 });
@@ -461,7 +553,6 @@
                 Swal.close();
                 
                 if (data.status === 'success') {
-                    // Show success message
                     Swal.fire({
                         icon: 'success',
                         title: 'Berhasil',
@@ -469,7 +560,6 @@
                         confirmButtonColor: '#3085d6'
                     });
                 } else {
-                    // Show error message
                     Swal.fire({
                         icon: 'error',
                         title: 'Gagal',
@@ -482,7 +572,6 @@
                 console.error('Error sending to Telegram:', error);
                 Swal.close();
                 
-                // Show error message
                 Swal.fire({
                     icon: 'error',
                     title: 'Gagal',
@@ -492,7 +581,7 @@
             });
         });
         
-        // Send All to Telegram functionality
+        // Send all to Telegram
         const sendAllButton = document.getElementById('sendAllTelegram');
         const bulkTelegramModal = new bootstrap.Modal(document.getElementById('bulkTelegramModal'));
         const confirmBulkTelegramBtn = document.getElementById('confirmBulkTelegram');
@@ -500,88 +589,92 @@
         if (sendAllButton) {
             sendAllButton.addEventListener('click', function() {
                 const checkedItems = document.querySelectorAll('.item-checkbox:checked');
-                const count = checkedItems.length;
+                const itemIds = Array.from(checkedItems).map(checkbox => checkbox.value);
                 
-                if (count === 0) {
+                if (itemIds.length === 0) {
                     return;
                 }
                 
                 // Update count in modal
-                document.getElementById('bulkCount').textContent = count;
+                document.getElementById('bulkCount').textContent = itemIds.length;
                 
                 // Show modal
                 bulkTelegramModal.show();
+                
+                // Store item IDs for confirmation
+                confirmBulkTelegramBtn.setAttribute('data-item-ids', JSON.stringify(itemIds));
             });
         }
         
         // Confirm bulk send to Telegram
-        if (confirmBulkTelegramBtn) {
-            confirmBulkTelegramBtn.addEventListener('click', function() {
-                const checkedItems = document.querySelectorAll('.item-checkbox:checked');
-                const itemIds = Array.from(checkedItems).map(checkbox => checkbox.value);
-                
-                // Show loading
-                Swal.fire({
-                    title: 'Mengirim notifikasi...',
-                    text: 'Mohon tunggu sebentar',
-                    allowOutsideClick: false,
-                    didOpen: () => {
-                        Swal.showLoading();
-                    }
-                });
-                
-                // Hide modal
-                bulkTelegramModal.hide();
-                
-                // Make API call to send to Telegram
-                fetch('/inventory/api/send-expiry-to-telegram/', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
-                    },
-                    body: JSON.stringify({
-                        item_ids: itemIds
-                    })
+        confirmBulkTelegramBtn.addEventListener('click', function() {
+            const itemIds = JSON.parse(this.getAttribute('data-item-ids'));
+            
+            // Show loading
+            Swal.fire({
+                title: 'Mengirim notifikasi...',
+                text: 'Mohon tunggu sebentar',
+                allowOutsideClick: false,
+                didOpen: () => {
+                    Swal.showLoading();
+                }
+            });
+            
+            // Hide modal
+            bulkTelegramModal.hide();
+            
+            // Make API call to send to Telegram
+            fetch('/api/send-exp-to-telegram/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+                },
+                body: JSON.stringify({
+                    item_ids: itemIds
                 })
-                .then(response => response.json())
-                .then(data => {
-                    Swal.close();
+            })
+            .then(response => response.json())
+            .then(data => {
+                Swal.close();
+                
+                if (data.status === 'success') {
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'Berhasil',
+                        text: 'Notifikasi berhasil dikirim ke Telegram',
+                        confirmButtonColor: '#3085d6'
+                    });
                     
-                    if (data.status === 'success') {
-                        // Show success message
-                        Swal.fire({
-                            icon: 'success',
-                            title: 'Berhasil',
-                            text: 'Notifikasi berhasil dikirim ke Telegram',
-                            confirmButtonColor: '#3085d6'
-                        });
-                    } else {
-                        // Show error message
-                        Swal.fire({
-                            icon: 'error',
-                            title: 'Gagal',
-                            text: data.message || 'Gagal mengirim notifikasi ke Telegram',
-                            confirmButtonColor: '#3085d6'
-                        });
-                    }
-                })
-                .catch(error => {
-                    console.error('Error sending to Telegram:', error);
-                    Swal.close();
-                    
-                    // Show error message
+                    // Uncheck all checkboxes
+                    document.querySelectorAll('.item-checkbox:checked').forEach(function(checkbox) {
+                        checkbox.checked = false;
+                    });
+                    document.getElementById('selectAll').checked = false;
+                    updateSendButtonState();
+                } else {
                     Swal.fire({
                         icon: 'error',
                         title: 'Gagal',
-                        text: 'Terjadi kesalahan saat mengirim notifikasi ke Telegram',
+                        text: data.message || 'Gagal mengirim notifikasi ke Telegram',
                         confirmButtonColor: '#3085d6'
                     });
+                }
+            })
+            .catch(error => {
+                console.error('Error sending to Telegram:', error);
+                Swal.close();
+                
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Gagal',
+                    text: 'Terjadi kesalahan saat mengirim notifikasi ke Telegram',
+                    confirmButtonColor: '#3085d6'
                 });
             });
-        }
+        });
         
-        // Reset Data button functionality
+        // Reset Data button
         const resetDataBtn = document.getElementById('resetDataBtn');
         const resetDataModal = new bootstrap.Modal(document.getElementById('resetDataModal'));
         const confirmResetDataBtn = document.getElementById('confirmResetData');
@@ -592,6 +685,7 @@
             });
         }
         
+        // Confirm Reset Data
         if (confirmResetDataBtn) {
             confirmResetDataBtn.addEventListener('click', function() {
                 // Show loading
@@ -608,7 +702,7 @@
                 resetDataModal.hide();
                 
                 // Make API call to reset data
-                fetch('/inventory/api/reset-expiry-dates/', {
+                fetch('/api/reset-exp-data/', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
@@ -620,7 +714,6 @@
                     Swal.close();
                     
                     if (data.status === 'success') {
-                        // Show success message
                         Swal.fire({
                             icon: 'success',
                             title: 'Berhasil',
@@ -631,7 +724,6 @@
                             window.location.reload();
                         });
                     } else {
-                        // Show error message
                         Swal.fire({
                             icon: 'error',
                             title: 'Gagal',
@@ -644,7 +736,6 @@
                     console.error('Error resetting data:', error);
                     Swal.close();
                     
-                    // Show error message
                     Swal.fire({
                         icon: 'error',
                         title: 'Gagal',
