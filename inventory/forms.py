@@ -23,12 +23,13 @@ class ExcelUploadForm(forms.Form):
 class WebhookSettingsForm(forms.ModelForm):
     class Meta:
         model = WebhookSettings
-        fields = ['telegram_webhook_url', 'webhook_kelola_stok', 'webhook_transfer_stok', 'webhook_data_exp_produk']
+        fields = ['telegram_webhook_url', 'webhook_kelola_stok', 'webhook_transfer_stok', 'webhook_data_exp_produk', 'webhook_kelola_harga']
         widgets = {
             'telegram_webhook_url': forms.URLInput(attrs={'class': 'form-control', 'placeholder': 'https://example.com/webhook'}),
             'webhook_kelola_stok': forms.URLInput(attrs={'class': 'form-control', 'placeholder': 'https://example.com/webhook/kelola-stok'}),
             'webhook_transfer_stok': forms.URLInput(attrs={'class': 'form-control', 'placeholder': 'https://example.com/webhook/transfer-stok'}),
             'webhook_data_exp_produk': forms.URLInput(attrs={'class': 'form-control', 'placeholder': 'https://hooks.zapier.com/hooks/catch/...'}),
+            'webhook_kelola_harga': forms.URLInput(attrs={'class': 'form-control', 'placeholder': 'https://hooks.zapier.com/hooks/catch/...'}),
         }
 
 class UserProfileForm(forms.ModelForm):

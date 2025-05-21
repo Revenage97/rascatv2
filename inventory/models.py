@@ -58,6 +58,7 @@ class WebhookSettings(models.Model):
     webhook_kelola_stok = models.URLField(max_length=500, blank=True, null=True, verbose_name="URL Webhook Telegram - Kelola Stok")
     webhook_transfer_stok = models.URLField(max_length=500, blank=True, null=True, verbose_name="URL Webhook Telegram - Transfer Stok")
     webhook_data_exp_produk = models.URLField(max_length=500, blank=True, null=True, verbose_name="URL Webhook Telegram - Data Exp Produk")
+    webhook_kelola_harga = models.URLField(max_length=500, blank=True, null=True, verbose_name="URL Webhook Telegram - Kelola Harga")
     updated_at = models.DateTimeField(auto_now=True)
     updated_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True)
 
