@@ -4,16 +4,19 @@
     <h2 class="mb-4">Upload File</h2>
     
     <div class="row mb-4">
-        <div class="col-md-6">
+        <div class="col-md-8">
             <div class="card">
                 <div class="card-body">
-                    <h5 class="card-title">Kelola Stok Barang</h5>
+                    <h5 class="card-title">Upload Data Inventori (.xlsx)</h5>
+                    <p class="text-muted">Upload satu file Excel untuk memperbarui data di semua halaman inventori.</p>
                     
                     <form method="post" enctype="multipart/form-data" action="{% url 'inventory:upload_file' %}">
                         {% csrf_token %}
-                        <input type="hidden" name="upload_type" value="stock">
                         <div class="mb-3">
                             {{ form.excel_file }}
+                            <div class="form-text">
+                                Format kolom yang dibutuhkan: Kode, Nama Barang, Kategori, Harga Jual, Total Stok
+                            </div>
                         </div>
                         <button type="submit" class="btn btn-primary">
                             <i class="bi bi-upload"></i> Upload
@@ -25,42 +28,45 @@
     </div>
     
     <div class="row mb-4">
-        <div class="col-md-6">
+        <div class="col-md-8">
             <div class="card">
                 <div class="card-body">
-                    <h5 class="card-title">Barang Transfer Stok (.xlsx)</h5>
+                    <h5 class="card-title">Informasi Distribusi Data</h5>
+                    <p>Data dari file Excel akan didistribusikan ke halaman berikut:</p>
                     
-                    <form method="post" enctype="multipart/form-data" action="{% url 'inventory:upload_transfer_file' %}">
-                        {% csrf_token %}
-                        <input type="hidden" name="upload_type" value="transfer">
-                        <div class="mb-3">
-                            <input type="file" name="transfer_file" class="form-control" accept=".xlsx">
-                        </div>
-                        <button type="submit" class="btn btn-primary">
-                            <i class="bi bi-upload"></i> Upload
-                        </button>
-                    </form>
-                </div>
-            </div>
-        </div>
-    </div>
-    
-    <div class="row">
-        <div class="col-md-6">
-            <div class="card">
-                <div class="card-body">
-                    <h5 class="card-title">Barang Exp Produk (.xlsx)</h5>
-                    
-                    <form method="post" enctype="multipart/form-data" action="{% url 'inventory:upload_exp_produk_file' %}">
-                        {% csrf_token %}
-                        <input type="hidden" name="upload_type" value="exp_produk">
-                        <div class="mb-3">
-                            <input type="file" name="exp_produk_file" class="form-control" accept=".xlsx">
-                        </div>
-                        <button type="submit" class="btn btn-primary">
-                            <i class="bi bi-upload"></i> Upload
-                        </button>
-                    </form>
+                    <div class="table-responsive">
+                        <table class="table table-bordered">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Halaman</th>
+                                    <th>Kolom yang Diambil</th>
+                                    <th>Kolom Manual</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td>Kelola Stok Barang</td>
+                                    <td>Kode Barang, Nama Barang, Kategori, Stok Saat Ini</td>
+                                    <td>Stok Minimum</td>
+                                </tr>
+                                <tr>
+                                    <td>Kelola Harga</td>
+                                    <td>Kode Barang, Nama Barang, Kategori, Harga Saat Ini</td>
+                                    <td>Harga Terbaru</td>
+                                </tr>
+                                <tr>
+                                    <td>Transfer Stok</td>
+                                    <td>Kode Barang, Nama Barang, Stok Saat Ini</td>
+                                    <td>Jumlah Transfer</td>
+                                </tr>
+                                <tr>
+                                    <td>Data Exp Produk</td>
+                                    <td>Kode Barang, Nama Barang, Stok Saat Ini</td>
+                                    <td>Tanggal Expired</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
             </div>
         </div>
