@@ -90,16 +90,33 @@ def process_excel_data(df, user):
     for index, row in df.iterrows():
         try:
             with transaction.atomic():
-                # Get or create item
-                item, created = Item.objects.update_or_create(
-                    code=row['Kode'],
-                    defaults={
-                        'name': row['Nama Barang'],
-                        'category': row['Kategori'],
-                        'current_stock': row['Total Stok'],
-                        'selling_price': row['Harga Jual']
-                    }
-                )
+                # Check if item exists
+                try:
+                    item = Item.objects.get(code=row['Kode'])
+                    created = False
+                    
+                    # Update only fields from Excel, preserve manual fields
+                    item.name = row['Nama Barang']
+                    item.category = row['Kategori']
+                    item.current_stock = row['Total Stok']
+                    item.selling_price = row['Harga Jual']
+                    # Do NOT update: minimum_stock, expiry_date, latest_price
+                    item.save()
+                    
+                except Item.DoesNotExist:
+                    # Create new item if it doesn't exist
+                    item = Item.objects.create(
+                        code=row['Kode'],
+                        name=row['Nama Barang'],
+                        category=row['Kategori'],
+                        current_stock=row['Total Stok'],
+                        selling_price=row['Harga Jual'],
+                        # Initialize manual fields with defaults
+                        minimum_stock=0,
+                        latest_price=None,
+                        expiry_date=None
+                    )
+                    created = True
                 
                 # Log activity
                 action = 'create_item' if created else 'update_item'

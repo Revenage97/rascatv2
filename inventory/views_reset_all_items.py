@@ -16,28 +16,28 @@ def is_admin(user):
 @csrf_exempt
 def reset_all_items(request):
     """
-    View for deleting all items from the database
+    View for resetting only the manual fields (minimum_stock) for all items
     Only accessible by admin users
     """
     if request.method == 'POST':
         try:
-            # Count items before deletion for logging
+            # Count items before reset for logging
             item_count = Item.objects.count()
             
-            # Delete all items
-            Item.objects.all().delete()
+            # Reset only the minimum_stock field, not deleting the items
+            Item.objects.all().update(minimum_stock=0)
             
             # Log activity
             ActivityLog.objects.create(
                 user=request.user,
-                action='reset_all_items',
+                action='reset_minimum_stock',
                 status='success',
-                notes=f'Reset all items data ({item_count} items deleted)'
+                notes=f'Reset minimum stock data for {item_count} items'
             )
             
             return JsonResponse({
                 'status': 'success', 
-                'message': f'Successfully deleted all {item_count} items',
+                'message': f'Successfully reset minimum stock for {item_count} items',
                 'count': item_count
             })
             
@@ -48,9 +48,9 @@ def reset_all_items(request):
             # Log activity
             ActivityLog.objects.create(
                 user=request.user,
-                action='reset_all_items',
+                action='reset_minimum_stock',
                 status='failed',
-                notes=f'Failed to reset all items: {str(e)}'
+                notes=f'Failed to reset minimum stock: {str(e)}'
             )
             
             return JsonResponse({'status': 'error', 'message': str(e)})
