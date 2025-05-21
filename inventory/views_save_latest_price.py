@@ -4,7 +4,8 @@ from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 import json
 import logging
-from .models import Item, ActivityLog
+import requests
+from .models import Item, ActivityLog, WebhookSettings
 
 # Configure logging
 logger = logging.getLogger(__name__)
@@ -73,7 +74,6 @@ def send_price_to_telegram(request):
                 return JsonResponse({'status': 'error', 'message': 'No items selected'})
             
             # Get webhook settings
-            from .models import WebhookSettings
             webhook_settings = WebhookSettings.objects.first()
             if not webhook_settings:
                 return JsonResponse({'status': 'error', 'message': 'Webhook settings not found'})
@@ -95,14 +95,13 @@ def send_price_to_telegram(request):
                 
                 # Use Harga Terbaru if available, otherwise fallback to Harga Saat Ini
                 if item.latest_price:
-                    message += f"Harga: Rp {item.latest_price:,.0f}\n"
+                    message += f"Harga: Rp {int(item.latest_price):,}\n"
                 else:
-                    message += f"Harga: Rp {item.selling_price:,.0f}\n"
+                    message += f"Harga: Rp {int(item.selling_price):,}\n"
                 
                 message += "\n"
             
             # Send to webhook
-            import requests
             response = requests.post(
                 webhook_url,
                 json={'text': message, 'parse_mode': 'Markdown'},

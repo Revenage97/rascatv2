@@ -207,7 +207,9 @@
         
         // Function to save latest price via AJAX
         function saveLatestPrice(itemId, latestPrice) {
-            fetch('/api/save-latest-price/', {
+            console.log('Saving latest price:', itemId, latestPrice);
+            
+            fetch('/inventory/api/save-latest-price/', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -220,6 +222,7 @@
             })
             .then(response => response.json())
             .then(data => {
+                console.log('Save response:', data);
                 const field = document.querySelector(`.editable-field[data-item-id="${itemId}"]`);
                 const display = field.querySelector('.editable-display');
                 const input = field.querySelector('.editable-input');
@@ -295,7 +298,7 @@
                 });
                 
                 // Send to webhook
-                fetch('/api/send-price-to-telegram/', {
+                fetch('/inventory/api/send-price-to-telegram/', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
@@ -344,8 +347,11 @@
             if (e.target && (e.target.classList.contains('send-single-item') || 
                 (e.target.parentElement && e.target.parentElement.classList.contains('send-single-item')))) {
                 
-                const button = e.target.classList.contains('send-single-item') ? e.target : e.target.parentElement;
-                const itemId = button.getAttribute('data-item-id');
+                const button = e.target.classList.contains('send-single-item') ? 
+                    e.target : e.target.parentElement;
+                const itemId = button.dataset.itemId;
+                
+                if (!itemId) return;
                 
                 // Show loading
                 Swal.fire({
@@ -358,7 +364,7 @@
                 });
                 
                 // Send to webhook
-                fetch('/api/send-price-to-telegram/', {
+                fetch('/inventory/api/send-price-to-telegram/', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
