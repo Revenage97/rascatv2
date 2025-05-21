@@ -4,6 +4,9 @@ from .views_reset_data import reset_exp_data, reset_transfer_data
 from .views_reset_all_items import reset_all_items
 from .views_save_latest_price import save_latest_price, send_price_to_telegram
 from .views_upload_file import upload_file
+from .views_update_min_stock import update_min_stock, delete_min_stock
+from .views_update_transfer_stock import update_transfer_stock, delete_transfer_stock, send_transfer_to_telegram
+from .views_update_expiry_date import save_expiry_date, send_exp_to_telegram
 from .views_packing import (
     kelola_stok_packing, update_packing_min_stock, delete_packing_min_stock,
     send_packing_to_telegram, reset_all_packing_items, create_packing_item,
@@ -33,12 +36,25 @@ urlpatterns = [
     path('edit-user/<int:user_id>/', views.edit_user, name='edit_user'),
     path('delete-user/<int:user_id>/', views.delete_user, name='delete_user'),
     path('activity-logs/', views.activity_logs, name='activity_logs'),
-    path('api/save-expiry-date/', views.save_expiry_date, name='save_expiry_date'),
-    path('api/send-exp-to-telegram/', views.send_exp_to_telegram, name='send_exp_to_telegram'),
+    
+    # API endpoints for expiry date
+    path('api/save-expiry-date/', save_expiry_date, name='save_expiry_date'),
+    path('api/send-exp-to-telegram/', send_exp_to_telegram, name='send_exp_to_telegram'),
+    
+    # API endpoints for minimum stock
+    path('api/update-min-stock/', update_min_stock, name='update_min_stock'),
+    path('api/delete-min-stock/', delete_min_stock, name='delete_min_stock'),
+    
+    # API endpoints for transfer stock
+    path('api/update-transfer-stock/', update_transfer_stock, name='update_transfer_stock'),
+    path('api/delete-transfer-stock/', delete_transfer_stock, name='delete_transfer_stock'),
+    path('api/send-transfer-to-telegram/', send_transfer_to_telegram, name='send_transfer_to_telegram'),
+    
     # Reset data endpoints
     path('api/reset-exp-data/', reset_exp_data, name='reset_exp_data'),
     path('api/reset-transfer-data/', reset_transfer_data, name='reset_transfer_data'),
     path('api/reset-all-items/', reset_all_items, name='reset_all_items'),
+    
     # Save latest price endpoint
     path('api/save-latest-price/', save_latest_price, name='save_latest_price'),
     path('api/send-price-to-telegram/', send_price_to_telegram, name='send_price_to_telegram'),
