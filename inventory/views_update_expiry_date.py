@@ -124,9 +124,20 @@ def send_exp_to_telegram(request):
                 
                 # Send to webhook
                 try:
+                    # Format payload according to Zapier/Telegram requirements
+                    payload = {
+                        'text': message,
+                        'chat_id': '@your_channel',  # This might be needed for Telegram API
+                        'parse_mode': 'Markdown'
+                    }
+                    
+                    # Log the outgoing payload for debugging
+                    logger.info(f"Sending payload to webhook: {webhook_url}")
+                    logger.info(f"Payload content: {payload}")
+                    
                     response = requests.post(
                         webhook_url,
-                        json={'text': message, 'parse_mode': 'Markdown'},
+                        json=payload,
                         headers={'Content-Type': 'application/json'},
                         timeout=10
                     )
