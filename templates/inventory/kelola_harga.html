@@ -58,6 +58,7 @@
                             <th style="min-width: 200px;">Nama Barang</th>
                             <th style="min-width: 150px;">Kategori</th>
                             <th class="text-center">Harga Saat Ini</th>
+                            <th class="text-center">Harga Terbaru</th>
                             <th class="text-center">Telegram</th>
                         </tr>
                     </thead>
@@ -72,7 +73,15 @@
                             <td>{{ item.code }}</td>
                             <td>{{ item.name }}</td>
                             <td>{{ item.category }}</td>
-                            <td class="text-center">{{ item.price }}</td>
+                            <td class="text-center">{{ item.selling_price }}</td>
+                            <td class="text-center">
+                                <div class="editable-field" data-item-id="{{ item.id }}">
+                                    <span class="editable-display">{{ item.latest_price|default:"" }}</span>
+                                    <input type="number" class="form-control form-control-sm editable-input" 
+                                           style="display: none;" step="0.01" min="0"
+                                           value="{{ item.latest_price|default:"" }}">
+                                </div>
+                            </td>
                             <td class="text-center">
                                 <button type="button" class="btn btn-sm btn-info send-single-item" data-item-id="{{ item.id }}">
                                     <i class="bi bi-telegram"></i>
@@ -163,6 +172,96 @@
             if (sendToTelegramBtn) {
                 sendToTelegramBtn.disabled = checkedItems.length === 0;
             }
+        }
+
+        // Inline editing for Harga Terbaru
+        const editableFields = document.querySelectorAll('.editable-field');
+        
+        editableFields.forEach(field => {
+            const display = field.querySelector('.editable-display');
+            const input = field.querySelector('.editable-input');
+            const itemId = field.dataset.itemId;
+            
+            // Click on display to show input
+            display.addEventListener('click', function() {
+                display.style.display = 'none';
+                input.style.display = 'inline-block';
+                input.focus();
+            });
+            
+            // Save on blur and Enter key
+            input.addEventListener('blur', function() {
+                saveLatestPrice(itemId, input.value);
+            });
+            
+            input.addEventListener('keydown', function(e) {
+                if (e.key === 'Enter') {
+                    input.blur(); // Trigger blur event which saves
+                }
+            });
+        });
+        
+        // Function to save latest price via AJAX
+        function saveLatestPrice(itemId, latestPrice) {
+            fetch('/api/save-latest-price/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': csrfToken
+                },
+                body: JSON.stringify({
+                    item_id: itemId,
+                    latest_price: latestPrice
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                const field = document.querySelector(`.editable-field[data-item-id="${itemId}"]`);
+                const display = field.querySelector('.editable-display');
+                const input = field.querySelector('.editable-input');
+                
+                if (data.status === 'success') {
+                    // Update display and hide input
+                    display.textContent = latestPrice ? latestPrice : '';
+                    display.style.display = 'inline';
+                    input.style.display = 'none';
+                    
+                    // Show success toast
+                    toastMessage.textContent = 'Harga terbaru berhasil disimpan';
+                    toastEl.classList.remove('bg-danger');
+                    toastEl.classList.add('bg-success', 'text-white');
+                    toast.show();
+                } else {
+                    // Show error toast
+                    toastMessage.textContent = data.message || 'Gagal menyimpan harga terbaru';
+                    toastEl.classList.remove('bg-success');
+                    toastEl.classList.add('bg-danger', 'text-white');
+                    toast.show();
+                    
+                    // Revert to previous value
+                    input.value = display.textContent;
+                    display.style.display = 'inline';
+                    input.style.display = 'none';
+                }
+            })
+            .catch(error => {
+                console.error('Error saving latest price:', error);
+                
+                // Show error toast
+                toastMessage.textContent = 'Terjadi kesalahan saat menyimpan harga terbaru';
+                toastEl.classList.remove('bg-success');
+                toastEl.classList.add('bg-danger', 'text-white');
+                toast.show();
+                
+                // Revert UI
+                const field = document.querySelector(`.editable-field[data-item-id="${itemId}"]`);
+                const display = field.querySelector('.editable-display');
+                const input = field.querySelector('.editable-input');
+                
+                input.value = display.textContent;
+                display.style.display = 'inline';
+                input.style.display = 'none';
+            });
         }
     });
 </script>
