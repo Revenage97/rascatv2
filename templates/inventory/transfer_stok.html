@@ -331,13 +331,22 @@
             }
             
             // Get asal and tujuan from localStorage
-            const asal = localStorage.getItem('transferStok_asal') ? 
-                document.getElementById('asalSelect').options[document.getElementById('asalSelect').selectedIndex].text : 
-                'Tidak Ditentukan';
+            const asalSelect = document.getElementById('asalSelect');
+            const tujuanSelect = document.getElementById('tujuanSelect');
             
-            const tujuan = localStorage.getItem('transferStok_tujuan') ? 
-                document.getElementById('tujuanSelect').options[document.getElementById('tujuanSelect').selectedIndex].text : 
-                'Tidak Ditentukan';
+            // Check if asal and tujuan are selected
+            if (asalSelect.selectedIndex === 0 || tujuanSelect.selectedIndex === 0) {
+                Swal.fire({
+                    icon: 'warning',
+                    title: 'Asal atau Tujuan belum dipilih',
+                    text: 'Silakan pilih Asal dan Tujuan terlebih dahulu, lalu klik tombol Simpan',
+                    confirmButtonColor: '#3085d6'
+                });
+                return;
+            }
+            
+            const asal = asalSelect.options[asalSelect.selectedIndex].text;
+            const tujuan = tujuanSelect.options[tujuanSelect.selectedIndex].text;
         // Validate transfer stock input
         document.addEventListener('input', function(e) {
             if (e.target && e.target.classList.contains('transfer-stock-input')) {
@@ -458,6 +467,8 @@
                 }
             });
             
+            console.log('Sending to Telegram:', {itemIds, asal, tujuan});
+            
             // Send to webhook
             fetch('/api/send-transfer-to-telegram/', {
                 method: 'POST',
@@ -470,8 +481,13 @@
                     asal: asal,
                     tujuan: tujuan
                 })
-                .then(response => response.json())
+                }))
+                .then(response => {
+                    console.log('Telegram response:', response);
+                    return response.json();
+                })
                 .then(data => {
+                    console.log('Telegram data:', data);
                     Swal.close();
                     
                     if (data.status === 'success') {
@@ -532,6 +548,8 @@
                     return;
                 }
                 
+                console.log('Saving transfer stock:', {itemId, transferStock});
+                
                 // Make API call to update transfer stock
                 fetch('/api/update-transfer-stock/', {
                     method: 'POST',
@@ -544,8 +562,13 @@
                         transfer_stock: transferStock
                     })
                 })
-                .then(response => response.json())
+                }))
+                .then(response => {
+                    console.log('Save transfer stock response:', response);
+                    return response.json();
+                })
                 .then(data => {
+                    console.log('Save transfer stock data:', data);
                     // Restore button
                     button.innerHTML = originalButtonContent;
                     button.disabled = false;
@@ -599,6 +622,8 @@
                 const button = e.target.classList.contains('delete-transfer-stock') ? e.target : e.target.parentElement;
                 const itemId = button.getAttribute('data-item-id');
                 
+                console.log('Deleting transfer stock for item:', itemId);
+                
                 // Show loading spinner in button
                 const originalButtonContent = button.innerHTML;
                 button.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>';
@@ -616,8 +641,12 @@
                         transfer_stock: 0
                     })
                 })
-                .then(response => response.json())
+                .then(response => {
+                    console.log('Delete transfer stock response:', response);
+                    return response.json();
+                })
                 .then(data => {
+                    console.log('Delete transfer stock data:', data);
                     // Restore button
                     button.innerHTML = originalButtonContent;
                     button.disabled = false;
