@@ -32,6 +32,11 @@
     .bulk-actions {
         margin-bottom: 15px;
     }
+    .checkbox-column {
+        width: 40px !important;
+        min-width: 40px !important;
+        max-width: 40px !important;
+    }
 </style>
 {% endblock %}
 
@@ -84,7 +89,7 @@
                 <table class="table table-bordered table-hover">
                     <thead>
                         <tr>
-                            <th class="text-center" style="width: 40px;">
+                            <th class="text-center checkbox-column">
                                 <div class="d-flex align-items-center justify-content-center">
                                     <input class="form-check-input" type="checkbox" id="selectAll">
                                 </div>
@@ -106,7 +111,7 @@
                             {% elif item.expiry_date %}
                                 class="exp-safe"
                             {% endif %}>
-                            <td class="text-center">
+                            <td class="text-center checkbox-column">
                                 <div class="form-check">
                                     <input class="form-check-input item-checkbox" type="checkbox" value="{{ item.id }}" id="item{{ item.id }}">
                                 </div>
