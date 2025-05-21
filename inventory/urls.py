@@ -34,4 +34,5 @@ urlpatterns = [
     path('api/save-transfer/', views.save_transfer, name='save_transfer'),
     path('api/save-expiry-date/', views.save_expiry_date, name='save_expiry_date'),
     path('api/send-exp-to-telegram/', views.send_exp_to_telegram, name='send_exp_to_telegram'),
+    path('api/reset-all-items/', views.reset_all_items, name='reset_all_items'),
 ]
