@@ -89,7 +89,7 @@
                 <table class="table table-bordered table-hover">
                     <thead>
                         <tr>
-                            <th class="text-center checkbox-column">
+                            <th class="checkbox-column text-center">
                                 <div class="d-flex align-items-center justify-content-center">
                                     <input class="form-check-input" type="checkbox" id="selectAll">
                                 </div>
@@ -111,7 +111,7 @@
                             {% elif item.expiry_date %}
                                 class="exp-safe"
                             {% endif %}>
-                            <td class="text-center checkbox-column">
+                            <td class="checkbox-column text-center">
                                 <div class="form-check">
                                     <input class="form-check-input item-checkbox" type="checkbox" value="{{ item.id }}" id="item{{ item.id }}">
                                 </div>
@@ -298,11 +298,11 @@
                 const expiryDate = dateInput.value;
                 
                 // Make API call to save expiry date
-                fetch('/api/save-expiry-date/', {
+                fetch('/inventory/api/save-expiry-date/', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
-                        'X-CSRFToken': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+                        'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
                     },
                     body: JSON.stringify({
                         item_id: itemId,
@@ -340,6 +340,8 @@
                             } else {
                                 row.classList.add('exp-safe');
                             }
+                        } else {
+                            row.classList.remove('exp-warning', 'exp-soon', 'exp-safe');
                         }
                     } else {
                         // Show error message
@@ -353,8 +355,6 @@
                 })
                 .catch(error => {
                     console.error('Error saving expiry date:', error);
-                    
-                    // Show error message
                     Swal.fire({
                         icon: 'error',
                         title: 'Gagal',
@@ -376,33 +376,77 @@
                 const row = document.querySelector(`tr[data-id="${itemId}"]`);
                 
                 // Get item details
-                const name = row.querySelector('td:nth-child(3)').textContent;
-                const stock = row.querySelector('td:nth-child(4)').textContent;
-                const expiryDate = row.querySelector('.datepicker').value;
+                const name = row.querySelector('td:nth-child(3)').textContent.trim();
+                const stock = row.querySelector('td:nth-child(4)').textContent.trim();
+                const expDate = row.querySelector('.datepicker').value;
                 
-                // Update preview
+                // Update modal with item details
                 document.getElementById('previewName').textContent = name;
-                document.getElementById('previewExp').textContent = expiryDate || 'Tidak diatur';
+                document.getElementById('previewExp').textContent = expDate || 'Tidak diatur';
                 document.getElementById('previewStock').textContent = stock;
                 
-                // Store item ID for confirmation
-                document.getElementById('confirmTelegram').setAttribute('data-item-id', itemId);
+                // Setup confirm button
+                const confirmButton = document.getElementById('confirmTelegram');
+                confirmButton.onclick = function() {
+                    sendToTelegram(itemId);
+                    telegramModal.hide();
+                };
                 
                 // Show modal
                 telegramModal.show();
             });
         });
         
-        // Confirm single Telegram send
-        document.getElementById('confirmTelegram').addEventListener('click', function() {
-            const itemId = this.getAttribute('data-item-id');
+        // Send All to Telegram button
+        const sendAllButton = document.getElementById('sendAllTelegram');
+        if (sendAllButton) {
+            sendAllButton.addEventListener('click', function() {
+                const checkedBoxes = document.querySelectorAll('.item-checkbox:checked');
+                const itemIds = Array.from(checkedBoxes).map(checkbox => checkbox.value);
+                
+                if (itemIds.length === 0) {
+                    Swal.fire({
+                        icon: 'warning',
+                        title: 'Tidak ada item yang dipilih',
+                        text: 'Silakan pilih minimal satu item untuk dikirim ke Telegram',
+                        confirmButtonColor: '#3085d6'
+                    });
+                    return;
+                }
+                
+                // Update modal with count
+                document.getElementById('bulkCount').textContent = itemIds.length;
+                
+                // Setup confirm button
+                const confirmButton = document.getElementById('confirmBulkTelegram');
+                confirmButton.onclick = function() {
+                    sendBulkToTelegram(itemIds);
+                    bulkTelegramModal.hide();
+                };
+                
+                // Show modal
+                bulkTelegramModal.show();
+            });
+        }
+        
+        // Function to send single item to Telegram
+        function sendToTelegram(itemId) {
+            // Show loading
+            Swal.fire({
+                title: 'Mengirim notifikasi...',
+                text: 'Mohon tunggu sebentar',
+                allowOutsideClick: false,
+                didOpen: () => {
+                    Swal.showLoading();
+                }
+            });
             
-            // Make API call to send to Telegram
-            fetch('/api/send-to-telegram/', {
+            // Make API call
+            fetch('/inventory/api/send-exp-to-telegram/', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'X-CSRFToken': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+                    'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
                 },
                 body: JSON.stringify({
                     item_id: itemId
@@ -410,11 +454,9 @@
             })
             .then(response => response.json())
             .then(data => {
-                // Hide modal
-                telegramModal.hide();
+                Swal.close();
                 
                 if (data.status === 'success') {
-                    // Show success message
                     Swal.fire({
                         icon: 'success',
                         title: 'Berhasil',
@@ -422,7 +464,6 @@
                         confirmButtonColor: '#3085d6'
                     });
                 } else {
-                    // Show error message
                     Swal.fire({
                         icon: 'error',
                         title: 'Gagal',
@@ -433,11 +474,8 @@
             })
             .catch(error => {
                 console.error('Error sending to Telegram:', error);
+                Swal.close();
                 
-                // Hide modal
-                telegramModal.hide();
-                
-                // Show error message
                 Swal.fire({
                     icon: 'error',
                     title: 'Gagal',
@@ -445,74 +483,78 @@
                     confirmButtonColor: '#3085d6'
                 });
             });
-        });
+        }
         
-        // Bulk send to Telegram
-        document.getElementById('sendAllTelegram').addEventListener('click', function() {
-            const checkedItems = document.querySelectorAll('.item-checkbox:checked');
-            const itemIds = Array.from(checkedItems).map(checkbox => checkbox.value);
+        // Function to send multiple items to Telegram
+        function sendBulkToTelegram(itemIds) {
+            // Show loading
+            Swal.fire({
+                title: 'Mengirim notifikasi...',
+                text: 'Mohon tunggu sebentar',
+                allowOutsideClick: false,
+                didOpen: () => {
+                    Swal.showLoading();
+                }
+            });
             
-            // Update count
-            document.getElementById('bulkCount').textContent = itemIds.length;
-            
-            // Show modal
-            bulkTelegramModal.show();
-        });
-        
-        // Confirm bulk Telegram send
-        document.getElementById('confirmBulkTelegram').addEventListener('click', function() {
-            const checkedItems = document.querySelectorAll('.item-checkbox:checked');
-            const itemIds = Array.from(checkedItems).map(checkbox => checkbox.value);
-            
-            // Make API call to send to Telegram
-            fetch('/api/send-bulk-to-telegram/', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRFToken': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
-                },
-                body: JSON.stringify({
-                    item_ids: itemIds
+            // Create promises for each item
+            const promises = itemIds.map(itemId => {
+                return fetch('/inventory/api/send-exp-to-telegram/', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+                    },
+                    body: JSON.stringify({
+                        item_id: itemId
+                    })
                 })
-            })
-            .then(response => response.json())
-            .then(data => {
-                // Hide modal
-                bulkTelegramModal.hide();
-                
-                if (data.status === 'success') {
-                    // Show success message
-                    Swal.fire({
-                        icon: 'success',
-                        title: 'Berhasil',
-                        text: `${data.sent_count} notifikasi berhasil dikirim ke Telegram`,
-                        confirmButtonColor: '#3085d6'
-                    });
-                } else {
-                    // Show error message
+                .then(response => response.json());
+            });
+            
+            // Wait for all promises to resolve
+            Promise.all(promises)
+                .then(results => {
+                    Swal.close();
+                    
+                    const successCount = results.filter(result => result.status === 'success').length;
+                    const failCount = results.length - successCount;
+                    
+                    if (failCount === 0) {
+                        Swal.fire({
+                            icon: 'success',
+                            title: 'Berhasil',
+                            text: `Semua notifikasi (${successCount}) berhasil dikirim ke Telegram`,
+                            confirmButtonColor: '#3085d6'
+                        });
+                    } else if (successCount === 0) {
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'Gagal',
+                            text: 'Semua notifikasi gagal dikirim ke Telegram',
+                            confirmButtonColor: '#3085d6'
+                        });
+                    } else {
+                        Swal.fire({
+                            icon: 'warning',
+                            title: 'Sebagian Berhasil',
+                            text: `${successCount} notifikasi berhasil dikirim, ${failCount} notifikasi gagal dikirim`,
+                            confirmButtonColor: '#3085d6'
+                        });
+                    }
+                })
+                .catch(error => {
+                    console.error('Error sending bulk to Telegram:', error);
+                    Swal.close();
+                    
                     Swal.fire({
                         icon: 'error',
                         title: 'Gagal',
-                        text: data.message || 'Gagal mengirim notifikasi ke Telegram',
+                        text: 'Terjadi kesalahan saat mengirim notifikasi ke Telegram',
                         confirmButtonColor: '#3085d6'
                     });
-                }
-            })
-            .catch(error => {
-                console.error('Error sending to Telegram:', error);
-                
-                // Hide modal
-                bulkTelegramModal.hide();
-                
-                // Show error message
-                Swal.fire({
-                    icon: 'error',
-                    title: 'Gagal',
-                    text: 'Terjadi kesalahan saat mengirim notifikasi ke Telegram',
-                    confirmButtonColor: '#3085d6'
                 });
-            });
-        });
+        }
     });
 </script>
 {% endblock %}

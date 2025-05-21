@@ -4,6 +4,21 @@
 <!-- CSRF Token for JavaScript -->
 <meta name="csrf-token" content="{{ csrf_token }}">
 <script src="{% static 'js/csrf.js' %}"></script>
+<style>
+    .editable-field {
+        cursor: pointer;
+    }
+    .editable-display:hover {
+        background-color: #f8f9fa;
+        border-radius: 3px;
+        padding: 2px 5px;
+    }
+    .checkbox-column {
+        width: 40px !important;
+        min-width: 40px !important;
+        max-width: 40px !important;
+    }
+</style>
 {% endblock %}
 
 {% block content %}
@@ -50,7 +65,7 @@
                 <table class="table table-bordered table-hover table-striped">
                     <thead class="bg-light">
                         <tr>
-                            <th class="text-center" style="width: 40px;">
+                            <th class="checkbox-column text-center">
                                 <div class="d-flex align-items-center justify-content-center">
                                     <input class="form-check-input" type="checkbox" id="selectAll">
                                 </div>
@@ -66,7 +81,7 @@
                     <tbody>
                         {% for item in items %}
                         <tr>
-                            <td class="text-center">
+                            <td class="checkbox-column text-center">
                                 <div class="form-check">
                                     <input class="form-check-input item-checkbox" type="checkbox" value="{{ item.id }}" id="item{{ item.id }}">
                                 </div>
@@ -194,11 +209,12 @@
             console.log('Setting up editable field for item:', itemId);
             
             // Click on display to show input
-            display.addEventListener('click', function() {
+            display.addEventListener('click', function(e) {
                 console.log('Display clicked for item:', itemId);
                 display.style.display = 'none';
                 input.style.display = 'inline-block';
                 input.focus();
+                e.stopPropagation(); // Prevent event bubbling
             });
             
             // Save on blur and Enter key
@@ -227,6 +243,12 @@
             // Temporarily disable input
             input.disabled = true;
             
+            // Show loading toast
+            toastMessage.textContent = 'Menyimpan harga terbaru...';
+            toastEl.classList.remove('bg-success', 'bg-danger');
+            toastEl.classList.add('bg-info', 'text-white');
+            toast.show();
+            
             fetch('/inventory/api/save-latest-price/', {
                 method: 'POST',
                 headers: {
@@ -253,13 +275,13 @@
                     
                     // Show success toast
                     toastMessage.textContent = 'Harga terbaru berhasil disimpan';
-                    toastEl.classList.remove('bg-danger');
+                    toastEl.classList.remove('bg-info', 'bg-danger');
                     toastEl.classList.add('bg-success', 'text-white');
                     toast.show();
                 } else {
                     // Show error toast
                     toastMessage.textContent = data.message || 'Gagal menyimpan harga terbaru';
-                    toastEl.classList.remove('bg-success');
+                    toastEl.classList.remove('bg-info', 'bg-success');
                     toastEl.classList.add('bg-danger', 'text-white');
                     toast.show();
                     
@@ -277,7 +299,7 @@
                 
                 // Show error toast
                 toastMessage.textContent = 'Terjadi kesalahan saat menyimpan harga terbaru';
-                toastEl.classList.remove('bg-success');
+                toastEl.classList.remove('bg-info', 'bg-success');
                 toastEl.classList.add('bg-danger', 'text-white');
                 toast.show();
                 
