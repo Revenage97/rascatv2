@@ -740,11 +740,16 @@ def activity_logs(request):
     
     return render(request, 'inventory/activity_logs.html', context)
 
-@login_required
 def login_view(request):
     # Redirect to dashboard if already logged in
     if request.user.is_authenticated:
-        return redirect('inventory:dashboard')
+        return redirect('inventory:kelola_stok_barang')
+    
+    # Get the next parameter, but sanitize it to prevent redirect loops
+    next_url = request.GET.get('next', '')
+    # If next contains 'login' or is too long, reset it to prevent loops
+    if 'login' in next_url or len(next_url) > 100:
+        next_url = ''
     
     if request.method == 'POST':
         form = LoginForm(request.POST)
@@ -764,14 +769,18 @@ def login_view(request):
                     notes='User logged in'
                 )
                 
-                return redirect('inventory:dashboard')
+                # Redirect to next URL if it's safe, otherwise to kelola_stok_barang
+                if next_url and not 'login' in next_url and len(next_url) <= 100:
+                    return redirect(next_url)
+                return redirect('inventory:kelola_stok_barang')
             else:
                 messages.error(request, 'Username atau password tidak valid')
     else:
         form = LoginForm()
     
     context = {
-        'form': form
+        'form': form,
+        'next': next_url if next_url and not 'login' in next_url else ''
     }
     
     return render(request, 'inventory/login.html', context)
