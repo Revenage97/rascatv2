@@ -121,8 +121,12 @@
 
 <script>
     document.addEventListener('DOMContentLoaded', function() {
+        console.log('DOM fully loaded and parsed');
+        
         // Get CSRF token
         const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+        console.log('CSRF Token:', csrfToken ? 'Found' : 'Not found');
+        
         const sendToTelegramBtn = document.getElementById('sendToTelegramBtn');
         const toastEl = document.getElementById('notificationToast');
         const toast = new bootstrap.Toast(toastEl);
@@ -180,14 +184,18 @@
 
         // Inline editing for Harga Terbaru
         const editableFields = document.querySelectorAll('.editable-field');
+        console.log('Found editable fields:', editableFields.length);
         
         editableFields.forEach(field => {
             const display = field.querySelector('.editable-display');
             const input = field.querySelector('.editable-input');
             const itemId = field.dataset.itemId;
             
+            console.log('Setting up editable field for item:', itemId);
+            
             // Click on display to show input
             display.addEventListener('click', function() {
+                console.log('Display clicked for item:', itemId);
                 display.style.display = 'none';
                 input.style.display = 'inline-block';
                 input.focus();
@@ -195,11 +203,13 @@
             
             // Save on blur and Enter key
             input.addEventListener('blur', function() {
+                console.log('Input blur for item:', itemId, 'value:', input.value);
                 saveLatestPrice(itemId, input.value);
             });
             
             input.addEventListener('keydown', function(e) {
                 if (e.key === 'Enter') {
+                    console.log('Enter key pressed for item:', itemId);
                     input.blur(); // Trigger blur event which saves
                 }
             });
@@ -207,7 +217,15 @@
         
         // Function to save latest price via AJAX
         function saveLatestPrice(itemId, latestPrice) {
-            console.log('Saving latest price:', itemId, latestPrice);
+            console.log('Saving latest price for item:', itemId, 'value:', latestPrice);
+            
+            // Show loading indicator
+            const field = document.querySelector(`.editable-field[data-item-id="${itemId}"]`);
+            const display = field.querySelector('.editable-display');
+            const input = field.querySelector('.editable-input');
+            
+            // Temporarily disable input
+            input.disabled = true;
             
             fetch('/inventory/api/save-latest-price/', {
                 method: 'POST',
@@ -220,12 +238,12 @@
                     latest_price: latestPrice
                 })
             })
-            .then(response => response.json())
+            .then(response => {
+                console.log('Response status:', response.status);
+                return response.json();
+            })
             .then(data => {
                 console.log('Save response:', data);
-                const field = document.querySelector(`.editable-field[data-item-id="${itemId}"]`);
-                const display = field.querySelector('.editable-display');
-                const input = field.querySelector('.editable-input');
                 
                 if (data.status === 'success') {
                     // Update display and hide input
@@ -250,6 +268,9 @@
                     display.style.display = 'inline';
                     input.style.display = 'none';
                 }
+                
+                // Re-enable input
+                input.disabled = false;
             })
             .catch(error => {
                 console.error('Error saving latest price:', error);
@@ -261,13 +282,12 @@
                 toast.show();
                 
                 // Revert UI
-                const field = document.querySelector(`.editable-field[data-item-id="${itemId}"]`);
-                const display = field.querySelector('.editable-display');
-                const input = field.querySelector('.editable-input');
-                
                 input.value = display.textContent;
                 display.style.display = 'inline';
                 input.style.display = 'none';
+                
+                // Re-enable input
+                input.disabled = false;
             });
         }
         
@@ -349,9 +369,8 @@
                 
                 const button = e.target.classList.contains('send-single-item') ? 
                     e.target : e.target.parentElement;
-                const itemId = button.dataset.itemId;
                 
-                if (!itemId) return;
+                const itemId = button.dataset.itemId;
                 
                 // Show loading
                 Swal.fire({
