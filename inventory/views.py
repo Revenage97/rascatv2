@@ -10,6 +10,7 @@ from django.conf import settings
 from django.db import transaction, models
 from django.db.models import Q
 from django.utils import timezone
+from django.utils.http import url_has_allowed_host_and_scheme
 import json
 import pandas as pd
 import os
@@ -455,31 +456,6 @@ def transfer_stok(request):
             items = items.order_by('current_stock')
         elif sort == 'stock_desc':
             items = items.order_by('-current_stock')
-        elif sort == 'price_asc':
-            items = items.order_by('selling_price')
-        elif sort == 'price_desc':
-            items = items.order_by('-selling_price')
-        
-        # Filtering functionality
-        if filter_option == 'low_stock':
-            items = [item for item in items if item.minimum_stock and item.current_stock < item.minimum_stock]
-        
-        # Convert items to list for manipulation
-        items_list = []
-        for item in items:
-            # Convert Decimal to float for intcomma filter compatibility
-            selling_price = float(item.selling_price) if item.selling_price else 0
-            
-            item_dict = {
-                'id': item.id,
-                'code': item.code,
-                'name': item.name,
-                'category': item.category,
-                'current_stock': item.current_stock,
-                'selling_price': selling_price,  # Convert to float for template
-                'minimum_stock': item.minimum_stock
-            }
-            items_list.append(item_dict)
         
         context = {
             'items': items,
@@ -490,214 +466,33 @@ def transfer_stok(request):
     except Exception as e:
         logger.error(f"Error in transfer_stok view: {str(e)}")
         logger.error(traceback.format_exc())
-        messages.error(request, f'Error: {str(e)}')
+        messages.error(request, f"Error: {str(e)}")
         return redirect('inventory:dashboard')
-
-@login_required
-def upload_file(request):
-    """
-    View for uploading Excel files
-    """
-    if request.method == 'POST':
-        form = ExcelUploadForm(request.POST, request.FILES)
-        if form.is_valid():
-            excel_file = request.FILES['excel_file']
-            
-            # Check file extension
-            if not excel_file.name.endswith('.xlsx'):
-                messages.error(request, 'Format file tidak valid. Harap upload file Excel (.xlsx)')
-                return redirect('inventory:upload_file')
-            
-            try:
-                # Save file to disk
-                file_path = os.path.join(settings.MEDIA_ROOT, 'uploads', excel_file.name)
-                os.makedirs(os.path.dirname(file_path), exist_ok=True)
-                
-                with open(file_path, 'wb+') as destination:
-                    for chunk in excel_file.chunks():
-                        destination.write(chunk)
-                
-                # Read Excel file
-                df = pd.read_excel(file_path)
-                
-                # Process data
-                success_count = 0
-                error_count = 0
-                
-                for index, row in df.iterrows():
-                    try:
-                        # Get or create item
-                        item, created = Item.objects.update_or_create(
-                            code=row['Kode'],
-                            defaults={
-                                'name': row['Nama Barang'],
-                                'category': row['Kategori'],
-                                'current_stock': row['Total Stok'],
-                                'selling_price': row['Harga Jual']
-                            }
-                        )
-                        
-                        success_count += 1
-                    except Exception as e:
-                        logger.error(f"Error processing row {index}: {str(e)}")
-                        error_count += 1
-                
-                # Create upload history
-                UploadHistory.objects.create(
-                    user=request.user,
-                    filename=excel_file.name,
-                    file_path=file_path,
-                    file_size=excel_file.size,
-                    success_count=success_count,
-                    error_count=error_count
-                )
-                
-                # Log activity
-                ActivityLog.objects.create(
-                    user=request.user,
-                    action='upload_file',
-                    status='success',
-                    notes=f'File {excel_file.name} berhasil diupload. {success_count} item berhasil, {error_count} item gagal'
-                )
-                
-                messages.success(request, f'File berhasil diupload. {success_count} item berhasil diperbarui, {error_count} item gagal')
-                return redirect('inventory:upload_file')
-                
-            except Exception as e:
-                logger.error(f"Error in upload_file view: {str(e)}")
-                logger.error(traceback.format_exc())
-                
-                # Log activity
-                ActivityLog.objects.create(
-                    user=request.user,
-                    action='upload_file',
-                    status='failed',
-                    notes=f'Gagal mengupload file {excel_file.name}: {str(e)}'
-                )
-                
-                messages.error(request, f'Gagal mengupload file: {str(e)}')
-                return redirect('inventory:upload_file')
-    else:
-        form = ExcelUploadForm()
-    
-    return render(request, 'inventory/upload_file.html', {'form': form})
-
-@login_required
-def upload_transfer_file(request):
-    """
-    View for uploading transfer stock Excel files
-    """
-    if request.method == 'POST':
-        if 'transfer_file' not in request.FILES:
-            messages.error(request, 'Tidak ada file yang dipilih')
-            return redirect('inventory:upload_file')
-        
-        transfer_file = request.FILES['transfer_file']
-        
-        # Check file extension
-        if not transfer_file.name.endswith('.xlsx'):
-            messages.error(request, 'Format file tidak valid. Harap upload file Excel (.xlsx)')
-            return redirect('inventory:upload_file')
-        
-        try:
-            # Save file to disk
-            file_path = os.path.join(settings.MEDIA_ROOT, 'uploads', transfer_file.name)
-            os.makedirs(os.path.dirname(file_path), exist_ok=True)
-            
-            with open(file_path, 'wb+') as destination:
-                for chunk in transfer_file.chunks():
-                    destination.write(chunk)
-            
-            # Read Excel file
-            df = pd.read_excel(file_path)
-            
-            # Process data
-            success_count = 0
-            error_count = 0
-            
-            for index, row in df.iterrows():
-                try:
-                    # Get or create item
-                    item, created = Item.objects.update_or_create(
-                        code=row['Kode'],
-                        defaults={
-                            'name': row['Nama Barang'],
-                            'current_stock': row['Stok']
-                        }
-                    )
-                    
-                    # Set minimum stock if provided
-                    if 'Stok Minimum' in row and not pd.isna(row['Stok Minimum']):
-                        item.minimum_stock = row['Stok Minimum']
-                        item.save(update_fields=['minimum_stock'])
-                    
-                    success_count += 1
-                except Exception as e:
-                    logger.error(f"Error processing row {index}: {str(e)}")
-                    error_count += 1
-            
-            # Create upload history
-            UploadHistory.objects.create(
-                user=request.user,
-                filename=transfer_file.name,
-                file_path=file_path,
-                file_size=transfer_file.size,
-                success_count=success_count,
-                error_count=error_count
-            )
-            
-            # Log activity
-            ActivityLog.objects.create(
-                user=request.user,
-                action='upload_transfer_file',
-                status='success',
-                notes=f'File {transfer_file.name} berhasil diupload. {success_count} item berhasil, {error_count} item gagal'
-            )
-            
-            messages.success(request, f'File berhasil diupload. {success_count} item berhasil diperbarui, {error_count} item gagal')
-            return redirect('inventory:upload_file')
-            
-        except Exception as e:
-            logger.error(f"Error in upload_transfer_file view: {str(e)}")
-            logger.error(traceback.format_exc())
-            
-            # Log activity
-            ActivityLog.objects.create(
-                user=request.user,
-                action='upload_transfer_file',
-                status='failed',
-                notes=f'Gagal mengupload file {transfer_file.name}: {str(e)}'
-            )
-            
-            messages.error(request, f'Gagal mengupload file: {str(e)}')
-            return redirect('inventory:upload_file')
-    
-    return redirect('inventory:upload_file')
 
 @login_required
 def change_password(request):
     """
     View for changing user password
     """
+    user = request.user
+    
     if request.method == 'POST':
         old_password = request.POST.get('old_password')
-        new_password1 = request.POST.get('new_password1')
-        new_password2 = request.POST.get('new_password2')
+        new_password = request.POST.get('new_password')
+        confirm_password = request.POST.get('confirm_password')
         
-        if not old_password or not new_password1 or not new_password2:
-            messages.error(request, 'Semua field harus diisi')
-            return redirect('inventory:change_password')
-        
-        if new_password1 != new_password2:
-            messages.error(request, 'Password baru tidak cocok')
-            return redirect('inventory:change_password')
-        
-        user = authenticate(username=request.user.username, password=old_password)
-        if user is None:
+        # Validate old password
+        if not user.check_password(old_password):
             messages.error(request, 'Password lama salah')
-            return redirect('inventory:change_password')
+            return render(request, 'inventory/change_password.html')
         
-        user.set_password(new_password1)
+        # Validate new password
+        if new_password != confirm_password:
+            messages.error(request, 'Password baru dan konfirmasi password tidak cocok')
+            return render(request, 'inventory/change_password.html')
+        
+        # Set new password
+        user.set_password(new_password)
         user.save()
         
         # Log activity
@@ -745,6 +540,8 @@ def webhook_settings(request):
                 updated_fields.append(f"Webhook Data Exp Produk diperbarui: {webhook_settings.webhook_data_exp_produk}")
             if 'webhook_kelola_harga' in form.changed_data:
                 updated_fields.append(f"Webhook Kelola Harga diperbarui: {webhook_settings.webhook_kelola_harga}")
+            if 'webhook_kelola_stok_packing' in form.changed_data:
+                updated_fields.append(f"Webhook Kelola Stok Packing diperbarui: {webhook_settings.webhook_kelola_stok_packing}")
             
             # Log activity with specific details
             notes = "Pengaturan webhook diperbarui"
@@ -782,13 +579,18 @@ def activity_logs(request):
     
     return render(request, 'inventory/activity_logs.html', context)
 
-@login_required
 def login_view(request):
     """
     View for user login
     """
+    # If user is already authenticated, redirect to dashboard
     if request.user.is_authenticated:
         return redirect('inventory:dashboard')
+    
+    # Get the next parameter, but limit its length to prevent redirect loops
+    next_url = request.GET.get('next', '')
+    if len(next_url) > 100:  # Limit the length of next parameter
+        next_url = ''
     
     if request.method == 'POST':
         form = LoginForm(request.POST)
@@ -808,13 +610,21 @@ def login_view(request):
                     notes=f'User {username} logged in'
                 )
                 
+                # Redirect to next URL if it's safe, otherwise to dashboard
+                if next_url and url_has_allowed_host_and_scheme(next_url, allowed_hosts=None):
+                    return redirect(next_url)
                 return redirect('inventory:dashboard')
             else:
                 messages.error(request, 'Username atau password salah')
     else:
         form = LoginForm()
     
-    return render(request, 'inventory/login.html', {'form': form})
+    context = {
+        'form': form,
+        'next': next_url  # Pass the sanitized next URL to the template
+    }
+    
+    return render(request, 'inventory/login.html', context)
 
 @login_required
 def logout_view(request):
