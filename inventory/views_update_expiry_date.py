@@ -5,8 +5,9 @@ from django.views.decorators.csrf import csrf_exempt
 import json
 import logging
 import traceback
+import requests
 from datetime import datetime
-from .models import Item, ActivityLog
+from .models import Item, ActivityLog, WebhookSettings
 
 # Configure logging
 logger = logging.getLogger(__name__)
@@ -93,18 +94,100 @@ def send_exp_to_telegram(request):
             if not item_ids:
                 return JsonResponse({'status': 'error', 'message': 'No items selected'})
             
+            # Get webhook settings
+            webhook_settings, created = WebhookSettings.objects.get_or_create(pk=1)
+            webhook_url = webhook_settings.webhook_data_exp_produk
+            
+            if not webhook_url:
+                logger.error("Webhook URL for Data Exp Produk not configured")
+                return JsonResponse({'status': 'error', 'message': 'Webhook URL not configured'}, status=400)
+            
             # Get items
             items = Item.objects.filter(id__in=item_ids)
             
-            # Log activity
-            ActivityLog.objects.create(
-                user=request.user,
-                action='send_exp_to_telegram',
-                status='success',
-                notes=f'Sent expiry notification for {len(items)} items to Telegram'
-            )
+            # Send to Telegram
+            success_count = 0
+            error_count = 0
+            error_messages = []
             
-            return JsonResponse({'status': 'success', 'message': 'Notification sent to Telegram'})
+            for item in items:
+                # Format message
+                message = f"📦 Produk Expired:\n"
+                message += f"Nama: {item.name}\n"
+                
+                if item.expiry_date:
+                    message += f"Exp: {item.expiry_date.strftime('%Y-%m-%d')}\n"
+                else:
+                    message += f"Exp: Tidak diatur\n"
+                    
+                message += f"Stok: {item.current_stock}\n"
+                
+                # Send to webhook
+                try:
+                    response = requests.post(
+                        webhook_url,
+                        json={'text': message, 'parse_mode': 'Markdown'},
+                        headers={'Content-Type': 'application/json'},
+                        timeout=10
+                    )
+                    
+                    if response.status_code == 200:
+                        success_count += 1
+                        logger.info(f"Successfully sent item {item.id} expiry notification to Telegram")
+                        
+                        # Log activity
+                        ActivityLog.objects.create(
+                            user=request.user,
+                            action='send_exp_to_telegram',
+                            status='success',
+                            notes=f'Sent expiry notification for {item.name} (ID: {item.id}) to Telegram'
+                        )
+                    else:
+                        error_count += 1
+                        error_message = f"Failed to send item {item.id} to Telegram: {response.status_code} {response.text}"
+                        error_messages.append(error_message)
+                        logger.error(error_message)
+                        
+                        # Log activity
+                        ActivityLog.objects.create(
+                            user=request.user,
+                            action='send_exp_to_telegram',
+                            status='error',
+                            notes=f'Failed to send expiry notification for {item.name} (ID: {item.id}) to Telegram: {response.status_code}'
+                        )
+                except Exception as e:
+                    error_count += 1
+                    error_message = f"Error sending item {item.id} to Telegram: {str(e)}"
+                    error_messages.append(error_message)
+                    logger.error(error_message)
+                    logger.error(traceback.format_exc())
+                    
+                    # Log activity
+                    ActivityLog.objects.create(
+                        user=request.user,
+                        action='send_exp_to_telegram',
+                        status='error',
+                        notes=f'Error sending expiry notification for {item.name} (ID: {item.id}) to Telegram: {str(e)}'
+                    )
+            
+            # Return response
+            if success_count > 0 and error_count == 0:
+                return JsonResponse({
+                    'status': 'success',
+                    'message': f'Successfully sent {success_count} item(s) to Telegram'
+                })
+            elif success_count > 0 and error_count > 0:
+                return JsonResponse({
+                    'status': 'partial',
+                    'message': f'Sent {success_count} item(s) to Telegram, but failed to send {error_count} item(s)',
+                    'errors': error_messages
+                })
+            else:
+                return JsonResponse({
+                    'status': 'error',
+                    'message': f'Failed to send all {error_count} item(s) to Telegram',
+                    'errors': error_messages
+                }, status=500)
             
         except Exception as e:
             logger.error(f"Error in send_exp_to_telegram view: {str(e)}")
