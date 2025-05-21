@@ -15,6 +15,7 @@ urlpatterns = [
     path('kelola-harga/', views.kelola_harga, name='kelola_harga'),
     path('kelola-stok-packing/', views.kelola_stok_packing, name='kelola_stok_packing'),
     path('transfer-stok/', views.transfer_stok, name='transfer_stok'),
+    path('data-exp-produk/', views.data_exp_produk, name='data_exp_produk'),
     path('upload/', views.upload_file, name='upload_file'),
     path('upload-transfer/', views.upload_transfer_file, name='upload_transfer_file'),
     path('change-password/', views.change_password, name='change_password'),

@@ -41,6 +41,13 @@ def forecasting(request):
     """
     return render(request, 'inventory/forecasting.html')
 
+@login_required
+def data_exp_produk(request):
+    """
+    View for Data Exp Produk page - currently displays a placeholder message
+    """
+    return render(request, 'inventory/data_exp_produk.html')
+
 # New views for submenu pages
 @login_required
 @user_passes_test(is_admin)
