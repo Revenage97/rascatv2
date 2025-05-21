@@ -65,16 +65,28 @@
             <button id="sortDesc" class="btn btn-outline-secondary btn-sm sort-btn">
                 <i class="bi bi-arrow-up"></i> Urutkan Exp Terjauh (DESC)
             </button>
+            {% if user.profile.is_admin %}
+            <button id="resetFilterBtn" class="btn btn-outline-danger btn-sm">
+                <i class="bi bi-x-circle"></i> Reset Filter
+            </button>
+            {% endif %}
         </div>
     </div>
 
     <!-- Bulk Actions -->
     <div class="row bulk-actions">
-        <div class="col-12">
+        <div class="col-md-6">
             <button id="sendAllTelegram" class="btn btn-primary btn-sm" disabled>
                 <i class="bi bi-telegram"></i> Kirim Semua ke Telegram
             </button>
             <span id="selectedCount" class="ms-2 text-muted">0 item dipilih</span>
+        </div>
+        <div class="col-md-6 text-md-end">
+            {% if user.profile.is_admin %}
+            <button id="resetDataBtn" class="btn btn-danger btn-sm">
+                <i class="bi bi-trash"></i> Reset Data
+            </button>
+            {% endif %}
         </div>
     </div>
 
@@ -196,6 +208,29 @@
         </div>
     </div>
 </div>
+
+<!-- Modal Konfirmasi Reset Data -->
+<div class="modal fade" id="resetDataModal" tabindex="-1" aria-labelledby="resetDataModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="resetDataModalLabel">Konfirmasi Reset Data</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="alert alert-danger">
+                    <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                    Apakah Anda yakin ingin menghapus semua data tanggal expired produk? Tindakan ini hanya akan menghapus data di halaman Data Exp Produk dan tidak bisa dibatalkan.
+                </div>
+                <p class="text-muted">Data di halaman Kelola Stok Barang dan Transfer Stok tidak akan terpengaruh oleh tindakan ini.</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
+                <button type="button" class="btn btn-danger" id="confirmResetData">Hapus Semua Data</button>
+            </div>
+        </div>
+    </div>
+</div>
 {% endblock %}
 
 {% block extra_js %}
@@ -210,6 +245,28 @@
                 allowInput: true
             });
         });
+
+        // Reset Data button functionality
+        const resetDataBtn = document.getElementById('resetDataBtn');
+        const resetDataModal = new bootstrap.Modal(document.getElementById('resetDataModal'));
+        const confirmResetDataBtn = document.getElementById('confirmResetData');
+        
+        if (resetDataBtn) {
+            resetDataBtn.addEventListener('click', function() {
+                resetDataModal.show();
+           // Confirm Reset Data button click handler
+        if (confirmResetDataBtn) {
+            confirmResetDataBtn.addEventListener('click', function() {
+                // Show disabled feature popup directly without making API call
+                resetDataModal.hide();
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Fitur Dinonaktifkan',
+                    text: 'Fitur reset data saat ini sedang dinonaktifkan',
+                    confirmButtonColor: '#3085d6'
+                });
+            });
+        }
 
         // Select All functionality
         const selectAllCheckbox = document.getElementById('selectAll');
@@ -367,65 +424,85 @@
             .then(data => {
                 if (data.status === 'success') {
                     // Show success indicator
-                    const button = document.querySelector(`.save-exp-date[data-item-id="${itemId}"]`);
-                    button.classList.remove('btn-outline-secondary');
-                    button.classList.add('btn-success');
+                    const row = document.querySelector(`tr[data-id="${itemId}"]`);
                     
-                    // Reset after 2 seconds
+                    // Update row color based on expiry date
+                    if (expiryDate) {
+                        const today = new Date();
+                        const expDate = new Date(expiryDate);
+                        const sixMonthsFuture = new Date();
+                        sixMonthsFuture.setMonth(today.getMonth() + 6);
+                        
+                        row.classList.remove('exp-warning', 'exp-soon', 'exp-safe');
+                        
+                        if (expDate < today) {
+                            row.classList.add('exp-warning');
+                        } else if (expDate <= sixMonthsFuture) {
+                            row.classList.add('exp-soon');
+                        } else {
+                            row.classList.add('exp-safe');
+                        }
+                    } else {
+                        row.classList.remove('exp-warning', 'exp-soon', 'exp-safe');
+                    }
+                    
+                    // Flash animation
+                    row.style.transition = 'background-color 0.5s';
+                    row.style.backgroundColor = '#d4edda';
                     setTimeout(() => {
-                        button.classList.remove('btn-success');
-                        button.classList.add('btn-outline-secondary');
-                    }, 2000);
+                        row.style.backgroundColor = '';
+                    }, 1000);
                 } else {
                     alert('Error: ' + data.message);
                 }
             })
             .catch(error => {
                 console.error('Error:', error);
-                alert('Terjadi kesalahan saat menyimpan tanggal expired.');
+                alert('Error saving expiry date');
             });
         }
 
-        // Function to send to Telegram
+        // Function to send to telegram
         function sendToTelegram(itemId) {
-            return fetch('{% url "inventory:send_exp_to_telegram" %}', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRFToken': getCookie('csrftoken')
-                },
-                body: JSON.stringify({
-                    item_id: itemId,
-                    source: 'data_exp_produk'
+            return new Promise((resolve, reject) => {
+                fetch('{% url "inventory:send_exp_to_telegram" %}', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': getCookie('csrftoken')
+                    },
+                    body: JSON.stringify({
+                        item_id: itemId
+                    })
                 })
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.status === 'success') {
-                    // For individual sends, show success message
-                    if (!document.querySelector('.item-checkbox:checked') || document.querySelectorAll('.item-checkbox:checked').length === 1) {
-                        alert('Notifikasi berhasil dikirim ke Telegram!');
-                    }
-                    return true;
-                } else {
-                    // For individual sends, show error message
-                    if (!document.querySelector('.item-checkbox:checked') || document.querySelectorAll('.item-checkbox:checked').length === 1) {
+                .then(response => response.json())
+                .then(data => {
+                    if (data.status === 'success') {
+                        // Show success indicator
+                        const row = document.querySelector(`tr[data-id="${itemId}"]`);
+                        
+                        // Flash animation
+                        row.style.transition = 'background-color 0.5s';
+                        row.style.backgroundColor = '#d4edda';
+                        setTimeout(() => {
+                            row.style.backgroundColor = '';
+                        }, 1000);
+                        
+                        resolve(true);
+                    } else {
                         alert('Error: ' + data.message);
+                        resolve(false);
                     }
-                    return false;
-                }
-            })
-            .catch(error => {
-                console.error('Error:', error);
-                // For individual sends, show error message
-                if (!document.querySelector('.item-checkbox:checked') || document.querySelectorAll('.item-checkbox:checked').length === 1) {
-                    alert('Terjadi kesalahan saat mengirim ke Telegram.');
-                }
-                return false;
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    alert('Error sending to Telegram');
+                    resolve(false);
+                });
             });
         }
 
-        // Helper function to get CSRF token
+        // Function to get CSRF token from cookies
         function getCookie(name) {
             let cookieValue = null;
             if (document.cookie && document.cookie !== '') {
@@ -439,15 +516,6 @@
                 }
             }
             return cookieValue;
-        }
-
-        // Highlight active sort button if sorting is applied
-        const urlParams = new URLSearchParams(window.location.search);
-        const sortParam = urlParams.get('sort');
-        if (sortParam === 'exp_asc') {
-            document.getElementById('sortAsc').classList.add('btn-sort-active');
-        } else if (sortParam === 'exp_desc') {
-            document.getElementById('sortDesc').classList.add('btn-sort-active');
         }
     });
 </script>
