@@ -1,354 +1,88 @@
-from django.shortcuts import render, redirect, get_object_or_404
+from django.shortcuts import render, redirect
 from django.contrib.auth import authenticate, login, logout, update_session_auth_hash
 from django.contrib.auth.decorators import login_required, user_passes_test
-from django.contrib.auth.models import User
 from django.contrib import messages
-from django.http import JsonResponse, HttpResponse
-from django.shortcuts import render, redirect, get_object_or_404
-from django.views.decorators.csrf import csrf_exempt
-from django.conf import settings
-from django.db import transaction, models
+from django.contrib.auth.models import User
 from django.db.models import Q
-from django.utils import timezone
+from django.http import JsonResponse
+from django.urls import reverse
 from django.utils.http import url_has_allowed_host_and_scheme
 import json
-import pandas as pd
-import os
 import logging
 import traceback
-from datetime import datetime, timedelta
-from dateutil.relativedelta import relativedelta
-from .models import Item, WebhookSettings, ActivityLog, UploadHistory, UserProfile
-from .forms import ExcelUploadForm, WebhookSettingsForm, LoginForm, UserRegistrationForm, UserEditForm
+from .models import Item, WebhookSettings, ActivityLog, UserProfile
+from .forms import LoginForm, WebhookSettingsForm, UserRegistrationForm, UserEditForm, UserProfileForm
 
 # Configure logging
 logger = logging.getLogger(__name__)
 
-# Import upload_exp_produk_file view
-from .views_upload_exp_produk import upload_exp_produk_file
-
-# Existing views
-@login_required
-def dashboard(request):
-    # Redirect to kelola_stok_barang view
-    return redirect('inventory:kelola_stok_barang')
-
-# Helper function to check if user is admin
 def is_admin(user):
+    """
+    Check if user has admin role
+    """
     try:
         return user.profile.is_admin
-    except (UserProfile.DoesNotExist, AttributeError):
+    except:
         return False
 
-# Forecasting view
+def is_staff_gudang(user):
+    """
+    Check if user has staff_gudang role
+    """
+    try:
+        return user.profile.is_staff_gudang
+    except:
+        return False
+
+def is_manajer(user):
+    """
+    Check if user has manajer role
+    """
+    try:
+        return user.profile.is_manajer
+    except:
+        return False
+
+@login_required
+def dashboard(request):
+    """
+    View for dashboard
+    """
+    # Get counts for dashboard stats
+    total_items = Item.objects.count()
+    low_stock_items = Item.objects.filter(current_stock__lt=10).count()
+    
+    # Get recent activity logs
+    recent_logs = ActivityLog.objects.all().order_by('-timestamp')[:5]
+    
+    context = {
+        'total_items': total_items,
+        'low_stock_items': low_stock_items,
+        'recent_logs': recent_logs
+    }
+    
+    return render(request, 'inventory/dashboard.html', context)
+
 @login_required
 def forecasting(request):
     """
-    View for forecasting page - currently displays a placeholder message
+    View for forecasting
     """
     return render(request, 'inventory/forecasting.html')
 
-# Otomatisasi view
 @login_required
 def otomatisasi(request):
     """
-    View for otomatisasi page - currently displays a placeholder message
+    View for otomatisasi
     """
     return render(request, 'inventory/otomatisasi.html')
 
 @login_required
-def data_exp_produk(request):
-    """
-    View for Data Exp Produk page - displays products with their expiry dates
-    """
-    query = request.GET.get('query', '')
-    sort = request.GET.get('sort', '')
-    
-    items = Item.objects.all()
-    
-    # Search functionality
-    if query:
-        items = items.filter(name__icontains=query) | items.filter(code__icontains=query) | items.filter(category__icontains=query)
-    
-    # Sorting functionality
-    if sort == 'exp_asc':
-        # Sort by expiry date (nulls last)
-        items = items.order_by(models.F('expiry_date').asc(nulls_last=True))
-    elif sort == 'exp_desc':
-        # Sort by expiry date (nulls first)
-        items = items.order_by(models.F('expiry_date').desc(nulls_first=True))
-    
-    # Get today's date for comparison
-    today = timezone.now().date()
-    
-    # Calculate date 6 months from today for color coding
-    from dateutil.relativedelta import relativedelta
-    six_months_future = today + relativedelta(months=6)
-    
-    context = {
-        'items': items,
-        'query': query,
-        'today': today,
-        'six_months_future': six_months_future,
-    }
-    
-    return render(request, 'inventory/data_exp_produk.html', context)
-
-@login_required
-@csrf_exempt
-def save_expiry_date(request):
-    """
-    API endpoint to save expiry date for an item
-    """
-    if request.method == 'POST':
-        try:
-            data = json.loads(request.body)
-            item_id = data.get('item_id')
-            expiry_date = data.get('expiry_date')
-            
-            if not item_id:
-                return JsonResponse({'status': 'error', 'message': 'Item ID is required'})
-            
-            item = Item.objects.get(id=item_id)
-            
-            # Update expiry date
-            if expiry_date:
-                try:
-                    # Parse date string to date object
-                    expiry_date = datetime.strptime(expiry_date, '%Y-%m-%d').date()
-                    item.expiry_date = expiry_date
-                except ValueError:
-                    return JsonResponse({'status': 'error', 'message': 'Invalid date format'})
-            else:
-                # Clear expiry date if empty
-                item.expiry_date = None
-            
-            item.save(update_fields=['expiry_date'])
-            
-            # Log activity
-            ActivityLog.objects.create(
-                user=request.user,
-                action='update_expiry_date',
-                status='success',
-                notes=f'Updated expiry date for {item.name} to {expiry_date}'
-            )
-            
-            return JsonResponse({'status': 'success', 'message': 'Expiry date updated successfully'})
-            
-        except Item.DoesNotExist:
-            return JsonResponse({'status': 'error', 'message': 'Item not found'})
-        except Exception as e:
-            logger.error(f"Error in save_expiry_date view: {str(e)}")
-            logger.error(traceback.format_exc())
-            return JsonResponse({'status': 'error', 'message': str(e)})
-    
-    return JsonResponse({'status': 'error', 'message': 'Invalid request method'})
-
-@login_required
-@csrf_exempt
-def send_exp_to_telegram(request):
-    """
-    API endpoint to send expiry notification to Telegram
-    """
-    if request.method == 'POST':
-        try:
-            data = json.loads(request.body)
-            item_id = data.get('item_id')
-            
-            if not item_id:
-                return JsonResponse({'status': 'error', 'message': 'Item ID is required'})
-            
-            item = Item.objects.get(id=item_id)
-            
-            # Get webhook URL
-            webhook_settings = WebhookSettings.objects.first()
-            if not webhook_settings:
-                return JsonResponse({'status': 'error', 'message': 'Webhook settings not found'})
-            
-            webhook_url = webhook_settings.webhook_data_exp_produk
-            if not webhook_url:
-                return JsonResponse({'status': 'error', 'message': 'Webhook URL not configured'})
-            
-            # Format expiry date
-            expiry_date = item.expiry_date.strftime('%d-%m-%Y') if item.expiry_date else 'Tidak diatur'
-            
-            # Prepare message
-            message = f"📦 Produk Expired:\n"
-            message += f"Nama: {item.name}\n"
-            message += f"Exp: {expiry_date}\n"
-            message += f"Stok: {item.current_stock}\n"
-            
-            # Send to webhook
-            import requests
-            response = requests.post(
-                webhook_url,
-                json={'text': message, 'parse_mode': 'Markdown'},
-                headers={'Content-Type': 'application/json'}
-            )
-            
-            if response.status_code == 200:
-                # Log activity
-                ActivityLog.objects.create(
-                    user=request.user,
-                    action='send_exp_to_telegram',
-                    status='success',
-                    notes=f'Sent expiry notification for {item.name} to Telegram'
-                )
-                
-                return JsonResponse({'status': 'success', 'message': 'Notification sent to Telegram'})
-            else:
-                # Log activity
-                ActivityLog.objects.create(
-                    user=request.user,
-                    action='send_exp_to_telegram',
-                    status='failed',
-                    notes=f'Failed to send expiry notification for {item.name} to Telegram: {response.text}'
-                )
-                
-                return JsonResponse({'status': 'error', 'message': f'Failed to send notification: {response.text}'})
-            
-        except Item.DoesNotExist:
-            return JsonResponse({'status': 'error', 'message': 'Item not found'})
-        except Exception as e:
-            logger.error(f"Error in send_exp_to_telegram view: {str(e)}")
-            logger.error(traceback.format_exc())
-            return JsonResponse({'status': 'error', 'message': str(e)})
-    
-    return JsonResponse({'status': 'error', 'message': 'Invalid request method'})
-
-# New views for submenu pages
-@login_required
-@user_passes_test(is_admin)
-def kelola_pengguna(request):
-    """
-    View for managing users - allows admin to create, edit, and delete users
-    """
-    users = User.objects.all().select_related('profile')
-    
-    if request.method == 'POST':
-        form = UserRegistrationForm(request.POST)
-        if form.is_valid():
-            try:
-                with transaction.atomic():
-                    # Create user
-                    user = form.save()
-                    
-                    # Create user profile
-                    UserProfile.objects.create(
-                        user=user,
-                        full_name=form.cleaned_data['full_name'],
-                        role=form.cleaned_data['role']
-                    )
-                    
-                    # Log activity
-                    ActivityLog.objects.create(
-                        user=request.user,
-                        action='create_user',
-                        status='success',
-                        notes=f'User {user.username} created with role {form.cleaned_data["role"]}'
-                    )
-                    
-                    messages.success(request, f'User {user.username} berhasil dibuat')
-                    return redirect('inventory:kelola_pengguna')
-            except Exception as e:
-                messages.error(request, f'Error: {str(e)}')
-    else:
-        form = UserRegistrationForm()
-    
-    context = {
-        'users': users,
-        'form': form
-    }
-    
-    return render(request, 'inventory/kelola_pengguna.html', context)
-
-@login_required
-@user_passes_test(is_admin)
-def edit_user(request, user_id):
-    """
-    View for editing an existing user
-    """
-    user_obj = get_object_or_404(User, id=user_id)
-    
-    if request.method == 'POST':
-        form = UserEditForm(request.POST, instance=user_obj)
-        if form.is_valid():
-            try:
-                with transaction.atomic():
-                    # Update user
-                    user = form.save()
-                    
-                    # Update or create user profile
-                    profile, created = UserProfile.objects.update_or_create(
-                        user=user,
-                        defaults={
-                            'full_name': form.cleaned_data['full_name'],
-                            'role': form.cleaned_data['role']
-                        }
-                    )
-                    
-                    # Log activity
-                    ActivityLog.objects.create(
-                        user=request.user,
-                        action='edit_user',
-                        status='success',
-                        notes=f'User {user.username} updated'
-                    )
-                    
-                    messages.success(request, f'User {user.username} berhasil diperbarui')
-                    return redirect('inventory:kelola_pengguna')
-            except Exception as e:
-                messages.error(request, f'Error: {str(e)}')
-    else:
-        form = UserEditForm(instance=user_obj)
-    
-    context = {
-        'form': form,
-        'user_obj': user_obj
-    }
-    
-    return render(request, 'inventory/edit_user.html', context)
-
-@login_required
-@user_passes_test(is_admin)
-def delete_user(request, user_id):
-    """
-    View for deleting a user
-    """
-    user_obj = get_object_or_404(User, id=user_id)
-    
-    # Prevent self-deletion
-    if user_obj == request.user:
-        messages.error(request, 'Anda tidak dapat menghapus akun Anda sendiri')
-        return redirect('inventory:kelola_pengguna')
-    
-    if request.method == 'POST':
-        try:
-            username = user_obj.username
-            user_obj.delete()
-            
-            # Log activity
-            ActivityLog.objects.create(
-                user=request.user,
-                action='delete_user',
-                status='success',
-                notes=f'User {username} deleted'
-            )
-            
-            messages.success(request, f'User {username} berhasil dihapus')
-        except Exception as e:
-            messages.error(request, f'Error: {str(e)}')
-        
-        return redirect('inventory:kelola_pengguna')
-    
-    context = {
-        'user_obj': user_obj
-    }
-    
-    return render(request, 'inventory/delete_user.html', context)
-
-@login_required
+@user_passes_test(lambda u: is_admin(u) or is_staff_gudang(u))
 def kelola_stok_barang(request):
+    """
+    View for managing stock items
+    """
     query = request.GET.get('query', '')
     sort = request.GET.get('sort', '')
     filter_option = request.GET.get('filter', '')
@@ -358,6 +92,10 @@ def kelola_stok_barang(request):
     # Search functionality
     if query:
         items = items.filter(name__icontains=query) | items.filter(code__icontains=query) | items.filter(category__icontains=query)
+    
+    # Filter functionality
+    if filter_option == 'low_stock':
+        items = items.filter(current_stock__lt=10)
     
     # Sorting functionality
     if sort == 'name':
@@ -372,14 +110,6 @@ def kelola_stok_barang(request):
         items = items.order_by('current_stock')
     elif sort == 'stock_desc':
         items = items.order_by('-current_stock')
-    elif sort == 'price_asc':
-        items = items.order_by('selling_price')
-    elif sort == 'price_desc':
-        items = items.order_by('-selling_price')
-    
-    # Filtering functionality
-    if filter_option == 'low_stock':
-        items = [item for item in items if item.minimum_stock and item.current_stock < item.minimum_stock]
     
     context = {
         'items': items,
@@ -389,13 +119,44 @@ def kelola_stok_barang(request):
     return render(request, 'inventory/kelola_stok_barang.html', context)
 
 @login_required
-def kelola_harga(request):
+def data_exp_produk(request):
     """
-    View for Kelola Harga page - displays products with their prices
+    View for managing expired products
     """
     query = request.GET.get('query', '')
     sort = request.GET.get('sort', '')
-    filter_option = request.GET.get('filter', '')
+    
+    items = Item.objects.all()
+    
+    # Search functionality
+    if query:
+        items = items.filter(name__icontains=query) | items.filter(code__icontains=query)
+    
+    # Sorting functionality
+    if sort == 'exp_asc':
+        items = items.order_by('expiry_date')
+    elif sort == 'exp_desc':
+        items = items.order_by('-expiry_date')
+    elif sort == 'name':
+        items = items.order_by('name')
+    elif sort == 'name_desc':
+        items = items.order_by('-name')
+    
+    context = {
+        'items': items,
+        'query': query,
+    }
+    
+    return render(request, 'inventory/data_exp_produk.html', context)
+
+@login_required
+@user_passes_test(lambda u: is_admin(u) or is_manajer(u))
+def kelola_harga(request):
+    """
+    View for managing prices
+    """
+    query = request.GET.get('query', '')
+    sort = request.GET.get('sort', '')
     
     items = Item.objects.all()
     
@@ -520,44 +281,79 @@ def webhook_settings(request):
     # Get or create webhook settings
     webhook_settings, created = WebhookSettings.objects.get_or_create(pk=1)
     
+    # Get the webhook type from query parameter
+    webhook_type = request.GET.get('type', '')
+    
     if request.method == 'POST':
+        # Create a form instance with POST data
         form = WebhookSettingsForm(request.POST, instance=webhook_settings)
+        
         if form.is_valid():
-            # Save form
-            webhook_settings = form.save(commit=False)
-            webhook_settings.updated_by = request.user
-            webhook_settings.save()
+            # Determine which webhook field to update based on the type parameter
+            field_to_update = None
+            if webhook_type == 'kelola_stok':
+                field_to_update = 'webhook_kelola_stok'
+            elif webhook_type == 'transfer_stok':
+                field_to_update = 'webhook_transfer_stok'
+            elif webhook_type == 'data_exp_produk':
+                field_to_update = 'webhook_data_exp_produk'
+            elif webhook_type == 'kelola_harga':
+                field_to_update = 'webhook_kelola_harga'
+            elif webhook_type == 'kelola_stok_packing':
+                field_to_update = 'webhook_kelola_stok_packing'
             
-            # Determine which webhook was updated
-            updated_fields = []
-            if 'telegram_webhook_url' in form.changed_data:
-                updated_fields.append(f"Webhook Telegram diperbarui: {webhook_settings.telegram_webhook_url}")
-            if 'webhook_kelola_stok' in form.changed_data:
-                updated_fields.append(f"Webhook Kelola Stok diperbarui: {webhook_settings.webhook_kelola_stok}")
-            if 'webhook_transfer_stok' in form.changed_data:
-                updated_fields.append(f"Webhook Transfer Stok diperbarui: {webhook_settings.webhook_transfer_stok}")
-            if 'webhook_data_exp_produk' in form.changed_data:
-                updated_fields.append(f"Webhook Data Exp Produk diperbarui: {webhook_settings.webhook_data_exp_produk}")
-            if 'webhook_kelola_harga' in form.changed_data:
-                updated_fields.append(f"Webhook Kelola Harga diperbarui: {webhook_settings.webhook_kelola_harga}")
-            if 'webhook_kelola_stok_packing' in form.changed_data:
-                updated_fields.append(f"Webhook Kelola Stok Packing diperbarui: {webhook_settings.webhook_kelola_stok_packing}")
+            if field_to_update:
+                # Only update the specific field
+                setattr(webhook_settings, field_to_update, form.cleaned_data[field_to_update])
+                webhook_settings.updated_by = request.user
+                webhook_settings.save(update_fields=[field_to_update, 'updated_by', 'updated_at'])
+                
+                # Log activity with specific details
+                field_display_name = field_to_update.replace('webhook_', '').replace('_', ' ').title()
+                notes = f"Webhook {field_display_name} diperbarui: {getattr(webhook_settings, field_to_update)}"
+                
+                ActivityLog.objects.create(
+                    user=request.user,
+                    action='update_webhook_settings',
+                    status='success',
+                    notes=notes
+                )
+                
+                # Add success message with extra tag for the specific webhook type
+                messages.success(
+                    request, 
+                    f'URL Webhook untuk {field_display_name} berhasil disimpan', 
+                    extra_tags=webhook_type
+                )
+            else:
+                # If no specific type, update all fields (fallback)
+                webhook_settings = form.save(commit=False)
+                webhook_settings.updated_by = request.user
+                webhook_settings.save()
+                
+                # Log activity
+                ActivityLog.objects.create(
+                    user=request.user,
+                    action='update_webhook_settings',
+                    status='success',
+                    notes="Semua pengaturan webhook diperbarui"
+                )
+                
+                messages.success(request, 'Semua pengaturan webhook berhasil disimpan')
             
-            # Log activity with specific details
-            notes = "Pengaturan webhook diperbarui"
-            if updated_fields:
-                notes = "; ".join(updated_fields)
-            
-            ActivityLog.objects.create(
-                user=request.user,
-                action='update_webhook_settings',
-                status='success',
-                notes=notes
-            )
-            
-            messages.success(request, 'Pengaturan webhook berhasil disimpan')
+            # Redirect to prevent form resubmission
             return redirect('inventory:webhook_settings')
+        else:
+            # Form is invalid, add error message with the specific webhook type tag
+            for field, errors in form.errors.items():
+                for error in errors:
+                    messages.error(
+                        request, 
+                        f'Error: {error}', 
+                        extra_tags=webhook_type
+                    )
     else:
+        # For GET requests, just create the form with the current instance
         form = WebhookSettingsForm(instance=webhook_settings)
     
     context = {
@@ -641,3 +437,136 @@ def logout_view(request):
     
     logout(request)
     return redirect('inventory:login')
+
+@login_required
+@user_passes_test(is_admin)
+def kelola_pengguna(request):
+    """
+    View for managing users
+    """
+    users = User.objects.all()
+    
+    if request.method == 'POST':
+        form = UserRegistrationForm(request.POST)
+        if form.is_valid():
+            # Create user
+            user = form.save()
+            
+            # Create user profile
+            UserProfile.objects.create(
+                user=user,
+                full_name=form.cleaned_data['full_name'],
+                role=form.cleaned_data['role']
+            )
+            
+            # Log activity
+            ActivityLog.objects.create(
+                user=request.user,
+                action='create_user',
+                status='success',
+                notes=f'Created user {user.username} with role {form.cleaned_data["role"]}'
+            )
+            
+            messages.success(request, f'User {user.username} berhasil dibuat')
+            return redirect('inventory:kelola_pengguna')
+    else:
+        form = UserRegistrationForm()
+    
+    context = {
+        'users': users,
+        'form': form
+    }
+    
+    return render(request, 'inventory/kelola_pengguna.html', context)
+
+@login_required
+@user_passes_test(is_admin)
+def edit_user(request, user_id):
+    """
+    View for editing user
+    """
+    try:
+        user = User.objects.get(id=user_id)
+    except User.DoesNotExist:
+        messages.error(request, 'User tidak ditemukan')
+        return redirect('inventory:kelola_pengguna')
+    
+    if request.method == 'POST':
+        form = UserEditForm(request.POST, instance=user)
+        if form.is_valid():
+            # Update user
+            user = form.save()
+            
+            # Update or create user profile
+            try:
+                profile = user.profile
+                profile.full_name = form.cleaned_data['full_name']
+                profile.role = form.cleaned_data['role']
+                profile.save()
+            except UserProfile.DoesNotExist:
+                UserProfile.objects.create(
+                    user=user,
+                    full_name=form.cleaned_data['full_name'],
+                    role=form.cleaned_data['role']
+                )
+            
+            # Log activity
+            ActivityLog.objects.create(
+                user=request.user,
+                action='edit_user',
+                status='success',
+                notes=f'Updated user {user.username} with role {form.cleaned_data["role"]}'
+            )
+            
+            messages.success(request, f'User {user.username} berhasil diperbarui')
+            return redirect('inventory:kelola_pengguna')
+    else:
+        # Get user profile data for initial form values
+        try:
+            profile = user.profile
+            initial_data = {
+                'full_name': profile.full_name,
+                'role': profile.role
+            }
+        except UserProfile.DoesNotExist:
+            initial_data = {}
+        
+        form = UserEditForm(instance=user, initial=initial_data)
+    
+    context = {
+        'form': form,
+        'user_obj': user
+    }
+    
+    return render(request, 'inventory/edit_user.html', context)
+
+@login_required
+@user_passes_test(is_admin)
+def delete_user(request, user_id):
+    """
+    View for deleting user
+    """
+    try:
+        user = User.objects.get(id=user_id)
+        
+        # Don't allow deleting yourself
+        if user == request.user:
+            messages.error(request, 'Anda tidak dapat menghapus akun Anda sendiri')
+            return redirect('inventory:kelola_pengguna')
+        
+        username = user.username
+        user.delete()
+        
+        # Log activity
+        ActivityLog.objects.create(
+            user=request.user,
+            action='delete_user',
+            status='success',
+            notes=f'Deleted user {username}'
+        )
+        
+        messages.success(request, f'User {username} berhasil dihapus')
+    except User.DoesNotExist:
+        messages.error(request, 'User tidak ditemukan')
+    
+    return redirect('inventory:kelola_pengguna')
