@@ -11,6 +11,7 @@ urlpatterns = [
     path('logout/', views.logout_view, name='logout'),
     path('dashboard/', views.dashboard, name='dashboard'),
     path('forecasting/', views.forecasting, name='forecasting'),
+    path('otomatisasi/', views.otomatisasi, name='otomatisasi'),
     path('kelola-stok-barang/', views.kelola_stok_barang, name='kelola_stok_barang'),
     path('kelola-harga/', views.kelola_harga, name='kelola_harga'),
     path('kelola-stok-packing/', views.kelola_stok_packing, name='kelola_stok_packing'),
