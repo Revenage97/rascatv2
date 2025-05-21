@@ -21,7 +21,7 @@
                     <label for="asalSelect" class="form-label small mb-1">Asal</label>
                     <select class="form-select form-select-sm" id="asalSelect">
                         <option selected>Pilih Asal</option>
-                        <option value="1">rascat kucing</option>
+                        <option value="1">Rascat Ruko</option>
                         <option value="2">Dilayani Tokopedia</option>
                         <option value="3">Rascat Warehouse</option>
                     </select>
@@ -30,14 +30,10 @@
                     <label for="tujuanSelect" class="form-label small mb-1">Tujuan</label>
                     <select class="form-select form-select-sm" id="tujuanSelect">
                         <option selected>Pilih Tujuan</option>
-                        <option value="1">rascat kucing</option>
+                        <option value="1">Rascat Ruko</option>
                         <option value="2">Dilayani Tokopedia</option>
                         <option value="3">Rascat Warehouse</option>
                     </select>
-                </div>
-                <div class="col-12">
-                    <label for="keteranganTextarea" class="form-label small mb-1">Keterangan</label>
-                    <textarea class="form-control form-control-sm" id="keteranganTextarea" rows="2"></textarea>
                 </div>
                 <div class="col-12 mt-2">
                     <button id="simpanBtn" class="btn btn-sm btn-primary">
@@ -344,19 +340,19 @@
             }
         });
         
-        // Save minimum stock
+        // Save minimum stock button
         document.addEventListener('click', function(e) {
             if (e.target && e.target.closest('.save-min-stock')) {
                 const button = e.target.closest('.save-min-stock');
                 const itemId = button.getAttribute('data-item-id');
-                const input = button.parentElement.querySelector('.min-stock-input');
+                const input = button.closest('.input-group').querySelector('.min-stock-input');
                 const minStock = input.value;
                 
-                if (!minStock) {
+                if (!minStock || minStock < 0) {
                     Swal.fire({
                         icon: 'warning',
                         title: 'Perhatian',
-                        text: 'Masukkan nilai stok transfer',
+                        text: 'Masukkan nilai stok transfer yang valid',
                         confirmButtonColor: '#3085d6'
                     });
                     return;
@@ -373,21 +369,15 @@
                 .then(response => response.json())
                 .then(data => {
                     if (data.status === 'success') {
-                        // Replace input with badge
-                        const td = button.closest('td');
-                        td.innerHTML = `
+                        // Update UI to show saved stock
+                        const row = button.closest('tr');
+                        const stockCell = row.querySelector('td:nth-child(5)');
+                        stockCell.innerHTML = `
                             <span class="badge bg-secondary">${minStock}</span>
                             <button class="btn btn-sm btn-outline-danger delete-min-stock" data-item-id="${itemId}">
                                 <i class="bi bi-x"></i>
                             </button>
                         `;
-                        
-                        Swal.fire({
-                            icon: 'success',
-                            title: 'Berhasil',
-                            text: 'Stok transfer berhasil disimpan',
-                            confirmButtonColor: '#3085d6'
-                        });
                     } else {
                         Swal.fire({
                             icon: 'error',
@@ -408,7 +398,7 @@
             }
         });
         
-        // Delete minimum stock
+        // Delete minimum stock button
         document.addEventListener('click', function(e) {
             if (e.target && e.target.closest('.delete-min-stock')) {
                 const button = e.target.closest('.delete-min-stock');
@@ -425,9 +415,10 @@
                 .then(response => response.json())
                 .then(data => {
                     if (data.status === 'success') {
-                        // Replace badge with input
-                        const td = button.closest('td');
-                        td.innerHTML = `
+                        // Update UI to show reset stock
+                        const row = button.closest('tr');
+                        const stockCell = row.querySelector('td:nth-child(5)');
+                        stockCell.innerHTML = `
                             <div class="input-group input-group-sm">
                                 <input type="number" class="form-control form-control-sm min-stock-input" min="0" placeholder="Min">
                                 <button class="btn btn-sm btn-outline-primary save-min-stock" data-item-id="${itemId}">
@@ -435,13 +426,6 @@
                                 </button>
                             </div>
                         `;
-                        
-                        Swal.fire({
-                            icon: 'success',
-                            title: 'Berhasil',
-                            text: 'Stok transfer berhasil dihapus',
-                            confirmButtonColor: '#3085d6'
-                        });
                     } else {
                         Swal.fire({
                             icon: 'error',
@@ -461,6 +445,75 @@
                 });
             }
         });
+        
+        // Simpan button
+        document.getElementById('simpanBtn').addEventListener('click', function() {
+            const asal = document.getElementById('asalSelect').value;
+            const tujuan = document.getElementById('tujuanSelect').value;
+            
+            if (asal === 'Pilih Asal' || tujuan === 'Pilih Tujuan') {
+                Swal.fire({
+                    icon: 'warning',
+                    title: 'Perhatian',
+                    text: 'Pilih asal dan tujuan terlebih dahulu',
+                    confirmButtonColor: '#3085d6'
+                });
+                return;
+            }
+            
+            if (asal === tujuan) {
+                Swal.fire({
+                    icon: 'warning',
+                    title: 'Perhatian',
+                    text: 'Asal dan tujuan tidak boleh sama',
+                    confirmButtonColor: '#3085d6'
+                });
+                return;
+            }
+            
+            // Save transfer data
+            fetch('{% url "inventory:save_transfer" %}', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': csrfToken
+                },
+                body: JSON.stringify({
+                    asal: asal,
+                    tujuan: tujuan
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'Berhasil',
+                        text: 'Data transfer berhasil disimpan',
+                        confirmButtonColor: '#3085d6'
+                    }).then(() => {
+                        // Reset form
+                        document.getElementById('asalSelect').value = 'Pilih Asal';
+                        document.getElementById('tujuanSelect').value = 'Pilih Tujuan';
+                    });
+                } else {
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Error',
+                        text: 'Gagal menyimpan data transfer: ' + data.message,
+                        confirmButtonColor: '#3085d6'
+                    });
+                }
+            })
+            .catch(error => {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Error',
+                    text: 'Error: ' + error,
+                    confirmButtonColor: '#3085d6'
+                });
+            });
+        });
     });
 </script>
-{% endblock extra_js %}
+{% endblock %}
