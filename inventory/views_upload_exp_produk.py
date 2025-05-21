@@ -44,6 +44,26 @@ def upload_exp_produk_file(request):
             # Read Excel file
             df = pd.read_excel(file_path)
             
+            # Map common column name variations to expected names
+            column_mapping = {
+                'Kode': 'Kode Barang',
+                'Kode Produk': 'Kode Barang',
+                'Kode Item': 'Kode Barang',
+                'Nama': 'Nama Barang',
+                'Nama Produk': 'Nama Barang',
+                'Stok': 'Total Stok',
+                'Jumlah': 'Total Stok',
+                'Jumlah Stok': 'Total Stok',
+                'Stok Total': 'Total Stok',
+                'Expired': 'Tanggal Expired',
+                'Tanggal Exp': 'Tanggal Expired',
+                'Exp Date': 'Tanggal Expired',
+                'Tgl Expired': 'Tanggal Expired'
+            }
+            
+            # Rename columns based on mapping
+            df = df.rename(columns=lambda x: column_mapping.get(x, x))
+            
             # Check required columns
             required_columns = ['Kode Barang', 'Nama Barang', 'Total Stok']
             missing_columns = [col for col in required_columns if col not in df.columns]

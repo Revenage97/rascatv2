@@ -492,9 +492,18 @@ def upload_file(request):
                         # Extract data from row
                         code = str(row.iloc[0]).strip() if not pd.isna(row.iloc[0]) else None
                         name = str(row.iloc[1]).strip() if not pd.isna(row.iloc[1]) else None
-                        category = str(row.iloc[2]).strip() if not pd.isna(row.iloc[2]) else None
-                        current_stock = int(row.iloc[3]) if not pd.isna(row.iloc[3]) else 0
-                        selling_price = float(row.iloc[4]) if not pd.isna(row.iloc[4]) else 0
+                        category = str(row.iloc[2]).strip() if not pd.isna(row.iloc[2]) else "Uncategorized"  # Default category if null
+                        
+                        # Safe conversion for numeric fields with error handling
+                        try:
+                            current_stock = int(row.iloc[3]) if not pd.isna(row.iloc[3]) else 0
+                        except (ValueError, TypeError):
+                            current_stock = 0  # Default to 0 if conversion fails
+                            
+                        try:
+                            selling_price = float(row.iloc[4]) if not pd.isna(row.iloc[4]) else 0
+                        except (ValueError, TypeError):
+                            selling_price = 0  # Default to 0 if conversion fails
                         
                         # Skip rows with empty code or name
                         if not code or not name:
@@ -591,7 +600,12 @@ def upload_transfer_file(request):
                     # Extract data from row
                     code = str(row.iloc[0]).strip() if not pd.isna(row.iloc[0]) else None
                     name = str(row.iloc[1]).strip() if not pd.isna(row.iloc[1]) else None
-                    current_stock = int(row.iloc[2]) if not pd.isna(row.iloc[2]) else 0
+                    
+                    # Safe conversion for numeric fields with error handling
+                    try:
+                        current_stock = int(row.iloc[2]) if not pd.isna(row.iloc[2]) else 0
+                    except (ValueError, TypeError):
+                        current_stock = 0  # Default to 0 if conversion fails
                     
                     # Skip rows with empty code or name
                     if not code or not name:
