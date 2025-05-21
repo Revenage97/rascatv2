@@ -92,10 +92,12 @@ def send_price_to_telegram(request):
                 message += f"*{item.name}*\n"
                 message += f"Kode: {item.code}\n"
                 message += f"Kategori: {item.category}\n"
-                message += f"Harga Saat Ini: Rp {item.selling_price:,.0f}\n"
                 
+                # Use Harga Terbaru if available, otherwise fallback to Harga Saat Ini
                 if item.latest_price:
-                    message += f"Harga Terbaru: Rp {item.latest_price:,.0f}\n"
+                    message += f"Harga: Rp {item.latest_price:,.0f}\n"
+                else:
+                    message += f"Harga: Rp {item.selling_price:,.0f}\n"
                 
                 message += "\n"
             
