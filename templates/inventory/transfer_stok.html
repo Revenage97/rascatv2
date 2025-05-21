@@ -17,28 +17,37 @@
     <div class="card mb-3">
         <div class="card-body p-3">
             <div class="row g-2">
-                <div class="col-md-6">
+                <div class="col-md-5">
                     <label for="asalSelect" class="form-label small mb-1">Asal</label>
-                    <select class="form-select form-select-sm" id="asalSelect">
-                        <option selected>Pilih Asal</option>
-                        <option value="1">Rascat Ruko</option>
-                        <option value="2">Dilayani Tokopedia</option>
-                        <option value="3">Rascat Warehouse</option>
-                    </select>
+                    <div class="input-group input-group-sm">
+                        <select class="form-select form-select-sm" id="asalSelect">
+                            <option selected>Pilih Asal</option>
+                            <option value="1">Rascat Ruko</option>
+                            <option value="2">Dilayani Tokopedia</option>
+                            <option value="3">Rascat Warehouse</option>
+                        </select>
+                    </div>
                 </div>
-                <div class="col-md-6">
+                <div class="col-md-5">
                     <label for="tujuanSelect" class="form-label small mb-1">Tujuan</label>
-                    <select class="form-select form-select-sm" id="tujuanSelect">
-                        <option selected>Pilih Tujuan</option>
-                        <option value="1">Rascat Ruko</option>
-                        <option value="2">Dilayani Tokopedia</option>
-                        <option value="3">Rascat Warehouse</option>
-                    </select>
+                    <div class="input-group input-group-sm">
+                        <select class="form-select form-select-sm" id="tujuanSelect">
+                            <option selected>Pilih Tujuan</option>
+                            <option value="1">Rascat Ruko</option>
+                            <option value="2">Dilayani Tokopedia</option>
+                            <option value="3">Rascat Warehouse</option>
+                        </select>
+                    </div>
                 </div>
-                <div class="col-12 mt-2">
-                    <button id="simpanBtn" class="btn btn-sm btn-primary">
-                        <i class="bi bi-save"></i> Simpan
-                    </button>
+                <div class="col-md-2 d-flex align-items-end">
+                    <div class="btn-group w-100">
+                        <button id="simpanBtn" class="btn btn-sm btn-primary">
+                            <i class="bi bi-save"></i> Simpan
+                        </button>
+                        <button id="resetAsalTujuanBtn" class="btn btn-sm btn-outline-danger">
+                            <i class="bi bi-x-circle"></i> Reset
+                        </button>
+                    </div>
                 </div>
             </div>
         </div>
@@ -123,15 +132,17 @@
                             <td class="text-center">{{ item.current_stock }}</td>
                             <td class="text-center">
                                 {% if item.minimum_stock %}
-                                    <span class="badge bg-secondary">{{ item.minimum_stock }}</span>
-                                    <button class="btn btn-sm btn-outline-danger delete-transfer-stock" data-item-id="{{ item.id }}">
-                                        <i class="bi bi-x"></i>
-                                    </button>
+                                    <div class="input-group input-group-sm">
+                                        <input type="number" class="form-control form-control-sm transfer-stock-input" value="{{ item.minimum_stock }}" min="0" placeholder="Jumlah">
+                                        <button class="btn btn-sm btn-outline-secondary save-transfer-stock" data-item-id="{{ item.id }}">
+                                            <i class="bi bi-save"></i>
+                                        </button>
+                                    </div>
                                 {% else %}
                                     <div class="input-group input-group-sm">
                                         <input type="number" class="form-control form-control-sm transfer-stock-input" min="0" placeholder="Jumlah">
-                                        <button class="btn btn-sm btn-outline-primary save-transfer-stock" data-item-id="{{ item.id }}">
-                                            <i class="bi bi-check"></i>
+                                        <button class="btn btn-sm btn-outline-secondary save-transfer-stock" data-item-id="{{ item.id }}">
+                                            <i class="bi bi-save"></i>
                                         </button>
                                     </div>
                                 {% endif %}
@@ -220,36 +231,59 @@
     document.addEventListener('DOMContentLoaded', function() {
         const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
         
-        // Function to reset transfer stock to 0
-        function resetTransferStock(itemId) {
-            fetch('/api/reset-transfer-data/', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRFToken': csrfToken
-                },
-                body: JSON.stringify({ item_id: itemId, transfer_stock: 0 })
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.status === 'success') {
-                    // Update UI to show reset stock
-                    const row = document.querySelector(`.item-checkbox[value="${itemId}"]`).closest('tr');
-                    const stockCell = row.querySelector('td:nth-child(5)');
-                    stockCell.innerHTML = `
-                        <div class="input-group input-group-sm">
-                            <input type="number" class="form-control form-control-sm transfer-stock-input" min="0" placeholder="Jumlah">
-                            <button class="btn btn-sm btn-outline-primary save-transfer-stock" data-item-id="${itemId}">
-                                <i class="bi bi-check"></i>
-                            </button>
-                        </div>
-                    `;
-                }
-            })
-            .catch(error => {
-                console.error('Error resetting stock:', error);
+        // Save and load asal/tujuan selections
+        function saveAsalTujuan() {
+            const asal = document.getElementById('asalSelect').value;
+            const tujuan = document.getElementById('tujuanSelect').value;
+            localStorage.setItem('transferStok_asal', asal);
+            localStorage.setItem('transferStok_tujuan', tujuan);
+            
+            Swal.fire({
+                icon: 'success',
+                title: 'Tersimpan',
+                text: 'Asal dan tujuan berhasil disimpan',
+                timer: 1500,
+                showConfirmButton: false
             });
         }
+        
+        function loadAsalTujuan() {
+            const asal = localStorage.getItem('transferStok_asal');
+            const tujuan = localStorage.getItem('transferStok_tujuan');
+            
+            if (asal) {
+                document.getElementById('asalSelect').value = asal;
+            }
+            
+            if (tujuan) {
+                document.getElementById('tujuanSelect').value = tujuan;
+            }
+        }
+        
+        function resetAsalTujuan() {
+            localStorage.removeItem('transferStok_asal');
+            localStorage.removeItem('transferStok_tujuan');
+            
+            document.getElementById('asalSelect').selectedIndex = 0;
+            document.getElementById('tujuanSelect').selectedIndex = 0;
+            
+            Swal.fire({
+                icon: 'success',
+                title: 'Reset',
+                text: 'Asal dan tujuan berhasil direset',
+                timer: 1500,
+                showConfirmButton: false
+            });
+        }
+        
+        // Load saved asal/tujuan on page load
+        loadAsalTujuan();
+        
+        // Simpan button click event
+        document.getElementById('simpanBtn').addEventListener('click', saveAsalTujuan);
+        
+        // Reset button click event
+        document.getElementById('resetAsalTujuanBtn').addEventListener('click', resetAsalTujuan);
         
         // Select all checkbox
         document.getElementById('selectAll').addEventListener('change', function() {
