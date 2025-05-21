@@ -7,6 +7,7 @@ from .views_upload_file import upload_file
 from .views_update_min_stock import update_min_stock, delete_min_stock
 from .views_update_transfer_stock import update_transfer_stock, delete_transfer_stock, send_transfer_to_telegram
 from .views_update_expiry_date import save_expiry_date, send_exp_to_telegram
+from .views_send_to_telegram import send_to_telegram
 from .views_packing import (
     kelola_stok_packing, update_packing_min_stock, delete_packing_min_stock,
     send_packing_to_telegram, reset_all_packing_items, create_packing_item,
@@ -58,6 +59,9 @@ urlpatterns = [
     # Save latest price endpoint
     path('api/save-latest-price/', save_latest_price, name='save_latest_price'),
     path('api/send-price-to-telegram/', send_price_to_telegram, name='send_price_to_telegram'),
+    
+    # Dashboard send to telegram endpoint
+    path('api/send-to-telegram/', send_to_telegram, name='send_to_telegram'),
     
     # Packing item endpoints
     path('api/update-packing-min-stock/', update_packing_min_stock, name='update_packing_min_stock'),
