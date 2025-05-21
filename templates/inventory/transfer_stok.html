@@ -91,13 +91,6 @@
                         <i class="bi bi-funnel"></i> Filter Aktif
                     </span>
                 </div>
-                <div>
-                    {% if user.profile.is_admin %}
-                    <button id="resetDataBtn" class="btn btn-sm btn-danger">
-                        <i class="bi bi-trash"></i> Reset Data
-                    </button>
-                    {% endif %}
-                </div>
             </div>
             
             <div class="table-responsive">
@@ -227,30 +220,6 @@
     document.addEventListener('DOMContentLoaded', function() {
         const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
         
-        // Reset Data button functionality
-        const resetDataBtn = document.getElementById('resetDataBtn');
-        const resetDataModal = new bootstrap.Modal(document.getElementById('resetDataModal'));
-        const confirmResetDataBtn = document.getElementById('confirmResetData');
-        
-        if (resetDataBtn) {
-            resetDataBtn.addEventListener('click', function() {
-                resetDataModal.show();
-            });
-        }
-        
-        if (confirmResetDataBtn) {
-            confirmResetDataBtn.addEventListener('click', function() {
-                // Show disabled feature popup directly without making API call
-                resetDataModal.hide();
-                Swal.fire({
-                    icon: 'error',
-                    title: 'Fitur Dinonaktifkan',
-                    text: 'Fitur reset data saat ini sedang dinonaktifkan',
-                    confirmButtonColor: '#3085d6'
-                });
-            });
-        }
-        
         // Function to reset transfer stock to 0
         function resetTransferStock(itemId) {
             fetch('/api/reset-transfer-item/', {
@@ -335,7 +304,7 @@
             });
             
             // Send to webhook
-            fetch('/api/send-to-telegram/', {
+            fetch('/api/send-transfer-to-telegram/', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -397,7 +366,7 @@
                 });
                 
                 // Send to webhook
-                fetch('/api/send-to-telegram/', {
+                fetch('/api/send-transfer-to-telegram/', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
@@ -441,14 +410,11 @@
             }
         });
         
-        // Save minimum stock buttons
+        // Save minimum stock
         document.addEventListener('click', function(e) {
-            if (e.target && (e.target.classList.contains('save-min-stock') || 
-                (e.target.parentElement && e.target.parentElement.classList.contains('save-min-stock')))) {
-                
-                const button = e.target.classList.contains('save-min-stock') ? e.target : e.target.parentElement;
-                const itemId = button.getAttribute('data-item-id');
-                const input = button.parentElement.querySelector('.min-stock-input');
+            if (e.target && e.target.classList.contains('save-min-stock')) {
+                const itemId = e.target.getAttribute('data-item-id');
+                const input = e.target.parentElement.querySelector('.min-stock-input');
                 const minStock = input.value;
                 
                 if (!minStock) {
@@ -461,7 +427,7 @@
                     return;
                 }
                 
-                // Save minimum stock
+                // Make API call to update minimum stock
                 fetch('/api/update-min-stock/', {
                     method: 'POST',
                     headers: {
@@ -477,9 +443,8 @@
                 .then(data => {
                     if (data.status === 'success') {
                         // Update UI to show saved minimum stock
-                        const row = button.closest('tr');
-                        const stockCell = row.querySelector('td:nth-child(5)');
-                        stockCell.innerHTML = `
+                        const cell = e.target.closest('td');
+                        cell.innerHTML = `
                             <span class="badge bg-secondary">${minStock}</span>
                             <button class="btn btn-sm btn-outline-danger delete-min-stock" data-item-id="${itemId}">
                                 <i class="bi bi-x"></i>
@@ -496,6 +461,7 @@
                             showConfirmButton: false
                         });
                     } else {
+                        // Show error message
                         Swal.fire({
                             icon: 'error',
                             title: 'Gagal',
@@ -507,6 +473,7 @@
                 .catch(error => {
                     console.error('Error saving minimum stock:', error);
                     
+                    // Show error message
                     Swal.fire({
                         icon: 'error',
                         title: 'Gagal',
@@ -517,7 +484,7 @@
             }
         });
         
-        // Delete minimum stock buttons
+        // Delete minimum stock
         document.addEventListener('click', function(e) {
             if (e.target && (e.target.classList.contains('delete-min-stock') || 
                 (e.target.parentElement && e.target.parentElement.classList.contains('delete-min-stock')))) {
@@ -525,24 +492,24 @@
                 const button = e.target.classList.contains('delete-min-stock') ? e.target : e.target.parentElement;
                 const itemId = button.getAttribute('data-item-id');
                 
-                // Delete minimum stock
-                fetch('/api/delete-min-stock/', {
+                // Make API call to delete minimum stock
+                fetch('/api/update-min-stock/', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
                         'X-CSRFToken': csrfToken
                     },
                     body: JSON.stringify({
-                        item_id: itemId
+                        item_id: itemId,
+                        min_stock: null
                     })
                 })
                 .then(response => response.json())
                 .then(data => {
                     if (data.status === 'success') {
                         // Update UI to show input for minimum stock
-                        const row = button.closest('tr');
-                        const stockCell = row.querySelector('td:nth-child(5)');
-                        stockCell.innerHTML = `
+                        const cell = button.closest('td');
+                        cell.innerHTML = `
                             <div class="input-group input-group-sm">
                                 <input type="number" class="form-control form-control-sm min-stock-input" min="0" placeholder="Min">
                                 <button class="btn btn-sm btn-outline-primary save-min-stock" data-item-id="${itemId}">
@@ -561,6 +528,7 @@
                             showConfirmButton: false
                         });
                     } else {
+                        // Show error message
                         Swal.fire({
                             icon: 'error',
                             title: 'Gagal',
@@ -572,6 +540,7 @@
                 .catch(error => {
                     console.error('Error deleting minimum stock:', error);
                     
+                    // Show error message
                     Swal.fire({
                         icon: 'error',
                         title: 'Gagal',
@@ -581,95 +550,6 @@
                 });
             }
         });
-        
-        // Filter products functionality
-        const filterProductsBtn = document.getElementById('filterProductsBtn');
-        const resetFilterBtn = document.getElementById('resetFilterBtn');
-        const filterActiveIndicator = document.getElementById('filterActiveIndicator');
-        
-        function filterProducts() {
-            // Get all checkboxes
-            const checkboxes = document.querySelectorAll('.item-checkbox:checked');
-            
-            if (checkboxes.length === 0) {
-                Swal.fire({
-                    icon: 'warning',
-                    title: 'Tidak ada item yang dipilih',
-                    text: 'Silakan pilih minimal satu item untuk difilter',
-                    confirmButtonColor: '#3085d6'
-                });
-                return;
-            }
-            
-            // Get all rows
-            const rows = document.querySelectorAll('tbody tr');
-            
-            // Hide all rows
-            rows.forEach(row => {
-                row.style.display = 'none';
-            });
-            
-            // Show only checked rows
-            checkboxes.forEach(checkbox => {
-                const row = checkbox.closest('tr');
-                row.style.display = '';
-            });
-            
-            // Show filter active indicator
-            filterActiveIndicator.style.display = 'inline-block';
-            resetFilterBtn.style.display = 'inline-block';
-            filterProductsBtn.classList.remove('btn-success');
-            filterProductsBtn.classList.add('btn-secondary');
-            
-            // Change table header style
-            const tableHeader = document.querySelector('thead');
-            tableHeader.classList.add('bg-light-warning');
-            tableHeader.style.backgroundColor = '#fff3cd';
-            
-            // Add no match row if no rows are visible
-            if (checkboxes.length === 0) {
-                const tbody = document.querySelector('tbody');
-                const noMatchRow = document.createElement('tr');
-                noMatchRow.id = 'noFilterMatchRow';
-                noMatchRow.innerHTML = `
-                    <td colspan="6" class="text-center py-4">
-                        <i class="bi bi-funnel-fill fs-1 text-muted mb-3 d-block"></i>
-                        <h5 class="text-muted">Tidak ada data yang cocok dengan filter</h5>
-                        <p class="text-muted">Coba ubah kriteria filter atau reset filter.</p>
-                    </td>
-                `;
-                tbody.appendChild(noMatchRow);
-            }
-        }
-        
-        function resetFilter() {
-            // Show all rows
-            const rows = document.querySelectorAll('tbody tr');
-            rows.forEach(row => {
-                row.style.display = '';
-            });
-            
-            // Hide filter active indicator
-            filterActiveIndicator.style.display = 'none';
-            resetFilterBtn.style.display = 'none';
-            filterProductsBtn.classList.remove('btn-secondary');
-            filterProductsBtn.classList.add('btn-success');
-            
-            // Remove no match row if it exists
-            const noMatchRow = document.getElementById('noFilterMatchRow');
-            if (noMatchRow) {
-                noMatchRow.remove();
-            }
-            
-            // Reset table header style
-            const tableHeader = document.querySelector('thead');
-            tableHeader.classList.remove('bg-light-warning');
-            tableHeader.style.backgroundColor = '';
-        }
-        
-        // Event listeners for filter buttons
-        filterProductsBtn.addEventListener('click', filterProducts);
-        resetFilterBtn.addEventListener('click', resetFilter);
     });
 </script>
 {% endblock %}
