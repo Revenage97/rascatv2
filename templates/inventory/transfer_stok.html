@@ -124,13 +124,13 @@
                             <td class="text-center">
                                 {% if item.minimum_stock %}
                                     <span class="badge bg-secondary">{{ item.minimum_stock }}</span>
-                                    <button class="btn btn-sm btn-outline-danger delete-min-stock" data-item-id="{{ item.id }}">
+                                    <button class="btn btn-sm btn-outline-danger delete-transfer-stock" data-item-id="{{ item.id }}">
                                         <i class="bi bi-x"></i>
                                     </button>
                                 {% else %}
                                     <div class="input-group input-group-sm">
-                                        <input type="number" class="form-control form-control-sm min-stock-input" min="0" placeholder="Min">
-                                        <button class="btn btn-sm btn-outline-primary save-min-stock" data-item-id="{{ item.id }}">
+                                        <input type="number" class="form-control form-control-sm transfer-stock-input" min="0" placeholder="Jumlah">
+                                        <button class="btn btn-sm btn-outline-primary save-transfer-stock" data-item-id="{{ item.id }}">
                                             <i class="bi bi-check"></i>
                                         </button>
                                     </div>
@@ -228,7 +228,7 @@
                     'Content-Type': 'application/json',
                     'X-CSRFToken': csrfToken
                 },
-                body: JSON.stringify({ item_id: itemId, min_stock: 0 })
+                body: JSON.stringify({ item_id: itemId, transfer_stock: 0 })
             })
             .then(response => response.json())
             .then(data => {
@@ -238,8 +238,8 @@
                     const stockCell = row.querySelector('td:nth-child(5)');
                     stockCell.innerHTML = `
                         <div class="input-group input-group-sm">
-                            <input type="number" class="form-control form-control-sm min-stock-input" min="0" placeholder="Min">
-                            <button class="btn btn-sm btn-outline-primary save-min-stock" data-item-id="${itemId}">
+                            <input type="number" class="form-control form-control-sm transfer-stock-input" min="0" placeholder="Jumlah">
+                            <button class="btn btn-sm btn-outline-primary save-transfer-stock" data-item-id="${itemId}">
                                 <i class="bi bi-check"></i>
                             </button>
                         </div>
@@ -410,25 +410,25 @@
             }
         });
         
-        // Save minimum stock
+        // Save transfer stock
         document.addEventListener('click', function(e) {
-            if (e.target && e.target.classList.contains('save-min-stock')) {
+            if (e.target && e.target.classList.contains('save-transfer-stock')) {
                 const itemId = e.target.getAttribute('data-item-id');
-                const input = e.target.parentElement.querySelector('.min-stock-input');
-                const minStock = input.value;
+                const input = e.target.parentElement.querySelector('.transfer-stock-input');
+                const transferStock = input.value;
                 
-                if (!minStock) {
+                if (!transferStock) {
                     Swal.fire({
                         icon: 'warning',
                         title: 'Input Kosong',
-                        text: 'Silakan masukkan nilai stok minimum',
+                        text: 'Silakan masukkan nilai stok transfer',
                         confirmButtonColor: '#3085d6'
                     });
                     return;
                 }
                 
-                // Make API call to update minimum stock
-                fetch('/api/update-min-stock/', {
+                // Make API call to update transfer stock
+                fetch('/api/update-transfer-stock/', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
@@ -436,17 +436,17 @@
                     },
                     body: JSON.stringify({
                         item_id: itemId,
-                        min_stock: minStock
+                        transfer_stock: transferStock
                     })
                 })
                 .then(response => response.json())
                 .then(data => {
                     if (data.status === 'success') {
-                        // Update UI to show saved minimum stock
+                        // Update UI to show saved transfer stock
                         const cell = e.target.closest('td');
                         cell.innerHTML = `
-                            <span class="badge bg-secondary">${minStock}</span>
-                            <button class="btn btn-sm btn-outline-danger delete-min-stock" data-item-id="${itemId}">
+                            <span class="badge bg-secondary">${transferStock}</span>
+                            <button class="btn btn-sm btn-outline-danger delete-transfer-stock" data-item-id="${itemId}">
                                 <i class="bi bi-x"></i>
                             </button>
                         `;
@@ -455,7 +455,7 @@
                         Swal.fire({
                             icon: 'success',
                             title: 'Berhasil',
-                            text: 'Stok minimum berhasil disimpan',
+                            text: 'Stok transfer berhasil disimpan',
                             confirmButtonColor: '#3085d6',
                             timer: 1500,
                             showConfirmButton: false
@@ -465,35 +465,35 @@
                         Swal.fire({
                             icon: 'error',
                             title: 'Gagal',
-                            text: data.message || 'Gagal menyimpan stok minimum',
+                            text: data.message || 'Terjadi kesalahan saat menyimpan stok transfer',
                             confirmButtonColor: '#3085d6'
                         });
                     }
                 })
                 .catch(error => {
-                    console.error('Error saving minimum stock:', error);
+                    console.error('Error saving transfer stock:', error);
                     
                     // Show error message
                     Swal.fire({
                         icon: 'error',
                         title: 'Gagal',
-                        text: 'Terjadi kesalahan saat menyimpan stok minimum',
+                        text: 'Terjadi kesalahan saat menyimpan stok transfer',
                         confirmButtonColor: '#3085d6'
                     });
                 });
             }
         });
         
-        // Delete minimum stock
+        // Delete transfer stock
         document.addEventListener('click', function(e) {
-            if (e.target && (e.target.classList.contains('delete-min-stock') || 
-                (e.target.parentElement && e.target.parentElement.classList.contains('delete-min-stock')))) {
+            if (e.target && (e.target.classList.contains('delete-transfer-stock') || 
+                (e.target.parentElement && e.target.parentElement.classList.contains('delete-transfer-stock')))) {
                 
-                const button = e.target.classList.contains('delete-min-stock') ? e.target : e.target.parentElement;
+                const button = e.target.classList.contains('delete-transfer-stock') ? e.target : e.target.parentElement;
                 const itemId = button.getAttribute('data-item-id');
                 
-                // Make API call to delete minimum stock
-                fetch('/api/update-min-stock/', {
+                // Make API call to delete transfer stock
+                fetch('/api/update-transfer-stock/', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
@@ -501,18 +501,18 @@
                     },
                     body: JSON.stringify({
                         item_id: itemId,
-                        min_stock: null
+                        transfer_stock: null
                     })
                 })
                 .then(response => response.json())
                 .then(data => {
                     if (data.status === 'success') {
-                        // Update UI to show input for minimum stock
+                        // Update UI to show input for transfer stock
                         const cell = button.closest('td');
                         cell.innerHTML = `
                             <div class="input-group input-group-sm">
-                                <input type="number" class="form-control form-control-sm min-stock-input" min="0" placeholder="Min">
-                                <button class="btn btn-sm btn-outline-primary save-min-stock" data-item-id="${itemId}">
+                                <input type="number" class="form-control form-control-sm transfer-stock-input" min="0" placeholder="Jumlah">
+                                <button class="btn btn-sm btn-outline-primary save-transfer-stock" data-item-id="${itemId}">
                                     <i class="bi bi-check"></i>
                                 </button>
                             </div>
@@ -522,7 +522,7 @@
                         Swal.fire({
                             icon: 'success',
                             title: 'Berhasil',
-                            text: 'Stok minimum berhasil dihapus',
+                            text: 'Stok transfer berhasil dihapus',
                             confirmButtonColor: '#3085d6',
                             timer: 1500,
                             showConfirmButton: false
@@ -532,19 +532,19 @@
                         Swal.fire({
                             icon: 'error',
                             title: 'Gagal',
-                            text: data.message || 'Gagal menghapus stok minimum',
+                            text: data.message || 'Terjadi kesalahan saat menghapus stok transfer',
                             confirmButtonColor: '#3085d6'
                         });
                     }
                 })
                 .catch(error => {
-                    console.error('Error deleting minimum stock:', error);
+                    console.error('Error deleting transfer stock:', error);
                     
                     // Show error message
                     Swal.fire({
                         icon: 'error',
                         title: 'Gagal',
-                        text: 'Terjadi kesalahan saat menghapus stok minimum',
+                        text: 'Terjadi kesalahan saat menghapus stok transfer',
                         confirmButtonColor: '#3085d6'
                     });
                 });
