@@ -23,6 +23,12 @@
     .exp-warning {
         background-color: #ffebee;
     }
+    .exp-soon {
+        background-color: #fffacc;
+    }
+    .exp-safe {
+        background-color: #e3ffe3;
+    }
 </style>
 {% endblock %}
 
@@ -78,7 +84,14 @@
                     </thead>
                     <tbody>
                         {% for item in items %}
-                        <tr data-id="{{ item.id }}" {% if item.expiry_date and item.expiry_date|date:'Y-m-d' < today|date:'Y-m-d' %}class="exp-warning"{% endif %}>
+                        <tr data-id="{{ item.id }}" 
+                            {% if item.expiry_date and item.expiry_date|date:'Y-m-d' < today|date:'Y-m-d' %}
+                                class="exp-warning"
+                            {% elif item.expiry_date and item.expiry_date|date:'Y-m-d' <= six_months_future|date:'Y-m-d' %}
+                                class="exp-soon"
+                            {% elif item.expiry_date %}
+                                class="exp-safe"
+                            {% endif %}>
                             <td>{{ item.code }}</td>
                             <td>{{ item.name }}</td>
                             <td>{{ item.current_stock }}</td>

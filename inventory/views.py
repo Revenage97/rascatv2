@@ -67,10 +67,15 @@ def data_exp_produk(request):
     # Get today's date for comparison
     today = timezone.now().date()
     
+    # Calculate date 6 months from today for color coding
+    from dateutil.relativedelta import relativedelta
+    six_months_future = today + relativedelta(months=6)
+    
     context = {
         'items': items,
         'query': query,
         'today': today,
+        'six_months_future': six_months_future,
     }
     
     return render(request, 'inventory/data_exp_produk.html', context)
