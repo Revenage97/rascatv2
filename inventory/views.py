@@ -389,7 +389,39 @@ def kelola_stok_barang(request):
 
 @login_required
 def kelola_harga(request):
-    return render(request, 'inventory/kelola_harga.html')
+    """
+    View for Kelola Harga page - displays products with their prices
+    """
+    query = request.GET.get('query', '')
+    sort = request.GET.get('sort', '')
+    filter_option = request.GET.get('filter', '')
+    
+    items = Item.objects.all()
+    
+    # Search functionality
+    if query:
+        items = items.filter(name__icontains=query) | items.filter(code__icontains=query) | items.filter(category__icontains=query)
+    
+    # Sorting functionality
+    if sort == 'name':
+        items = items.order_by('name')
+    elif sort == 'name_desc':
+        items = items.order_by('-name')
+    elif sort == 'category':
+        items = items.order_by('category')
+    elif sort == 'category_desc':
+        items = items.order_by('-category')
+    elif sort == 'price_asc':
+        items = items.order_by('selling_price')
+    elif sort == 'price_desc':
+        items = items.order_by('-selling_price')
+    
+    context = {
+        'items': items,
+        'query': query,
+    }
+    
+    return render(request, 'inventory/kelola_harga.html', context)
 
 @login_required
 def kelola_stok_packing(request):
@@ -450,26 +482,34 @@ def transfer_stok(request):
             items_list.append(item_dict)
         
         context = {
-            'items': items_list,
+            'items': items,
             'query': query,
         }
         
-        logger.info("Rendering transfer_stok template")
         return render(request, 'inventory/transfer_stok.html', context)
     except Exception as e:
         logger.error(f"Error in transfer_stok view: {str(e)}")
         logger.error(traceback.format_exc())
-        messages.error(request, f"Error: {str(e)}")
+        messages.error(request, f'Error: {str(e)}')
         return redirect('inventory:dashboard')
 
 @login_required
 def upload_file(request):
+    """
+    View for uploading Excel files
+    """
     if request.method == 'POST':
         form = ExcelUploadForm(request.POST, request.FILES)
         if form.is_valid():
+            excel_file = request.FILES['excel_file']
+            
+            # Check file extension
+            if not excel_file.name.endswith('.xlsx'):
+                messages.error(request, 'Format file tidak valid. Harap upload file Excel (.xlsx)')
+                return redirect('inventory:upload_file')
+            
             try:
-                # Save the uploaded file
-                excel_file = request.FILES['excel_file']
+                # Save file to disk
                 file_path = os.path.join(settings.MEDIA_ROOT, 'uploads', excel_file.name)
                 os.makedirs(os.path.dirname(file_path), exist_ok=True)
                 
@@ -477,56 +517,39 @@ def upload_file(request):
                     for chunk in excel_file.chunks():
                         destination.write(chunk)
                 
-                # Process the Excel file
-                df = pd.read_excel(file_path, engine='openpyxl')
+                # Read Excel file
+                df = pd.read_excel(file_path)
                 
-                # Skip the first row (header) and second row (usually contains instructions)
-                df = df.iloc[2:]
+                # Process data
+                success_count = 0
+                error_count = 0
                 
-                # Reset index after skipping rows
-                df = df.reset_index(drop=True)
-                
-                # Map DataFrame columns to model fields
-                with transaction.atomic():
-                    for _, row in df.iterrows():
-                        # Extract data from row
-                        code = str(row.iloc[0]).strip() if not pd.isna(row.iloc[0]) else None
-                        name = str(row.iloc[1]).strip() if not pd.isna(row.iloc[1]) else None
-                        category = str(row.iloc[2]).strip() if not pd.isna(row.iloc[2]) else "Uncategorized"  # Default category if null
-                        
-                        # Safe conversion for numeric fields with error handling
-                        try:
-                            current_stock = int(row.iloc[3]) if not pd.isna(row.iloc[3]) else 0
-                        except (ValueError, TypeError):
-                            current_stock = 0  # Default to 0 if conversion fails
-                            
-                        try:
-                            selling_price = float(row.iloc[4]) if not pd.isna(row.iloc[4]) else 0
-                        except (ValueError, TypeError):
-                            selling_price = 0  # Default to 0 if conversion fails
-                        
-                        # Skip rows with empty code or name
-                        if not code or not name:
-                            continue
-                        
-                        # Update or create item
+                for index, row in df.iterrows():
+                    try:
+                        # Get or create item
                         item, created = Item.objects.update_or_create(
-                            code=code,
+                            code=row['Kode'],
                             defaults={
-                                'name': name,
-                                'category': category,
-                                'current_stock': current_stock,
-                                'selling_price': selling_price,
+                                'name': row['Nama Barang'],
+                                'category': row['Kategori'],
+                                'current_stock': row['Total Stok'],
+                                'selling_price': row['Harga Jual']
                             }
                         )
+                        
+                        success_count += 1
+                    except Exception as e:
+                        logger.error(f"Error processing row {index}: {str(e)}")
+                        error_count += 1
                 
-                # Record upload history
+                # Create upload history
                 UploadHistory.objects.create(
                     user=request.user,
                     filename=excel_file.name,
                     file_path=file_path,
                     file_size=excel_file.size,
-                    success_count=df.shape[0]
+                    success_count=success_count,
+                    error_count=error_count
                 )
                 
                 # Log activity
@@ -534,99 +557,93 @@ def upload_file(request):
                     user=request.user,
                     action='upload_file',
                     status='success',
-                    notes=f'Uploaded file: {excel_file.name}'
+                    notes=f'File {excel_file.name} berhasil diupload. {success_count} item berhasil, {error_count} item gagal'
                 )
                 
-                messages.success(request, 'File berhasil diupload dan data telah diperbarui.')
-                return redirect('inventory:dashboard')
+                messages.success(request, f'File berhasil diupload. {success_count} item berhasil diperbarui, {error_count} item gagal')
+                return redirect('inventory:upload_file')
                 
             except Exception as e:
-                # Log error
-                logger.error(f"Error processing Excel file: {str(e)}")
+                logger.error(f"Error in upload_file view: {str(e)}")
                 logger.error(traceback.format_exc())
-                
-                # Record upload history with error
-                UploadHistory.objects.create(
-                    user=request.user,
-                    filename=excel_file.name if 'excel_file' in request.FILES else 'Unknown',
-                    file_path=file_path if 'file_path' in locals() else 'Unknown',
-                    file_size=excel_file.size if 'excel_file' in request.FILES else 0,
-                    error_count=1
-                )
                 
                 # Log activity
                 ActivityLog.objects.create(
                     user=request.user,
                     action='upload_file',
                     status='failed',
-                    notes=f'Failed to upload file: {str(e)}'
+                    notes=f'Gagal mengupload file {excel_file.name}: {str(e)}'
                 )
                 
-                messages.error(request, f'Error: {str(e)}')
+                messages.error(request, f'Gagal mengupload file: {str(e)}')
+                return redirect('inventory:upload_file')
     else:
         form = ExcelUploadForm()
     
-    context = {
-        'form': form
-    }
-    
-    return render(request, 'inventory/upload_file.html', context)
+    return render(request, 'inventory/upload_file.html', {'form': form})
 
 @login_required
 def upload_transfer_file(request):
+    """
+    View for uploading transfer stock Excel files
+    """
     if request.method == 'POST':
+        if 'transfer_file' not in request.FILES:
+            messages.error(request, 'Tidak ada file yang dipilih')
+            return redirect('inventory:upload_file')
+        
+        transfer_file = request.FILES['transfer_file']
+        
+        # Check file extension
+        if not transfer_file.name.endswith('.xlsx'):
+            messages.error(request, 'Format file tidak valid. Harap upload file Excel (.xlsx)')
+            return redirect('inventory:upload_file')
+        
         try:
-            # Save the uploaded file
-            excel_file = request.FILES['transfer_file']
-            file_path = os.path.join(settings.MEDIA_ROOT, 'uploads', excel_file.name)
+            # Save file to disk
+            file_path = os.path.join(settings.MEDIA_ROOT, 'uploads', transfer_file.name)
             os.makedirs(os.path.dirname(file_path), exist_ok=True)
             
             with open(file_path, 'wb+') as destination:
-                for chunk in excel_file.chunks():
+                for chunk in transfer_file.chunks():
                     destination.write(chunk)
             
-            # Process the Excel file
-            df = pd.read_excel(file_path, engine='openpyxl')
+            # Read Excel file
+            df = pd.read_excel(file_path)
             
-            # Skip the first row (header) and second row (usually contains instructions)
-            df = df.iloc[2:]
+            # Process data
+            success_count = 0
+            error_count = 0
             
-            # Reset index after skipping rows
-            df = df.reset_index(drop=True)
-            
-            # Map DataFrame columns to model fields
-            with transaction.atomic():
-                for _, row in df.iterrows():
-                    # Extract data from row
-                    code = str(row.iloc[0]).strip() if not pd.isna(row.iloc[0]) else None
-                    name = str(row.iloc[1]).strip() if not pd.isna(row.iloc[1]) else None
-                    
-                    # Safe conversion for numeric fields with error handling
-                    try:
-                        current_stock = int(row.iloc[2]) if not pd.isna(row.iloc[2]) else 0
-                    except (ValueError, TypeError):
-                        current_stock = 0  # Default to 0 if conversion fails
-                    
-                    # Skip rows with empty code or name
-                    if not code or not name:
-                        continue
-                    
-                    # Update or create item
+            for index, row in df.iterrows():
+                try:
+                    # Get or create item
                     item, created = Item.objects.update_or_create(
-                        code=code,
+                        code=row['Kode'],
                         defaults={
-                            'name': name,
-                            'current_stock': current_stock,
+                            'name': row['Nama Barang'],
+                            'current_stock': row['Stok']
                         }
                     )
+                    
+                    # Set minimum stock if provided
+                    if 'Stok Minimum' in row and not pd.isna(row['Stok Minimum']):
+                        item.minimum_stock = row['Stok Minimum']
+                        item.save(update_fields=['minimum_stock'])
+                    
+                    success_count += 1
+                except Exception as e:
+                    logger.error(f"Error processing row {index}: {str(e)}")
+                    error_count += 1
             
-            # Record upload history
+            # Create upload history
             UploadHistory.objects.create(
                 user=request.user,
-                filename=excel_file.name,
+                filename=transfer_file.name,
                 file_path=file_path,
-                file_size=excel_file.size,
-                success_count=df.shape[0]
+                file_size=transfer_file.size,
+                success_count=success_count,
+                error_count=error_count
             )
             
             # Log activity
@@ -634,74 +651,65 @@ def upload_transfer_file(request):
                 user=request.user,
                 action='upload_transfer_file',
                 status='success',
-                notes=f'Uploaded transfer file: {excel_file.name}'
+                notes=f'File {transfer_file.name} berhasil diupload. {success_count} item berhasil, {error_count} item gagal'
             )
             
-            messages.success(request, 'File transfer berhasil diupload dan data telah diperbarui.')
-            return redirect('inventory:transfer_stok')
+            messages.success(request, f'File berhasil diupload. {success_count} item berhasil diperbarui, {error_count} item gagal')
+            return redirect('inventory:upload_file')
             
         except Exception as e:
-            # Log error
-            logger.error(f"Error processing Excel file: {str(e)}")
+            logger.error(f"Error in upload_transfer_file view: {str(e)}")
             logger.error(traceback.format_exc())
-            
-            # Record upload history with error
-            UploadHistory.objects.create(
-                user=request.user,
-                filename=excel_file.name if 'excel_file' in locals() else 'Unknown',
-                file_path=file_path if 'file_path' in locals() else 'Unknown',
-                file_size=excel_file.size if 'excel_file' in locals() else 0,
-                error_count=1
-            )
             
             # Log activity
             ActivityLog.objects.create(
                 user=request.user,
                 action='upload_transfer_file',
                 status='failed',
-                notes=f'Failed to upload transfer file: {str(e)}'
+                notes=f'Gagal mengupload file {transfer_file.name}: {str(e)}'
             )
             
-            messages.error(request, f'Error: {str(e)}')
+            messages.error(request, f'Gagal mengupload file: {str(e)}')
+            return redirect('inventory:upload_file')
     
     return redirect('inventory:upload_file')
 
 @login_required
 def change_password(request):
+    """
+    View for changing user password
+    """
     if request.method == 'POST':
         old_password = request.POST.get('old_password')
-        new_password = request.POST.get('new_password')
-        confirm_password = request.POST.get('confirm_password')
+        new_password1 = request.POST.get('new_password1')
+        new_password2 = request.POST.get('new_password2')
         
-        # Validate input
-        if not old_password or not new_password or not confirm_password:
+        if not old_password or not new_password1 or not new_password2:
             messages.error(request, 'Semua field harus diisi')
             return redirect('inventory:change_password')
         
-        if new_password != confirm_password:
-            messages.error(request, 'Password baru dan konfirmasi password tidak cocok')
+        if new_password1 != new_password2:
+            messages.error(request, 'Password baru tidak cocok')
             return redirect('inventory:change_password')
         
-        # Check old password
-        user = request.user
-        if not user.check_password(old_password):
-            messages.error(request, 'Password lama tidak valid')
+        user = authenticate(username=request.user.username, password=old_password)
+        if user is None:
+            messages.error(request, 'Password lama salah')
             return redirect('inventory:change_password')
         
-        # Change password
-        user.set_password(new_password)
+        user.set_password(new_password1)
         user.save()
-        
-        # Update session to prevent logout
-        update_session_auth_hash(request, user)
         
         # Log activity
         ActivityLog.objects.create(
             user=request.user,
             action='change_password',
             status='success',
-            notes='Password changed successfully'
+            notes=f'User {user.username} changed password'
         )
+        
+        # Update session auth hash to prevent logout
+        update_session_auth_hash(request, user)
         
         messages.success(request, 'Password berhasil diubah')
         return redirect('inventory:dashboard')
@@ -709,7 +717,63 @@ def change_password(request):
     return render(request, 'inventory/change_password.html')
 
 @login_required
+@user_passes_test(is_admin)
+def webhook_settings(request):
+    """
+    View for managing webhook settings
+    """
+    # Get or create webhook settings
+    webhook_settings, created = WebhookSettings.objects.get_or_create(pk=1)
+    
+    if request.method == 'POST':
+        form = WebhookSettingsForm(request.POST, instance=webhook_settings)
+        if form.is_valid():
+            # Save form
+            webhook_settings = form.save(commit=False)
+            webhook_settings.updated_by = request.user
+            webhook_settings.save()
+            
+            # Determine which webhook was updated
+            updated_fields = []
+            if 'telegram_webhook_url' in form.changed_data:
+                updated_fields.append(f"Webhook Telegram diperbarui: {webhook_settings.telegram_webhook_url}")
+            if 'webhook_kelola_stok' in form.changed_data:
+                updated_fields.append(f"Webhook Kelola Stok diperbarui: {webhook_settings.webhook_kelola_stok}")
+            if 'webhook_transfer_stok' in form.changed_data:
+                updated_fields.append(f"Webhook Transfer Stok diperbarui: {webhook_settings.webhook_transfer_stok}")
+            if 'webhook_data_exp_produk' in form.changed_data:
+                updated_fields.append(f"Webhook Data Exp Produk diperbarui: {webhook_settings.webhook_data_exp_produk}")
+            if 'webhook_kelola_harga' in form.changed_data:
+                updated_fields.append(f"Webhook Kelola Harga diperbarui: {webhook_settings.webhook_kelola_harga}")
+            
+            # Log activity with specific details
+            notes = "Pengaturan webhook diperbarui"
+            if updated_fields:
+                notes = "; ".join(updated_fields)
+            
+            ActivityLog.objects.create(
+                user=request.user,
+                action='update_webhook_settings',
+                status='success',
+                notes=notes
+            )
+            
+            messages.success(request, 'Pengaturan webhook berhasil disimpan')
+            return redirect('inventory:webhook_settings')
+    else:
+        form = WebhookSettingsForm(instance=webhook_settings)
+    
+    context = {
+        'form': form
+    }
+    
+    return render(request, 'inventory/webhook_settings.html', context)
+
+@login_required
 def activity_logs(request):
+    """
+    View for displaying activity logs
+    """
     logs = ActivityLog.objects.all().order_by('-timestamp')
     
     context = {
@@ -719,114 +783,10 @@ def activity_logs(request):
     return render(request, 'inventory/activity_logs.html', context)
 
 @login_required
-@user_passes_test(is_admin)
-def webhook_settings(request):
-    webhook_settings = WebhookSettings.objects.first()
-    
-    if not webhook_settings:
-        webhook_settings = WebhookSettings.objects.create()
-    
-    if request.method == 'POST':
-        form = WebhookSettingsForm(request.POST, instance=webhook_settings)
-        if form.is_valid():
-            try:
-                webhook = form.save(commit=False)
-                webhook.updated_by = request.user
-                
-                # Get the webhook type from query parameters
-                webhook_type = request.GET.get('type', '')
-                
-                # Determine which field was updated based on the webhook type
-                if webhook_type == 'kelola_stok':
-                    # Get the new URL value
-                    new_url = form.cleaned_data.get('webhook_kelola_stok', '')
-                    
-                    # Update only the kelola_stok field
-                    webhook.webhook_kelola_stok = new_url
-                    
-                    # Log activity with specific details
-                    ActivityLog.objects.create(
-                        user=request.user,
-                        action='update_webhook_settings',
-                        status='success',
-                        notes=f'Webhook Kelola Stok diperbarui: {new_url}'
-                    )
-                    
-                    messages.success(request, 'Webhook Kelola Stok berhasil diperbarui', extra_tags='kelola_stok')
-                
-                elif webhook_type == 'transfer_stok':
-                    # Get the new URL value
-                    new_url = form.cleaned_data.get('webhook_transfer_stok', '')
-                    
-                    # Update only the transfer_stok field
-                    webhook.webhook_transfer_stok = new_url
-                    
-                    # Log activity with specific details
-                    ActivityLog.objects.create(
-                        user=request.user,
-                        action='update_webhook_settings',
-                        status='success',
-                        notes=f'Webhook Transfer Stok diperbarui: {new_url}'
-                    )
-                    
-                    messages.success(request, 'Webhook Transfer Stok berhasil diperbarui', extra_tags='transfer_stok')
-                
-                elif webhook_type == 'data_exp_produk':
-                    # Get the new URL value
-                    new_url = form.cleaned_data.get('webhook_data_exp_produk', '')
-                    
-                    # Update only the data_exp_produk field
-                    webhook.webhook_data_exp_produk = new_url
-                    
-                    # Log activity with specific details
-                    ActivityLog.objects.create(
-                        user=request.user,
-                        action='update_webhook_settings',
-                        status='success',
-                        notes=f'Webhook Data Exp Produk diperbarui: {new_url}'
-                    )
-                    
-                    messages.success(request, 'Webhook Data Exp Produk berhasil diperbarui', extra_tags='data_exp_produk')
-                
-                else:
-                    # If no specific type, save all fields (fallback)
-                    webhook.save()
-                    
-                    # Log activity with general message
-                    ActivityLog.objects.create(
-                        user=request.user,
-                        action='update_webhook_settings',
-                        status='success',
-                        notes='Semua pengaturan webhook diperbarui'
-                    )
-                    
-                    messages.success(request, 'Webhook settings berhasil diperbarui')
-                    
-                # Save the webhook settings
-                webhook.save(update_fields=['webhook_kelola_stok', 'webhook_transfer_stok', 'webhook_data_exp_produk', 'updated_by'])
-                
-                return redirect('inventory:webhook_settings')
-            except Exception as e:
-                # Log activity with error details
-                ActivityLog.objects.create(
-                    user=request.user,
-                    action='update_webhook_settings',
-                    status='failed',
-                    notes=f'Gagal memperbarui webhook: {str(e)}'
-                )
-                
-                messages.error(request, f'Error: {str(e)}')
-    else:
-        form = WebhookSettingsForm(instance=webhook_settings)
-    
-    context = {
-        'form': form,
-        'webhook_settings': webhook_settings
-    }
-    
-    return render(request, 'inventory/webhook_settings.html', context)
-
 def login_view(request):
+    """
+    View for user login
+    """
     if request.user.is_authenticated:
         return redirect('inventory:dashboard')
     
@@ -845,41 +805,29 @@ def login_view(request):
                     user=user,
                     action='login',
                     status='success',
-                    notes='User logged in'
+                    notes=f'User {username} logged in'
                 )
                 
-                # Get next URL from query parameters
-                next_url = request.GET.get('next', '')
-                
-                # Sanitize next URL to prevent redirect loops
-                if next_url and len(next_url) <= 100 and 'login' not in next_url:
-                    return redirect(next_url)
-                else:
-                    return redirect('inventory:kelola_stok_barang')
+                return redirect('inventory:dashboard')
             else:
                 messages.error(request, 'Username atau password salah')
     else:
         form = LoginForm()
     
-    context = {
-        'form': form
-    }
-    
-    return render(request, 'inventory/login.html', context)
+    return render(request, 'inventory/login.html', {'form': form})
 
 @login_required
 def logout_view(request):
+    """
+    View for user logout
+    """
     # Log activity
     ActivityLog.objects.create(
         user=request.user,
         action='logout',
         status='success',
-        notes='User logged out'
+        notes=f'User {request.user.username} logged out'
     )
     
     logout(request)
     return redirect('inventory:login')
-
-@login_required
-def backup_history(request):
-    return render(request, 'inventory/backup_history.html')

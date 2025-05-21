@@ -2,7 +2,7 @@ from django.urls import path
 from . import views
 from .views_reset_data import reset_exp_data, reset_transfer_data
 from .views_reset_all_items import reset_all_items
-from .views_save_latest_price import save_latest_price
+from .views_save_latest_price import save_latest_price, send_price_to_telegram
 from .views_upload_file import upload_file
 from django.views.generic import RedirectView
 
@@ -36,4 +36,5 @@ urlpatterns = [
     path('api/reset-all-items/', reset_all_items, name='reset_all_items'),
     # Save latest price endpoint
     path('api/save-latest-price/', save_latest_price, name='save_latest_price'),
+    path('api/send-price-to-telegram/', send_price_to_telegram, name='send_price_to_telegram'),
 ]
