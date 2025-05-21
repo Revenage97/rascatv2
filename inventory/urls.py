@@ -4,6 +4,11 @@ from .views_reset_data import reset_exp_data, reset_transfer_data
 from .views_reset_all_items import reset_all_items
 from .views_save_latest_price import save_latest_price, send_price_to_telegram
 from .views_upload_file import upload_file
+from .views_packing import (
+    kelola_stok_packing, update_packing_min_stock, delete_packing_min_stock,
+    send_packing_to_telegram, reset_all_packing_items, create_packing_item,
+    update_packing_item, delete_packing_item
+)
 from django.views.generic import RedirectView
 
 app_name = 'inventory'
@@ -18,7 +23,7 @@ urlpatterns = [
     path('otomatisasi/', views.otomatisasi, name='otomatisasi'),
     path('kelola-stok-barang/', views.kelola_stok_barang, name='kelola_stok_barang'),
     path('kelola-harga/', views.kelola_harga, name='kelola_harga'),
-    path('kelola-stok-packing/', views.kelola_stok_packing, name='kelola_stok_packing'),
+    path('kelola-stok-packing/', kelola_stok_packing, name='kelola_stok_packing'),
     path('transfer-stok/', views.transfer_stok, name='transfer_stok'),
     path('data-exp-produk/', views.data_exp_produk, name='data_exp_produk'),
     path('upload/', upload_file, name='upload_file'),
@@ -37,4 +42,13 @@ urlpatterns = [
     # Save latest price endpoint
     path('api/save-latest-price/', save_latest_price, name='save_latest_price'),
     path('api/send-price-to-telegram/', send_price_to_telegram, name='send_price_to_telegram'),
+    
+    # Packing item endpoints
+    path('api/update-packing-min-stock/', update_packing_min_stock, name='update_packing_min_stock'),
+    path('api/delete-packing-min-stock/', delete_packing_min_stock, name='delete_packing_min_stock'),
+    path('api/send-packing-to-telegram/', send_packing_to_telegram, name='send_packing_to_telegram'),
+    path('api/reset-all-packing-items/', reset_all_packing_items, name='reset_all_packing_items'),
+    path('api/create-packing-item/', create_packing_item, name='create_packing_item'),
+    path('api/update-packing-item/', update_packing_item, name='update_packing_item'),
+    path('api/delete-packing-item/', delete_packing_item, name='delete_packing_item'),
 ]

@@ -54,12 +54,34 @@ class Item(models.Model):
         verbose_name_plural = "Items"
 
 
+class PackingItem(models.Model):
+    """
+    Model for Kelola Stok Packing items, independent from regular inventory items.
+    """
+    code = models.CharField(max_length=50, unique=True, verbose_name="Kode Barang")
+    name = models.CharField(max_length=255, verbose_name="Nama Barang")
+    category = models.CharField(max_length=100, verbose_name="Kategori")
+    current_stock = models.IntegerField(default=0, verbose_name="Stok Saat Ini")
+    minimum_stock = models.IntegerField(default=0, verbose_name="Stok Minimum")
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"{self.code} - {self.name}"
+
+    class Meta:
+        ordering = ['code']
+        verbose_name = "Packing Item"
+        verbose_name_plural = "Packing Items"
+
+
 class WebhookSettings(models.Model):
     telegram_webhook_url = models.URLField(max_length=500, blank=True, null=True, verbose_name="URL Webhook Telegram")
     webhook_kelola_stok = models.URLField(max_length=500, blank=True, null=True, verbose_name="URL Webhook Telegram - Kelola Stok")
     webhook_transfer_stok = models.URLField(max_length=500, blank=True, null=True, verbose_name="URL Webhook Telegram - Transfer Stok")
     webhook_data_exp_produk = models.URLField(max_length=500, blank=True, null=True, verbose_name="URL Webhook Telegram - Data Exp Produk")
     webhook_kelola_harga = models.URLField(max_length=500, blank=True, null=True, verbose_name="URL Webhook Telegram - Kelola Harga")
+    webhook_kelola_stok_packing = models.URLField(max_length=500, blank=True, null=True, verbose_name="URL Webhook Telegram - Kelola Stok Packing")
     updated_at = models.DateTimeField(auto_now=True)
     updated_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True)
 
