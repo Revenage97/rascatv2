@@ -133,17 +133,23 @@
                             <td class="text-center">
                                 {% if item.minimum_stock %}
                                     <div class="input-group input-group-sm">
-                                        <input type="number" class="form-control form-control-sm transfer-stock-input" value="{{ item.minimum_stock }}" min="0" placeholder="Jumlah">
+                                        <input type="number" class="form-control form-control-sm transfer-stock-input" value="{{ item.minimum_stock }}" min="0" max="{{ item.current_stock }}" data-current-stock="{{ item.current_stock }}" placeholder="Jumlah">
                                         <button class="btn btn-sm btn-outline-secondary save-transfer-stock" data-item-id="{{ item.id }}">
                                             <i class="bi bi-save"></i>
                                         </button>
                                     </div>
+                                    <div class="invalid-feedback" style="display: none;">
+                                        Jumlah transfer melebihi stok saat ini!
+                                    </div>
                                 {% else %}
                                     <div class="input-group input-group-sm">
-                                        <input type="number" class="form-control form-control-sm transfer-stock-input" min="0" placeholder="Jumlah">
+                                        <input type="number" class="form-control form-control-sm transfer-stock-input" min="0" max="{{ item.current_stock }}" data-current-stock="{{ item.current_stock }}" placeholder="Jumlah">
                                         <button class="btn btn-sm btn-outline-secondary save-transfer-stock" data-item-id="{{ item.id }}">
                                             <i class="bi bi-save"></i>
                                         </button>
+                                    </div>
+                                    <div class="invalid-feedback" style="display: none;">
+                                        Jumlah transfer melebihi stok saat ini!
                                     </div>
                                 {% endif %}
                             </td>
@@ -335,10 +341,59 @@
             const tujuan = localStorage.getItem('transferStok_tujuan') ? 
                 document.getElementById('tujuanSelect').options[document.getElementById('tujuanSelect').selectedIndex].text : 
                 'Tidak Ditentukan';
+        // Validate transfer stock input
+        document.addEventListener('input', function(e) {
+            if (e.target && e.target.classList.contains('transfer-stock-input')) {
+                const input = e.target;
+                const currentStock = parseInt(input.dataset.currentStock);
+                const transferStock = parseInt(input.value) || 0;
+                const row = input.closest('tr');
+                const saveButton = input.closest('.input-group').querySelector('.save-transfer-stock');
+                const invalidFeedback = input.closest('td').querySelector('.invalid-feedback');
+                const checkbox = row.querySelector('.item-checkbox');
+                
+                // Validate input against current stock
+                if (transferStock > currentStock) {
+                    input.classList.add('is-invalid');
+                    invalidFeedback.style.display = 'block';
+                    saveButton.disabled = true;
+                    checkbox.disabled = true;
+                    
+                    // Disable send to telegram button if this row is checked
+                    if (checkbox.checked) {
+                        checkbox.checked = false;
+                        // Trigger change event to update UI
+                        const event = new Event('change', { bubbles: true });
+                        checkbox.dispatchEvent(event);
+                    }
+                } else {
+                    input.classList.remove('is-invalid');
+                    invalidFeedback.style.display = 'none';
+                    saveButton.disabled = false;
+                    checkbox.disabled = false;
+                }
+            }
+        });
+        
+        // Validate on page load
+        document.querySelectorAll('.transfer-stock-input').forEach(input => {
+            const currentStock = parseInt(input.dataset.currentStock);
+            const transferStock = parseInt(input.value) || 0;
+            const row = input.closest('tr');
+            const saveButton = input.closest('.input-group').querySelector('.save-transfer-stock');
+            const invalidFeedback = input.closest('td').querySelector('.invalid-feedback');
+            const checkbox = row.querySelector('.item-checkbox');
             
-            // Show loading
+            if (transferStock > currentStock) {
+                input.classList.add('is-invalid');
+                invalidFeedback.style.display = 'block';
+                saveButton.disabled = true;
+                checkbox.disabled = true;
+            }
+        // Function to reset transfer data
+        function resetTransferData() {
             Swal.fire({
-                title: 'Mengirim notifikasi...',
+                title: 'Menghapus data...',
                 text: 'Mohon tunggu sebentar',
                 allowOutsideClick: false,
                 didOpen: () => {
@@ -346,18 +401,13 @@
                 }
             });
             
-            // Send to webhook
-            fetch('/api/send-transfer-to-telegram/', {
+            fetch('/api/reset-transfer-data/', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                     'X-CSRFToken': csrfToken
-                },
-                body: JSON.stringify({
-                    item_ids: itemIds,
-                    asal: asal,
-                    tujuan: tujuan
-                })
+                }
+            })
             })
             .then(response => response.json())
             .then(data => {
@@ -401,25 +451,27 @@
                 const itemId = button.getAttribute('data-item-id');
                 
                 // Show loading
-                Swal.fire({
-                    title: 'Mengirim notifikasi...',
-                    text: 'Mohon tunggu sebentar',
-                    allowOutsideClick: false,
-                    didOpen: () => {
-                        Swal.showLoading();
-                    }
-                });
-                
-                // Send to webhook
-                fetch('/api/send-transfer-to-telegram/', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRFToken': csrfToken
-                    },
-                    body: JSON.stringify({
-                        item_ids: [itemId]
-                    })
+            // Show loading
+            Swal.fire({
+                title: 'Mengirim notifikasi...',
+                text: 'Mohon tunggu sebentar',
+                allowOutsideClick: false,
+                didOpen: () => {
+                    Swal.showLoading();
+                }
+            });
+            
+            // Send to webhook
+            fetch('/api/send-transfer-to-telegram/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': csrfToken
+                },
+                body: JSON.stringify({
+                    item_ids: itemIds,
+                    asal: asal,
+                    tujuan: tujuan
                 })
                 .then(response => response.json())
                 .then(data => {
