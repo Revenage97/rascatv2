@@ -4,10 +4,11 @@ from django.contrib.auth.decorators import login_required, user_passes_test
 from django.contrib.auth.models import User
 from django.contrib import messages
 from django.http import JsonResponse, HttpResponse
-from django.shortcuts import render, redirect
+from django.shortcuts import render, redirect, get_object_or_404
 from django.views.decorators.csrf import csrf_exempt
 from django.conf import settings
-from django.db import transaction
+from django.db import transaction, models
+from django.utils import timezone
 import json
 import pandas as pd
 import os
@@ -44,9 +45,157 @@ def forecasting(request):
 @login_required
 def data_exp_produk(request):
     """
-    View for Data Exp Produk page - currently displays a placeholder message
+    View for Data Exp Produk page - displays products with their expiry dates
     """
-    return render(request, 'inventory/data_exp_produk.html')
+    query = request.GET.get('query', '')
+    sort = request.GET.get('sort', '')
+    
+    items = Item.objects.all()
+    
+    # Search functionality
+    if query:
+        items = items.filter(name__icontains=query) | items.filter(code__icontains=query) | items.filter(category__icontains=query)
+    
+    # Sorting functionality
+    if sort == 'exp_asc':
+        # Sort by expiry date (nulls last)
+        items = items.order_by(models.F('expiry_date').asc(nulls_last=True))
+    elif sort == 'exp_desc':
+        # Sort by expiry date (nulls first)
+        items = items.order_by(models.F('expiry_date').desc(nulls_first=True))
+    
+    # Get today's date for comparison
+    today = timezone.now().date()
+    
+    context = {
+        'items': items,
+        'query': query,
+        'today': today,
+    }
+    
+    return render(request, 'inventory/data_exp_produk.html', context)
+
+@login_required
+@csrf_exempt
+def save_expiry_date(request):
+    """
+    API endpoint to save expiry date for an item
+    """
+    if request.method == 'POST':
+        try:
+            data = json.loads(request.body)
+            item_id = data.get('item_id')
+            expiry_date = data.get('expiry_date')
+            
+            if not item_id:
+                return JsonResponse({'status': 'error', 'message': 'Item ID is required'})
+            
+            item = Item.objects.get(id=item_id)
+            
+            # Update expiry date
+            if expiry_date:
+                try:
+                    # Parse date string to date object
+                    expiry_date = datetime.strptime(expiry_date, '%Y-%m-%d').date()
+                    item.expiry_date = expiry_date
+                except ValueError:
+                    return JsonResponse({'status': 'error', 'message': 'Invalid date format'})
+            else:
+                # Clear expiry date if empty
+                item.expiry_date = None
+            
+            item.save(update_fields=['expiry_date'])
+            
+            # Log activity
+            ActivityLog.objects.create(
+                user=request.user,
+                action='update_expiry_date',
+                status='success',
+                notes=f'Updated expiry date for {item.name} to {expiry_date}'
+            )
+            
+            return JsonResponse({'status': 'success', 'message': 'Expiry date updated successfully'})
+            
+        except Item.DoesNotExist:
+            return JsonResponse({'status': 'error', 'message': 'Item not found'})
+        except Exception as e:
+            logger.error(f"Error in save_expiry_date view: {str(e)}")
+            logger.error(traceback.format_exc())
+            return JsonResponse({'status': 'error', 'message': str(e)})
+    
+    return JsonResponse({'status': 'error', 'message': 'Invalid request method'})
+
+@login_required
+@csrf_exempt
+def send_exp_to_telegram(request):
+    """
+    API endpoint to send expiry notification to Telegram
+    """
+    if request.method == 'POST':
+        try:
+            data = json.loads(request.body)
+            item_id = data.get('item_id')
+            
+            if not item_id:
+                return JsonResponse({'status': 'error', 'message': 'Item ID is required'})
+            
+            item = Item.objects.get(id=item_id)
+            
+            # Get webhook URL
+            webhook_settings = WebhookSettings.objects.first()
+            if not webhook_settings:
+                return JsonResponse({'status': 'error', 'message': 'Webhook settings not found'})
+            
+            webhook_url = webhook_settings.webhook_kelola_stok
+            if not webhook_url:
+                return JsonResponse({'status': 'error', 'message': 'Webhook URL not configured'})
+            
+            # Format expiry date
+            expiry_date = item.expiry_date.strftime('%d-%m-%Y') if item.expiry_date else 'Tidak diatur'
+            
+            # Prepare message
+            message = f"📦 Produk Expired:\n"
+            message += f"Nama: {item.name}\n"
+            message += f"Exp: {expiry_date}\n"
+            message += f"Stok: {item.current_stock}\n"
+            
+            # Send to webhook
+            import requests
+            response = requests.post(
+                webhook_url,
+                json={'text': message, 'parse_mode': 'Markdown'},
+                headers={'Content-Type': 'application/json'}
+            )
+            
+            if response.status_code == 200:
+                # Log activity
+                ActivityLog.objects.create(
+                    user=request.user,
+                    action='send_exp_to_telegram',
+                    status='success',
+                    notes=f'Sent expiry notification for {item.name} to Telegram'
+                )
+                
+                return JsonResponse({'status': 'success', 'message': 'Notification sent to Telegram'})
+            else:
+                # Log activity
+                ActivityLog.objects.create(
+                    user=request.user,
+                    action='send_exp_to_telegram',
+                    status='failed',
+                    notes=f'Failed to send expiry notification for {item.name} to Telegram: {response.text}'
+                )
+                
+                return JsonResponse({'status': 'error', 'message': f'Failed to send notification: {response.text}'})
+            
+        except Item.DoesNotExist:
+            return JsonResponse({'status': 'error', 'message': 'Item not found'})
+        except Exception as e:
+            logger.error(f"Error in send_exp_to_telegram view: {str(e)}")
+            logger.error(traceback.format_exc())
+            return JsonResponse({'status': 'error', 'message': str(e)})
+    
+    return JsonResponse({'status': 'error', 'message': 'Invalid request method'})
 
 # New views for submenu pages
 @login_required
@@ -383,6 +532,7 @@ def upload_file(request):
                             'category': category,
                             'current_stock': stock,
                             'selling_price': price,
+                            # Don't update expiry_date if it already exists
                         }
                     )
                     

@@ -1,5 +1,31 @@
 {% extends 'base.html' %}
 
+{% block extra_head %}
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+<style>
+    .table th {
+        background-color: #f8f9fa;
+    }
+    .exp-date-input {
+        width: 140px;
+        display: inline-block;
+    }
+    .sort-btn {
+        margin-right: 5px;
+    }
+    .filter-active {
+        background-color: #fff8e1;
+    }
+    .btn-sort-active {
+        background-color: #e3f2fd;
+        border-color: #90caf9;
+    }
+    .exp-warning {
+        background-color: #ffebee;
+    }
+</style>
+{% endblock %}
+
 {% block content %}
 <div class="container-fluid py-4">
     <div class="row mb-4">
@@ -14,12 +40,265 @@
         </div>
     </div>
 
+    <!-- Search and Filter Row -->
+    <div class="row mb-3">
+        <div class="col-md-6">
+            <form method="GET" action="{% url 'inventory:data_exp_produk' %}" class="d-flex">
+                <div class="input-group" style="max-width: 400px;">
+                    <input type="text" name="query" class="form-control form-control-sm py-1" placeholder="Cari kode atau nama produk..." value="{{ query|default:'' }}">
+                    <button type="submit" class="btn btn-primary btn-sm py-1 px-2">
+                        <i class="bi bi-search"></i> Cari
+                    </button>
+                </div>
+            </form>
+        </div>
+        <div class="col-md-6 text-md-end">
+            <button id="sortAsc" class="btn btn-outline-secondary btn-sm sort-btn">
+                <i class="bi bi-arrow-down"></i> Urutkan Exp Terdekat (ASC)
+            </button>
+            <button id="sortDesc" class="btn btn-outline-secondary btn-sm sort-btn">
+                <i class="bi bi-arrow-up"></i> Urutkan Exp Terjauh (DESC)
+            </button>
+        </div>
+    </div>
+
+    <!-- Main Table Card -->
     <div class="card">
-        <div class="card-body text-center py-5">
-            <i class="bi bi-tools fs-1 text-muted mb-3"></i>
-            <h3 class="text-muted">Halaman dalam pengembangan</h3>
-            <p class="text-muted">Fitur ini sedang dalam proses pengembangan dan akan tersedia dalam waktu dekat.</p>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-bordered table-hover">
+                    <thead>
+                        <tr>
+                            <th style="width: 15%">Kode Barang</th>
+                            <th style="width: 30%">Nama Barang</th>
+                            <th style="width: 10%">Stok</th>
+                            <th style="width: 20%">Tanggal Expired</th>
+                            <th style="width: 15%">Aksi</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for item in items %}
+                        <tr data-id="{{ item.id }}" {% if item.expiry_date and item.expiry_date|date:'Y-m-d' < today|date:'Y-m-d' %}class="exp-warning"{% endif %}>
+                            <td>{{ item.code }}</td>
+                            <td>{{ item.name }}</td>
+                            <td>{{ item.current_stock }}</td>
+                            <td>
+                                <div class="input-group input-group-sm">
+                                    <input type="text" 
+                                           class="form-control form-control-sm exp-date-input datepicker" 
+                                           value="{% if item.expiry_date %}{{ item.expiry_date|date:'Y-m-d' }}{% endif %}" 
+                                           placeholder="Pilih tanggal"
+                                           data-item-id="{{ item.id }}">
+                                    <button class="btn btn-outline-secondary btn-sm save-exp-date" data-item-id="{{ item.id }}">
+                                        <i class="bi bi-check"></i>
+                                    </button>
+                                </div>
+                            </td>
+                            <td class="text-center">
+                                <button class="btn btn-primary btn-sm send-telegram" data-item-id="{{ item.id }}">
+                                    <i class="bi bi-telegram"></i> Kirim ke Telegram
+                                </button>
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="5" class="text-center py-4">
+                                <i class="bi bi-inbox fs-1 text-muted d-block mb-2"></i>
+                                <p class="text-muted">Tidak ada data produk yang tersedia.</p>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
         </div>
     </div>
 </div>
+
+<!-- Modal for Telegram Confirmation -->
+<div class="modal fade" id="telegramModal" tabindex="-1" aria-labelledby="telegramModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="telegramModalLabel">Konfirmasi Kirim ke Telegram</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p>Apakah Anda yakin ingin mengirim notifikasi produk ini ke Telegram?</p>
+                <div id="telegramPreview" class="bg-light p-3 rounded">
+                    <p class="mb-1"><strong>📦 Produk Expired:</strong></p>
+                    <p class="mb-1">Nama: <span id="previewName"></span></p>
+                    <p class="mb-1">Exp: <span id="previewExp"></span></p>
+                    <p class="mb-0">Stok: <span id="previewStock"></span></p>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
+                <button type="button" class="btn btn-primary" id="confirmTelegram">Kirim</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Initialize datepickers
+        const datepickers = document.querySelectorAll('.datepicker');
+        datepickers.forEach(input => {
+            flatpickr(input, {
+                dateFormat: "Y-m-d",
+                allowInput: true
+            });
+        });
+
+        // Save expiry date
+        const saveButtons = document.querySelectorAll('.save-exp-date');
+        saveButtons.forEach(button => {
+            button.addEventListener('click', function() {
+                const itemId = this.getAttribute('data-item-id');
+                const dateInput = document.querySelector(`.datepicker[data-item-id="${itemId}"]`);
+                const expiryDate = dateInput.value;
+                
+                saveExpiryDate(itemId, expiryDate);
+            });
+        });
+
+        // Sort buttons
+        document.getElementById('sortAsc').addEventListener('click', function() {
+            window.location.href = "{% url 'inventory:data_exp_produk' %}?sort=exp_asc";
+        });
+
+        document.getElementById('sortDesc').addEventListener('click', function() {
+            window.location.href = "{% url 'inventory:data_exp_produk' %}?sort=exp_desc";
+        });
+
+        // Telegram send buttons
+        const telegramButtons = document.querySelectorAll('.send-telegram');
+        telegramButtons.forEach(button => {
+            button.addEventListener('click', function() {
+                const itemId = this.getAttribute('data-item-id');
+                const row = document.querySelector(`tr[data-id="${itemId}"]`);
+                
+                // Get item details for preview
+                const name = row.cells[1].textContent.trim();
+                const stock = row.cells[2].textContent.trim();
+                const expDate = row.querySelector('.datepicker').value;
+                
+                // Update modal preview
+                document.getElementById('previewName').textContent = name;
+                document.getElementById('previewExp').textContent = expDate || 'Tidak diatur';
+                document.getElementById('previewStock').textContent = stock;
+                
+                // Store item ID for confirmation
+                document.getElementById('confirmTelegram').setAttribute('data-item-id', itemId);
+                
+                // Show modal
+                const modal = new bootstrap.Modal(document.getElementById('telegramModal'));
+                modal.show();
+            });
+        });
+
+        // Confirm telegram send
+        document.getElementById('confirmTelegram').addEventListener('click', function() {
+            const itemId = this.getAttribute('data-item-id');
+            sendToTelegram(itemId);
+            
+            // Hide modal
+            const modal = bootstrap.Modal.getInstance(document.getElementById('telegramModal'));
+            modal.hide();
+        });
+
+        // Function to save expiry date
+        function saveExpiryDate(itemId, expiryDate) {
+            fetch('{% url "inventory:save_expiry_date" %}', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': getCookie('csrftoken')
+                },
+                body: JSON.stringify({
+                    item_id: itemId,
+                    expiry_date: expiryDate
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    // Show success indicator
+                    const button = document.querySelector(`.save-exp-date[data-item-id="${itemId}"]`);
+                    button.classList.remove('btn-outline-secondary');
+                    button.classList.add('btn-success');
+                    
+                    // Reset after 2 seconds
+                    setTimeout(() => {
+                        button.classList.remove('btn-success');
+                        button.classList.add('btn-outline-secondary');
+                    }, 2000);
+                } else {
+                    alert('Error: ' + data.message);
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Terjadi kesalahan saat menyimpan tanggal expired.');
+            });
+        }
+
+        // Function to send to Telegram
+        function sendToTelegram(itemId) {
+            fetch('{% url "inventory:send_exp_to_telegram" %}', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': getCookie('csrftoken')
+                },
+                body: JSON.stringify({
+                    item_id: itemId,
+                    source: 'data_exp_produk'
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    // Show success message
+                    alert('Notifikasi berhasil dikirim ke Telegram!');
+                } else {
+                    alert('Error: ' + data.message);
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Terjadi kesalahan saat mengirim ke Telegram.');
+            });
+        }
+
+        // Helper function to get CSRF token
+        function getCookie(name) {
+            let cookieValue = null;
+            if (document.cookie && document.cookie !== '') {
+                const cookies = document.cookie.split(';');
+                for (let i = 0; i < cookies.length; i++) {
+                    const cookie = cookies[i].trim();
+                    if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                        break;
+                    }
+                }
+            }
+            return cookieValue;
+        }
+
+        // Highlight active sort button if sorting is applied
+        const urlParams = new URLSearchParams(window.location.search);
+        const sortParam = urlParams.get('sort');
+        if (sortParam === 'exp_asc') {
+            document.getElementById('sortAsc').classList.add('btn-sort-active');
+        } else if (sortParam === 'exp_desc') {
+            document.getElementById('sortDesc').classList.add('btn-sort-active');
+        }
+    });
+</script>
 {% endblock %}

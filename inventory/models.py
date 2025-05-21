@@ -40,6 +40,7 @@ class Item(models.Model):
     current_stock = models.IntegerField(default=0, verbose_name="Stok Saat Ini")
     selling_price = models.DecimalField(max_digits=12, decimal_places=2, verbose_name="Harga Jual")
     minimum_stock = models.IntegerField(default=0, verbose_name="Stok Minimum")
+    expiry_date = models.DateField(null=True, blank=True, verbose_name="Tanggal Expired")
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
