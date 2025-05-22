@@ -936,56 +936,54 @@
         // Send to Telegram button click handler
         if (sendToTelegramBtn) {
             sendToTelegramBtn.addEventListener('click', function() {
-                const che        // Send to Telegram button click handler
-        sendToTelegramBtn.addEventListener('click', function() {
-            const checkedItems = document.querySelectorAll('.item-checkbox:checked');
-            
-            // Check if payment method is selected
-            const selectedPaymentMethod = paymentMethodSelect.value;
-            if (!selectedPaymentMethod) {
-                Swal.fire({
-                    icon: 'warning',
-                    title: 'Perhatian',
-                    text: 'Pilih metode pembayaran terlebih dahulu',
-                    confirmButtonColor: '#3085d6'
-                });
-                return;
-            }
-            
-            if (checkedItems.length === 0) {
-                Swal.fire({
-                    icon: 'warning',
-                    title: 'Perhatian',
-                    text: 'Pilih minimal satu item untuk dikirim ke Telegram',
-                    confirmButtonColor: '#3085d6'
-                });
-                return;
-            }
-            
-            const itemIds = Array.from(checkedItems).map(checkbox => checkbox.value);
-            
-            // Show loading
-            Swal.fire({
-                title: 'Mengirim notifikasi...',
-                text: 'Mohon tunggu sebentar',
-                allowOutsideClick: false,
-                didOpen: () => {
-                    Swal.showLoading();
+                const checkedItems = document.querySelectorAll('.item-checkbox:checked');
+                
+                // Check if payment method is selected
+                const selectedPaymentMethod = paymentMethodSelect.value;
+                if (!selectedPaymentMethod) {
+                    Swal.fire({
+                        icon: 'warning',
+                        title: 'Perhatian',
+                        text: 'Pilih metode pembayaran terlebih dahulu',
+                        confirmButtonColor: '#3085d6'
+                    });
+                    return;
                 }
-            });
-            
-            // Make API call to send to Telegram
-            fetch('/api/send-packing-to-telegram/', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRFToken': csrfToken
-                },
-                body: JSON.stringify({
-                    item_ids: itemIds,
-                    payment_method: selectedPaymentMethod
+                
+                if (checkedItems.length === 0) {
+                    Swal.fire({
+                        icon: 'warning',
+                        title: 'Perhatian',
+                        text: 'Pilih minimal satu item untuk dikirim ke Telegram',
+                        confirmButtonColor: '#3085d6'
+                    });
+                    return;
+                }
+                
+                const itemIds = Array.from(checkedItems).map(checkbox => checkbox.value);
+                
+                // Show loading
+                Swal.fire({
+                    title: 'Mengirim notifikasi...',
+                    text: 'Mohon tunggu sebentar',
+                    allowOutsideClick: false,
+                    didOpen: () => {
+                        Swal.showLoading();
+                    }
+                });
+                
+                // Make API call to send to Telegram
+                fetch('/api/send-packing-to-telegram/', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': csrfToken
+                    },
+                    body: JSON.stringify({
+                        item_ids: itemIds,
+                        payment_method: selectedPaymentMethod
+                    })
                 })
-            })   })
                 .then(response => response.json())
                 .then(data => {
                     Swal.close();
