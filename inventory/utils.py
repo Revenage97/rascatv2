@@ -20,11 +20,12 @@ def is_staff_gudang(user):
     Check if user has staff_gudang role
     """
     try:
-        # Add logging to debug role checking
-        logger.info(f"Checking staff_gudang role for user {user.username}: {user.profile.is_staff_gudang}")
-        return user.profile.is_staff_gudang
+        # Enhanced logging to debug role checking
+        is_staff = user.profile.is_staff_gudang
+        logger.info(f"Checking staff_gudang role for user {user.username}: {is_staff}")
+        return is_staff
     except Exception as e:
-        logger.error(f"Error checking staff_gudang role: {str(e)}")
+        logger.error(f"Error checking staff_gudang role for user {user.username}: {str(e)}")
         return False
 
 def is_manajer(user):

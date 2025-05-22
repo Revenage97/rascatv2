@@ -19,6 +19,17 @@ def kelola_stok_packing(request):
     """
     View for Kelola Stok Packing page - displays packing items with their stock
     """
+    # Enhanced logging for debugging user role issues
+    logger.info(f"Accessing kelola_stok_packing view as user: {request.user.username}")
+    
+    # Explicitly check and log staff gudang status
+    is_staff = False
+    try:
+        is_staff = request.user.profile.is_staff_gudang
+        logger.info(f"User {request.user.username} staff_gudang status: {is_staff}")
+    except Exception as e:
+        logger.error(f"Error checking staff_gudang for {request.user.username}: {str(e)}")
+    
     query = request.GET.get('query', '')
     sort = request.GET.get('sort', '')
     filter_option = request.GET.get('filter', '')
@@ -51,11 +62,17 @@ def kelola_stok_packing(request):
     if filter_option == 'low_stock':
         items = [item for item in items if item.minimum_stock and item.current_stock < item.minimum_stock]
     
+    # Explicitly set staff_gudang status in context
+    is_admin_user = is_admin(request.user)
+    is_staff_gudang_user = is_staff_gudang(request.user)
+    
+    logger.info(f"Setting context for {request.user.username}: is_admin={is_admin_user}, is_staff_gudang={is_staff_gudang_user}")
+    
     context = {
         'items': items,
         'query': query,
-        'is_admin': is_admin(request.user),
-        'is_staff_gudang': request.user.profile.is_staff_gudang if hasattr(request.user, 'profile') else False,
+        'is_admin': is_admin_user,
+        'is_staff_gudang': is_staff_gudang_user,
     }
     
     return render(request, 'inventory/kelola_stok_packing.html', context)
@@ -154,19 +171,34 @@ def send_packing_to_telegram(request):
     """
     API endpoint to send packing item notification to Telegram
     """
+    # Enhanced logging for debugging user role issues
+    logger.info(f"Accessing send_packing_to_telegram as user: {request.user.username}")
+    
+    # Explicitly check and log staff gudang status
+    try:
+        is_staff = request.user.profile.is_staff_gudang
+        is_admin_user = is_admin(request.user)
+        logger.info(f"User {request.user.username} roles: staff_gudang={is_staff}, admin={is_admin_user}")
+    except Exception as e:
+        logger.error(f"Error checking roles for {request.user.username}: {str(e)}")
+    
     if request.method == 'POST':
         try:
             data = json.loads(request.body)
             item_ids = data.get('item_ids', [])
             payment_method = data.get('payment_method')
             
+            logger.info(f"Telegram request data: item_ids={item_ids}, payment_method={payment_method}")
+            
             # Validate payment method only for admin users
             if is_admin(request.user) and not payment_method:
+                logger.info(f"Admin user {request.user.username} missing payment method")
                 return JsonResponse({'status': 'error', 'message': 'Metode pembayaran diperlukan'})
             
             # For staff gudang, use default payment method
-            if not is_admin(request.user):
+            if not is_admin(request.user) or is_staff_gudang(request.user):
                 payment_method = "DEFAULT"
+                logger.info(f"Using DEFAULT payment method for user {request.user.username}")
             
             # Handle both single item_id and array of item_ids
             if not item_ids:

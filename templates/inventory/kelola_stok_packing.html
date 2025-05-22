@@ -1038,15 +1038,20 @@
                 const isAdmin = document.body.classList.contains('admin-user');
                 const isStaffGudang = document.body.classList.contains('staff-gudang-user');
                 
-                console.log("Role detection - isAdmin:", isAdmin, "isStaffGudang:", isStaffGudang);
+                console.log("DEBUGGING - Role detection in Telegram button handler:");
+                console.log("- Body classes:", document.body.className);
+                console.log("- isAdmin:", isAdmin);
+                console.log("- isStaffGudang:", isStaffGudang);
                 
                 // Staff gudang always uses DEFAULT payment method
                 if (isStaffGudang) {
+                    console.log("Using DEFAULT payment method for staff gudang");
                     selectedPaymentMethod = "DEFAULT";
                 }
                 // Only validate payment method for admin users
                 else if (isAdmin && typeof paymentMethodSelect !== 'undefined' && paymentMethodSelect) {
                     selectedPaymentMethod = paymentMethodSelect.value;
+                    console.log("Admin user selected payment method:", selectedPaymentMethod);
                     if (!selectedPaymentMethod && document.getElementById('paymentMethod')) {
                         Swal.fire({
                             icon: 'warning',
