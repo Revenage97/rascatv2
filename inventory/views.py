@@ -30,8 +30,11 @@ def is_staff_gudang(user):
     Check if user has staff_gudang role
     """
     try:
+        # Add logging to debug role checking
+        logger.info(f"Checking staff_gudang role for user {user.username}: {user.profile.is_staff_gudang}")
         return user.profile.is_staff_gudang
-    except:
+    except Exception as e:
+        logger.error(f"Error checking staff_gudang role: {str(e)}")
         return False
 
 def is_manajer(user):
@@ -80,8 +83,14 @@ def otomatisasi(request):
     return render(request, 'inventory/otomatisasi.html')
 
 @login_required
-@user_passes_test(lambda u: not is_staff_gudang(u))
+@user_passes_test(lambda u: not is_staff_gudang(u), login_url='/dashboard/')
 def kelola_stok_barang(request):
+    # Double-check permission inside the view
+    if is_staff_gudang(request.user):
+        logger.warning(f"Staff Gudang user {request.user.username} attempted to access kelola_stok_barang")
+        messages.error(request, "Anda tidak memiliki izin untuk mengakses halaman ini")
+        return redirect('inventory:dashboard')
+        
     """
     View for managing stock items
     """
@@ -168,8 +177,14 @@ def data_exp_produk(request):
     return render(request, 'inventory/data_exp_produk.html', context)
 
 @login_required
-@user_passes_test(lambda u: not is_staff_gudang(u))
+@user_passes_test(lambda u: not is_staff_gudang(u), login_url='/dashboard/')
 def kelola_harga(request):
+    # Double-check permission inside the view
+    if is_staff_gudang(request.user):
+        logger.warning(f"Staff Gudang user {request.user.username} attempted to access kelola_harga")
+        messages.error(request, "Anda tidak memiliki izin untuk mengakses halaman ini")
+        return redirect('inventory:dashboard')
+        
     """
     View for managing prices
     """
