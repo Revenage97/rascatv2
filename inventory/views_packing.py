@@ -83,8 +83,8 @@ def update_packing_min_stock(request):
                 except ValueError:
                     return JsonResponse({'status': 'error', 'message': 'Invalid minimum stock value'})
             else:
-                # Clear minimum stock if empty
-                item.minimum_stock = None
+                # Set minimum stock to 0 if empty or null (not NULL)
+                item.minimum_stock = 0
             
             item.save(update_fields=['minimum_stock'])
             
@@ -123,8 +123,8 @@ def delete_packing_min_stock(request):
             
             item = PackingItem.objects.get(id=item_id)
             
-            # Clear minimum stock
-            item.minimum_stock = None
+            # Clear minimum stock (set to 0, not NULL)
+            item.minimum_stock = 0
             item.save(update_fields=['minimum_stock'])
             
             # Log activity

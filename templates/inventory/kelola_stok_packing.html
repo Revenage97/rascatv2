@@ -119,10 +119,10 @@
                                     <input class="form-check-input item-checkbox" type="checkbox" value="{{ item.id }}" id="item{{ item.id }}">
                                 </div>
                             </td>
-                            <td>{{ item.code }}</td>
-                            <td>{{ item.name }}</td>
+                            <td class="editable-cell" data-field="code" data-item-id="{{ item.id }}">{{ item.code }}</td>
+                            <td class="editable-cell" data-field="name" data-item-id="{{ item.id }}">{{ item.name }}</td>
                             <td>{{ item.category }}</td>
-                            <td class="text-center">{{ item.current_stock }}</td>
+                            <td class="text-center editable-cell" data-field="current_stock" data-item-id="{{ item.id }}">{{ item.current_stock }}</td>
                             <td class="text-center">
                                 <div class="input-group input-group-sm">
                                     <input type="number" class="form-control form-control-sm min-stock-input" 
@@ -286,6 +286,196 @@
         const toastEl = document.getElementById('notificationToast');
         const toast = new bootstrap.Toast(toastEl);
         const toastMessage = document.getElementById('toastMessage');
+        
+        // Inline editing functionality
+        document.addEventListener('click', function(e) {
+            // Check if clicked element is an editable cell
+            if (e.target && e.target.classList.contains('editable-cell')) {
+                const cell = e.target;
+                const field = cell.getAttribute('data-field');
+                const itemId = cell.getAttribute('data-item-id');
+                const currentValue = cell.textContent.trim();
+                
+                // Don't create a new input if already editing
+                if (cell.querySelector('input')) return;
+                
+                // Store original content for cancel operation
+                cell.setAttribute('data-original', currentValue);
+                
+                // Create input field based on field type
+                let inputType = 'text';
+                let inputAttributes = '';
+                
+                if (field === 'current_stock') {
+                    inputType = 'number';
+                    inputAttributes = 'min="0"';
+                }
+                
+                // Replace cell content with input field and buttons
+                cell.innerHTML = `
+                    <div class="d-flex">
+                        <input type="${inputType}" class="form-control form-control-sm me-1" value="${currentValue}" ${inputAttributes}>
+                        <div class="btn-group btn-group-sm">
+                            <button class="btn btn-success save-inline-edit" title="Simpan">
+                                <i class="bi bi-check"></i>
+                            </button>
+                            <button class="btn btn-danger cancel-inline-edit" title="Batal">
+                                <i class="bi bi-x"></i>
+                            </button>
+                        </div>
+                    </div>
+                `;
+                
+                // Focus the input
+                const input = cell.querySelector('input');
+                input.focus();
+                
+                // Select all text in the input
+                input.select();
+                
+                // Prevent clicks inside the cell from bubbling up
+                cell.addEventListener('click', function(event) {
+                    event.stopPropagation();
+                });
+                
+                // Handle Enter key press
+                input.addEventListener('keydown', function(event) {
+                    if (event.key === 'Enter') {
+                        saveInlineEdit(cell, field, itemId);
+                    } else if (event.key === 'Escape') {
+                        cancelInlineEdit(cell);
+                    }
+                });
+            }
+            
+            // Handle save button click
+            if (e.target && (e.target.classList.contains('save-inline-edit') || 
+                (e.target.parentElement && e.target.parentElement.classList.contains('save-inline-edit')))) {
+                const button = e.target.classList.contains('save-inline-edit') ? e.target : e.target.parentElement;
+                const cell = button.closest('.editable-cell');
+                const field = cell.getAttribute('data-field');
+                const itemId = cell.getAttribute('data-item-id');
+                
+                saveInlineEdit(cell, field, itemId);
+                e.stopPropagation();
+            }
+            
+            // Handle cancel button click
+            if (e.target && (e.target.classList.contains('cancel-inline-edit') || 
+                (e.target.parentElement && e.target.parentElement.classList.contains('cancel-inline-edit')))) {
+                const button = e.target.classList.contains('cancel-inline-edit') ? e.target : e.target.parentElement;
+                const cell = button.closest('.editable-cell');
+                
+                cancelInlineEdit(cell);
+                e.stopPropagation();
+            }
+        });
+        
+        // Function to save inline edit
+        function saveInlineEdit(cell, field, itemId) {
+            const input = cell.querySelector('input');
+            const newValue = input.value.trim();
+            const originalValue = cell.getAttribute('data-original');
+            
+            // Validate input
+            if (!newValue) {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Error',
+                    text: 'Nilai tidak boleh kosong',
+                    timer: 1500,
+                    showConfirmButton: false
+                });
+                input.focus();
+                return;
+            }
+            
+            // If value hasn't changed, just cancel
+            if (newValue === originalValue) {
+                cancelInlineEdit(cell);
+                return;
+            }
+            
+            // Show loading indicator
+            cell.innerHTML = `<div class="text-center"><div class="spinner-border spinner-border-sm text-primary" role="status"></div></div>`;
+            
+            // Prepare data for API call
+            const data = {
+                item_id: itemId
+            };
+            data[field] = field === 'current_stock' ? parseInt(newValue) : newValue;
+            
+            // Make API call to update the field
+            fetch('/api/update-packing-item/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': csrfToken
+                },
+                body: JSON.stringify(data)
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    // Update cell with new value
+                    cell.textContent = newValue;
+                    
+                    // Show success notification
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'Berhasil',
+                        text: 'Data berhasil diperbarui',
+                        timer: 1500,
+                        showConfirmButton: false
+                    });
+                    
+                    // Update row class if stock is below minimum
+                    if (field === 'current_stock') {
+                        const row = cell.closest('tr');
+                        const minStockInput = row.querySelector('.min-stock-input');
+                        const minStock = parseInt(minStockInput.value);
+                        const currentStock = parseInt(newValue);
+                        
+                        if (currentStock < minStock) {
+                            row.classList.add('table-danger');
+                        } else {
+                            row.classList.remove('table-danger');
+                        }
+                    }
+                } else {
+                    // Restore original content and show error
+                    cell.textContent = originalValue;
+                    
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Error',
+                        text: data.message || 'Gagal memperbarui data',
+                        timer: 2000,
+                        showConfirmButton: false
+                    });
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                
+                // Restore original content and show error
+                cell.textContent = originalValue;
+                
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Error',
+                    text: 'Terjadi kesalahan saat menghubungi server',
+                    timer: 2000,
+                    showConfirmButton: false
+                });
+            });
+        }
+        
+        // Function to cancel inline edit
+        function cancelInlineEdit(cell) {
+            const originalValue = cell.getAttribute('data-original');
+            cell.textContent = originalValue;
+        }
         
         // Manual Input Form Handling
         const manualInputForm = document.getElementById('manualInputForm');
@@ -622,55 +812,65 @@
         
         // Delete Minimum Stock button click handler
         document.addEventListener('click', function(e) {
-            if (e.target && e.target.classList.contains('delete-min-stock') || 
-                (e.target.parentElement && e.target.parentElement.classList.contains('delete-min-stock'))) {
+            if (e.target && (e.target.classList.contains('delete-min-stock') || 
+                (e.target.parentElement && e.target.parentElement.classList.contains('delete-min-stock')))) {
                 
                 const button = e.target.classList.contains('delete-min-stock') ? e.target : e.target.parentElement;
                 const itemId = button.getAttribute('data-item-id');
                 const input = document.querySelector(`.min-stock-input[data-item-id="${itemId}"]`);
                 
-                // Make API call to delete minimum stock
-                fetch('/api/delete-packing-min-stock/', {
+                // Set input value to 0
+                input.value = 0;
+                
+                // Make API call to update minimum stock to 0
+                fetch('/api/update-packing-min-stock/', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
                         'X-CSRFToken': csrfToken
                     },
                     body: JSON.stringify({
-                        item_id: itemId
+                        item_id: itemId,
+                        min_stock: 0
                     })
                 })
                 .then(response => response.json())
                 .then(data => {
                     if (data.status === 'success') {
-                        // Update input value
-                        input.value = 0;
+                        // Show success notification
+                        Swal.fire({
+                            icon: 'success',
+                            title: 'Berhasil',
+                            text: 'Stok minimum disetel ke 0',
+                            timer: 1500,
+                            showConfirmButton: false
+                        });
                         
-                        // Show success toast
-                        toastMessage.textContent = 'Stok minimum berhasil direset';
-                        toastEl.classList.remove('bg-danger');
-                        toastEl.classList.add('bg-success', 'text-white');
-                        toast.show();
-                        
-                        // Remove danger class from row
+                        // Update row class if needed
                         const row = button.closest('tr');
                         row.classList.remove('table-danger');
                     } else {
-                        // Show error toast
-                        toastMessage.textContent = data.message || 'Gagal mereset stok minimum';
-                        toastEl.classList.remove('bg-success');
-                        toastEl.classList.add('bg-danger', 'text-white');
-                        toast.show();
+                        // Show error notification
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'Error',
+                            text: data.message || 'Gagal mengatur stok minimum ke 0',
+                            timer: 2000,
+                            showConfirmButton: false
+                        });
                     }
                 })
                 .catch(error => {
                     console.error('Error:', error);
                     
-                    // Show error toast
-                    toastMessage.textContent = 'Terjadi kesalahan saat mereset stok minimum';
-                    toastEl.classList.remove('bg-success');
-                    toastEl.classList.add('bg-danger', 'text-white');
-                    toast.show();
+                    // Show error notification
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Error',
+                        text: 'Terjadi kesalahan saat menghubungi server',
+                        timer: 2000,
+                        showConfirmButton: false
+                    });
                 });
             }
         });
