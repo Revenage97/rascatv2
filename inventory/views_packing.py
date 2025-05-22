@@ -8,7 +8,7 @@ import requests
 import logging
 import traceback
 from .models import PackingItem, WebhookSettings, ActivityLog
-from .utils import is_admin
+from .utils import is_admin, is_staff_gudang
 from .views_timezone import get_localized_time, format_datetime
 
 # Configure logging
