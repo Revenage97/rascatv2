@@ -35,12 +35,15 @@ def format_datetime_jakarta(dt):
     jakarta = pytz.timezone('Asia/Jakarta')
     return dt.astimezone(jakarta).strftime('%H:%M - %d %B %Y')
 
-def get_localized_time():
+def get_localized_time(dt=None):
     """
-    Returns the current time in Asia/Jakarta timezone formatted as HH:MM - DD Month YYYY
-    This is an alias for get_jakarta_time() for backward compatibility
+    Returns the time in Asia/Jakarta timezone formatted as HH:MM - DD Month YYYY
+    If dt is provided, formats that datetime, otherwise uses current time
+    This is an alias for get_jakarta_time() or format_datetime_jakarta() for backward compatibility
     """
-    return get_jakarta_time()
+    if dt is None:
+        return get_jakarta_time()
+    return format_datetime_jakarta(dt)
 
 def format_datetime(dt=None):
     """
