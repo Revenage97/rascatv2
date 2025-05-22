@@ -269,7 +269,7 @@
             }
         }
         
-        function resetAsalTujuan() {
+        function resetAsalTujuan(showMessage = true) {
             console.log('Resetting asal/tujuan');
             
             localStorage.removeItem('transferStok_asal');
@@ -278,13 +278,15 @@
             document.getElementById('asalSelect').selectedIndex = 0;
             document.getElementById('tujuanSelect').selectedIndex = 0;
             
-            Swal.fire({
-                icon: 'success',
-                title: 'Reset',
-                text: 'Asal dan tujuan berhasil direset',
-                timer: 1500,
-                showConfirmButton: false
-            });
+            if (showMessage) {
+                Swal.fire({
+                    icon: 'success',
+                    title: 'Reset',
+                    text: 'Asal dan tujuan berhasil direset',
+                    timer: 1500,
+                    showConfirmButton: false
+                });
+            }
         }
         
         // Load saved asal/tujuan on page load
@@ -293,8 +295,80 @@
         // Simpan button click event
         document.getElementById('simpanBtn').addEventListener('click', saveAsalTujuan);
         
-        // Reset button click event
-        document.getElementById('resetAsalTujuanBtn').addEventListener('click', resetAsalTujuan);
+        // Reset button click event - unified reset for both asal/tujuan and transfer stock data
+        document.getElementById('resetAsalTujuanBtn').addEventListener('click', function() {
+            // Show confirmation dialog
+            Swal.fire({
+                title: 'Konfirmasi Reset',
+                text: 'Apakah Anda yakin ingin mereset asal/tujuan dan semua data stok transfer?',
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#d33',
+                cancelButtonColor: '#3085d6',
+                confirmButtonText: 'Ya, Reset',
+                cancelButtonText: 'Batal'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    // Show loading
+                    Swal.fire({
+                        title: 'Mereset data...',
+                        text: 'Mohon tunggu sebentar',
+                        allowOutsideClick: false,
+                        didOpen: () => {
+                            Swal.showLoading();
+                        }
+                    });
+                    
+                    // First reset localStorage for asal/tujuan
+                    resetAsalTujuan(false); // Pass false to not show success message yet
+                    
+                    // Then call API to reset transfer stock data
+                    fetch('/api/reset-transfer-data/', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRFToken': csrfToken
+                        }
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        Swal.close();
+                        
+                        if (data.status === 'success') {
+                            Swal.fire({
+                                icon: 'success',
+                                title: 'Berhasil',
+                                text: 'Asal/tujuan dan data stok transfer berhasil direset',
+                                confirmButtonColor: '#3085d6'
+                            });
+                            
+                            // Reload page to refresh data
+                            setTimeout(() => {
+                                window.location.reload();
+                            }, 1500);
+                        } else {
+                            Swal.fire({
+                                icon: 'error',
+                                title: 'Gagal',
+                                text: data.message || 'Gagal mereset data stok transfer',
+                                confirmButtonColor: '#3085d6'
+                            });
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error resetting transfer data:', error);
+                        Swal.close();
+                        
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'Gagal',
+                            text: 'Terjadi kesalahan saat mereset data stok transfer',
+                            confirmButtonColor: '#3085d6'
+                        });
+                    });
+                }
+            });
+        });
         
         // Select all checkbox
         document.getElementById('selectAll').addEventListener('change', function() {

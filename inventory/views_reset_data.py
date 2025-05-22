@@ -75,8 +75,8 @@ def reset_transfer_data(request):
             })
             
         with transaction.atomic():
-            # Set all transfer_stock fields to NULL
-            updated_count = Item.objects.all().update(transfer_stock=None)
+            # Set all transfer_stock fields to 0 (not NULL)
+            updated_count = Item.objects.all().update(transfer_stock=0)
             
             # Log activity
             ActivityLog.objects.create(
