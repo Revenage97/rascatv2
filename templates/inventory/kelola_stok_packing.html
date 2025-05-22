@@ -1030,7 +1030,10 @@
                 
                 // For admin users, require payment method selection
                 const isAdmin = document.body.classList.contains('admin-user');
-                if (isAdmin && typeof paymentMethodSelect !== 'undefined' && paymentMethodSelect) {
+                const isStaffGudang = document.body.classList.contains('staff-gudang-user');
+                
+                // Only validate payment method for admin users, not for staff gudang
+                if (isAdmin && !isStaffGudang && typeof paymentMethodSelect !== 'undefined' && paymentMethodSelect) {
                     selectedPaymentMethod = paymentMethodSelect.value;
                     if (!selectedPaymentMethod && document.getElementById('paymentMethod')) {
                         Swal.fire({
@@ -1134,7 +1137,10 @@
                 
                 // For admin users, require payment method selection
                 const isAdmin = document.body.classList.contains('admin-user');
-                if (isAdmin && typeof paymentMethodSelect !== 'undefined' && paymentMethodSelect) {
+                const isStaffGudang = document.body.classList.contains('staff-gudang-user');
+                
+                // Only validate payment method for admin users, not for staff gudang
+                if (isAdmin && !isStaffGudang && typeof paymentMethodSelect !== 'undefined' && paymentMethodSelect) {
                     selectedPaymentMethod = paymentMethodSelect.value;
                     if (!selectedPaymentMethod && document.getElementById('paymentMethod')) {
                         Swal.fire({

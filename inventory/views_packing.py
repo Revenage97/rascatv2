@@ -55,6 +55,7 @@ def kelola_stok_packing(request):
         'items': items,
         'query': query,
         'is_admin': is_admin(request.user),
+        'is_staff_gudang': request.user.profile.is_staff_gudang if hasattr(request.user, 'profile') else False,
     }
     
     return render(request, 'inventory/kelola_stok_packing.html', context)
