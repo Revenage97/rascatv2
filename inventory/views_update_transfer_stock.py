@@ -154,14 +154,14 @@ def send_transfer_to_telegram(request):
             tujuan = data.get('tujuan', 'Tidak Ditentukan')
             
             # Format message in plain text (not JSON)
-            message = f"🚚 Transfer Stok:\n"
+            message = f"Transfer Stok:\n"
             message += f"Asal: {asal}\n"
             message += f"Tujuan: {tujuan}\n\n"
             
             # Add items
             for item in items:
                 if item.transfer_stock:
-                    message += f"- {item.name} ({item.code}): {item.transfer_stock} Pcs\n"
+                    message += f"- {item.name}: {item.transfer_stock} Pcs\n"
             
             # Add footer note
             message += "\nTanpa konfirmasi - Cek Harga Dasar"
