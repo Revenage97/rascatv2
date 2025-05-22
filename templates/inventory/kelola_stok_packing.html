@@ -830,6 +830,8 @@
                 const input = document.querySelector(`.current-stock-input[data-item-id="${itemId}"]`);
                 const currentStock = input.value;
                 
+                console.log("Save Current Stock clicked for item ID:", itemId, "with value:", currentStock);
+                
                 // Validate input
                 if (currentStock === '' || isNaN(currentStock) || parseInt(currentStock) < 0) {
                     Swal.fire({
@@ -913,6 +915,8 @@
                 const input = document.querySelector(`.min-stock-input[data-item-id="${itemId}"]`);
                 const minStock = input.value;
                 
+                console.log("Save Request Stock clicked for item ID:", itemId, "with value:", minStock);
+                
                 // Make API call to update minimum stock
                 fetch('/api/update-packing-min-stock/', {
                     method: 'POST',
@@ -964,6 +968,8 @@
                 const button = e.target.classList.contains('delete-min-stock') ? e.target : e.target.parentElement;
                 const itemId = button.getAttribute('data-item-id');
                 const input = document.querySelector(`.min-stock-input[data-item-id="${itemId}"]`);
+                
+                console.log("Delete Request Stock clicked for item ID:", itemId);
                 
                 // Set input value to 0
                 input.value = 0;
@@ -1032,8 +1038,14 @@
                 const isAdmin = document.body.classList.contains('admin-user');
                 const isStaffGudang = document.body.classList.contains('staff-gudang-user');
                 
-                // Only validate payment method for admin users, not for staff gudang
-                if (isAdmin && !isStaffGudang && typeof paymentMethodSelect !== 'undefined' && paymentMethodSelect) {
+                console.log("Role detection - isAdmin:", isAdmin, "isStaffGudang:", isStaffGudang);
+                
+                // Staff gudang always uses DEFAULT payment method
+                if (isStaffGudang) {
+                    selectedPaymentMethod = "DEFAULT";
+                }
+                // Only validate payment method for admin users
+                else if (isAdmin && typeof paymentMethodSelect !== 'undefined' && paymentMethodSelect) {
                     selectedPaymentMethod = paymentMethodSelect.value;
                     if (!selectedPaymentMethod && document.getElementById('paymentMethod')) {
                         Swal.fire({
@@ -1139,8 +1151,14 @@
                 const isAdmin = document.body.classList.contains('admin-user');
                 const isStaffGudang = document.body.classList.contains('staff-gudang-user');
                 
-                // Only validate payment method for admin users, not for staff gudang
-                if (isAdmin && !isStaffGudang && typeof paymentMethodSelect !== 'undefined' && paymentMethodSelect) {
+                console.log("Individual send - Role detection - isAdmin:", isAdmin, "isStaffGudang:", isStaffGudang);
+                
+                // Staff gudang always uses DEFAULT payment method
+                if (isStaffGudang) {
+                    selectedPaymentMethod = "DEFAULT";
+                }
+                // Only validate payment method for admin users
+                else if (isAdmin && typeof paymentMethodSelect !== 'undefined' && paymentMethodSelect) {
                     selectedPaymentMethod = paymentMethodSelect.value;
                     if (!selectedPaymentMethod && document.getElementById('paymentMethod')) {
                         Swal.fire({
