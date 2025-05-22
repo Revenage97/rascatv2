@@ -7,7 +7,7 @@ import json
 import pytz
 import logging
 from .models import ActivityLog
-from inventory.views import is_admin
+from .utils import is_admin
 
 # Configure logging
 logger = logging.getLogger(__name__)

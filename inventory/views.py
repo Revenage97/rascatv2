@@ -13,39 +13,10 @@ import traceback
 from .models import Item, WebhookSettings, ActivityLog, UserProfile
 from .forms import LoginForm, WebhookSettingsForm, UserRegistrationForm, UserEditForm, UserProfileForm
 from .views_timezone import get_localized_time, format_datetime
+from .utils import is_admin, is_staff_gudang, is_manajer
 
 # Configure logging
 logger = logging.getLogger(__name__)
-
-def is_admin(user):
-    """
-    Check if user has admin role
-    """
-    try:
-        return user.profile.is_admin
-    except:
-        return False
-
-def is_staff_gudang(user):
-    """
-    Check if user has staff_gudang role
-    """
-    try:
-        # Add logging to debug role checking
-        logger.info(f"Checking staff_gudang role for user {user.username}: {user.profile.is_staff_gudang}")
-        return user.profile.is_staff_gudang
-    except Exception as e:
-        logger.error(f"Error checking staff_gudang role: {str(e)}")
-        return False
-
-def is_manajer(user):
-    """
-    Check if user has manajer role
-    """
-    try:
-        return user.profile.is_manajer
-    except:
-        return False
 
 @login_required
 def dashboard(request):
