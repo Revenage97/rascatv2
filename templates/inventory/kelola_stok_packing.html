@@ -42,7 +42,7 @@
                     <div class="invalid-feedback">Stok Saat Ini wajib diisi dengan angka minimal 0</div>
                 </div>
                 <div class="col-md-4">
-                    <label for="inputStokMinimum" class="form-label">Stok Minimum</label>
+                    <label for="inputStokMinimum" class="form-label">Request Stock</label>
                     <input type="number" class="form-control" id="inputStokMinimum" min="0" value="0">
                 </div>
                 <div class="col-12 text-end">
@@ -109,13 +109,13 @@
                             <th style="min-width: 200px;">Nama Barang</th>
                             <th style="min-width: 150px;">Kategori</th>
                             <th class="text-center">Stok Saat Ini</th>
-                            <th class="text-center">Stok Minimum</th>
+                            <th class="text-center">Request Stock</th>
                             <th class="text-center">Telegram</th>
                         </tr>
                     </thead>
                     <tbody>
                         {% for item in items %}
-                        <tr {% if item.current_stock < item.minimum_stock %}class="table-danger"{% endif %}>
+                        <tr>
                             <td class="text-center">
                                 <div class="form-check">
                                     <input class="form-check-input item-checkbox" type="checkbox" value="{{ item.id }}" id="item{{ item.id }}">
@@ -183,7 +183,7 @@
                         <input type="number" class="form-control" id="editStock" required min="0">
                     </div>
                     <div class="mb-3">
-                        <label for="editMinStock" class="form-label">Stok Minimum</label>
+                        <label for="editMinStock" class="form-label">Request Stock</label>
                         <input type="number" class="form-control" id="editMinStock" required min="0">
                     </div>
                 </form>
@@ -223,7 +223,7 @@
                         <input type="number" class="form-control" id="addStock" required min="0" value="0">
                     </div>
                     <div class="mb-3">
-                        <label for="addMinStock" class="form-label">Stok Minimum</label>
+                        <label for="addMinStock" class="form-label">Request Stock</label>
                         <input type="number" class="form-control" id="addMinStock" required min="0" value="0">
                     </div>
                 </form>
@@ -843,7 +843,7 @@
                         Swal.fire({
                             icon: 'success',
                             title: 'Berhasil',
-                            text: 'Stok minimum disetel ke 0',
+                            text: 'Request Stock disetel ke 0',
                             timer: 1500,
                             showConfirmButton: false
                         });
