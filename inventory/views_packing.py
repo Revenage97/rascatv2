@@ -186,9 +186,11 @@ def send_packing_to_telegram(request):
             if not webhook_url:
                 return JsonResponse({'status': 'error', 'message': 'Webhook URL not configured'})
             
-            # Get current local time in 24-hour format
+            # Get current time in selected timezone
             from datetime import datetime
-            current_time = datetime.now().strftime("%H:%M - %d %b %Y")
+            from inventory.views_timezone import get_current_timezone
+            current_tz = get_current_timezone()
+            current_time = datetime.now(current_tz).strftime("%H:%M - %d %b %Y")
             
             # Format first line with Request Stock and current time
             message = f"Request Stock ; {current_time}"

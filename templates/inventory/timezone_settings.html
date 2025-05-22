@@ -1,0 +1,27 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <h2 class="mb-4">Pengaturan Zona Waktu</h2>
+    
+    <div class="card">
+        <div class="card-body">
+            <form method="POST">
+                {% csrf_token %}
+                <div class="mb-3">
+                    <label for="timezone" class="form-label">Pilih Zona Waktu</label>
+                    <select class="form-select" id="timezone" name="timezone">
+                        <option value="Asia/Jakarta" {% if current_timezone == 'Asia/Jakarta' %}selected{% endif %}>GMT +7 (Jakarta)</option>
+                        <option value="Asia/Singapore" {% if current_timezone == 'Asia/Singapore' %}selected{% endif %}>GMT +8 (Singapore)</option>
+                        <option value="Asia/Tokyo" {% if current_timezone == 'Asia/Tokyo' %}selected{% endif %}>GMT +9 (Tokyo)</option>
+                    </select>
+                    <div class="form-text">Zona waktu ini akan digunakan untuk seluruh sistem, termasuk pengiriman ke Telegram dan pencatatan log aktivitas.</div>
+                </div>
+                <button type="submit" class="btn btn-primary">
+                    <i class="bi bi-save"></i> Simpan
+                </button>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

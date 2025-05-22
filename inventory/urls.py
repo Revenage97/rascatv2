@@ -8,6 +8,7 @@ from .views_update_min_stock import update_min_stock, delete_min_stock
 from .views_update_transfer_stock import update_transfer_stock, delete_transfer_stock, send_transfer_to_telegram
 from .views_update_expiry_date import save_expiry_date, send_exp_to_telegram
 from .views_send_to_telegram import send_to_telegram
+from .views_timezone import timezone_settings
 from .views_packing import (
     kelola_stok_packing, update_packing_min_stock, delete_packing_min_stock,
     send_packing_to_telegram, reset_all_packing_items, create_packing_item,
@@ -33,6 +34,7 @@ urlpatterns = [
     path('upload/', upload_file, name='upload_file'),
     path('change-password/', views.change_password, name='change_password'),
     path('webhook-settings/', views.webhook_settings, name='webhook_settings'),
+    path('timezone-settings/', timezone_settings, name='timezone_settings'),
     path('kelola-pengguna/', views.kelola_pengguna, name='kelola_pengguna'),
     path('edit-user/<int:user_id>/', views.edit_user, name='edit_user'),
     path('delete-user/<int:user_id>/', views.delete_user, name='delete_user'),

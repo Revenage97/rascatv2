@@ -94,6 +94,22 @@ class WebhookSettings(models.Model):
         verbose_name_plural = "Webhook Settings"
 
 
+class SystemSettings(models.Model):
+    """
+    Model for storing system-wide settings like timezone
+    """
+    timezone = models.CharField(max_length=50, default="Asia/Jakarta", verbose_name="Zona Waktu")
+    updated_at = models.DateTimeField(auto_now=True)
+    updated_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True)
+
+    def __str__(self):
+        return f"System Settings (Last updated: {self.updated_at})"
+
+    class Meta:
+        verbose_name = "System Setting"
+        verbose_name_plural = "System Settings"
+
+
 class ActivityLog(models.Model):
     STATUS_CHOICES = (
         ('success', 'Berhasil'),

@@ -108,6 +108,11 @@
                                             <i class="bi bi-gear-fill submenu-icon"></i> Pengaturan Webhook
                                         </a>
                                     </li>
+                                    <li>
+                                        <a class="dropdown-item {% if 'timezone-settings' in request.path %}active{% endif %}" href="{% url 'inventory:timezone_settings' %}">
+                                            <i class="bi bi-clock submenu-icon"></i> Pengaturan Zona Waktu
+                                        </a>
+                                    </li>
                                     {% if user.profile.is_admin %}
                                     <li>
                                         <a class="dropdown-item {% if 'kelola-pengguna' in request.path %}active{% endif %}" href="{% url 'inventory:kelola_pengguna' %}">
