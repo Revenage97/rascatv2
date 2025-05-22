@@ -153,8 +153,12 @@ def send_transfer_to_telegram(request):
             asal = data.get('asal', 'Tidak Ditentukan')
             tujuan = data.get('tujuan', 'Tidak Ditentukan')
             
+            # Get current time in HH:MM - DD/MM/YYYY format
+            from datetime import datetime
+            current_time = datetime.now().strftime("%H:%M - %d/%m/%Y")
+            
             # Format message in plain text (not JSON)
-            message = f"Transfer Stok:\n"
+            message = f"Transfer Stok: {current_time}\n"
             message += f"Asal: {asal}\n"
             message += f"Tujuan: {tujuan}\n\n"
             
