@@ -82,7 +82,7 @@
 
     <div class="row mb-3">
         <div class="col-md-6">
-            <!-- Search button removed as requested -->
+            <!-- Search functionality completely removed -->
         </div>
         <div class="col-md-6 text-end">
             <button id="sendToTelegramBtn" class="btn btn-info" disabled>
@@ -1029,6 +1029,18 @@
                     }
                 });
                 
+                // Get selected payment method
+                const selectedPaymentMethod = paymentMethodSelect.value;
+                if (!selectedPaymentMethod) {
+                    Swal.fire({
+                        icon: 'warning',
+                        title: 'Perhatian',
+                        text: 'Pilih metode pembayaran terlebih dahulu',
+                        confirmButtonColor: '#3085d6'
+                    });
+                    return;
+                }
+                
                 // Make API call to send to Telegram
                 fetch('/api/send-packing-to-telegram/', {
                     method: 'POST',
@@ -1037,7 +1049,8 @@
                         'X-CSRFToken': csrfToken
                     },
                     body: JSON.stringify({
-                        item_ids: [itemId]
+                        item_ids: [itemId],
+                        payment_method: selectedPaymentMethod
                     })
                 })
                 .then(response => response.json())
