@@ -1029,7 +1029,8 @@
                 let selectedPaymentMethod = "DEFAULT";
                 
                 // For admin users, require payment method selection
-                if (typeof paymentMethodSelect !== 'undefined' && paymentMethodSelect) {
+                const isAdmin = document.body.classList.contains('admin-user');
+                if (isAdmin && typeof paymentMethodSelect !== 'undefined' && paymentMethodSelect) {
                     selectedPaymentMethod = paymentMethodSelect.value;
                     if (!selectedPaymentMethod && document.getElementById('paymentMethod')) {
                         Swal.fire({
@@ -1132,7 +1133,8 @@
                 let selectedPaymentMethod = "DEFAULT";
                 
                 // For admin users, require payment method selection
-                if (typeof paymentMethodSelect !== 'undefined' && paymentMethodSelect) {
+                const isAdmin = document.body.classList.contains('admin-user');
+                if (isAdmin && typeof paymentMethodSelect !== 'undefined' && paymentMethodSelect) {
                     selectedPaymentMethod = paymentMethodSelect.value;
                     if (!selectedPaymentMethod && document.getElementById('paymentMethod')) {
                         Swal.fire({

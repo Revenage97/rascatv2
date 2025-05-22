@@ -159,9 +159,13 @@ def send_packing_to_telegram(request):
             item_ids = data.get('item_ids', [])
             payment_method = data.get('payment_method')
             
-            # Validate payment method
-            if not payment_method:
+            # Validate payment method only for admin users
+            if is_admin(request.user) and not payment_method:
                 return JsonResponse({'status': 'error', 'message': 'Metode pembayaran diperlukan'})
+            
+            # For staff gudang, use default payment method
+            if not is_admin(request.user):
+                payment_method = "DEFAULT"
             
             # Handle both single item_id and array of item_ids
             if not item_ids:
