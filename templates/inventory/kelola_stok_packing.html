@@ -142,7 +142,15 @@
                             <td class="editable-cell" data-field="code" data-item-id="{{ item.id }}">{{ item.code }}</td>
                             <td class="editable-cell" data-field="name" data-item-id="{{ item.id }}">{{ item.name }}</td>
                             <td>{{ item.category }}</td>
-                            <td class="text-center editable-cell" data-field="current_stock" data-item-id="{{ item.id }}">{{ item.current_stock }}</td>
+                            <td class="text-center">
+                                <div class="input-group input-group-sm">
+                                    <input type="number" class="form-control form-control-sm current-stock-input" 
+                                           data-item-id="{{ item.id }}" value="{{ item.current_stock }}" min="0">
+                                    <button class="btn btn-outline-secondary save-current-stock" type="button" data-item-id="{{ item.id }}">
+                                        <i class="bi bi-save"></i>
+                                    </button>
+                                </div>
+                            </td>
                             <td class="text-center">
                                 <div class="input-group input-group-sm">
                                     <input type="number" class="form-control form-control-sm min-stock-input" 
@@ -808,6 +816,89 @@
                 });
             });
         }
+        
+        // Save Current Stock button click handler
+        document.addEventListener('click', function(e) {
+            if (e.target && e.target.classList.contains('save-current-stock') || 
+                (e.target.parentElement && e.target.parentElement.classList.contains('save-current-stock'))) {
+                
+                const button = e.target.classList.contains('save-current-stock') ? e.target : e.target.parentElement;
+                const itemId = button.getAttribute('data-item-id');
+                const input = document.querySelector(`.current-stock-input[data-item-id="${itemId}"]`);
+                const currentStock = input.value;
+                
+                // Validate input
+                if (currentStock === '' || isNaN(currentStock) || parseInt(currentStock) < 0) {
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Error',
+                        text: 'Stok Saat Ini harus berupa angka positif',
+                        timer: 2000,
+                        showConfirmButton: false
+                    });
+                    return;
+                }
+                
+                // Show loading indicator
+                button.disabled = true;
+                button.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>';
+                
+                // Make API call to update current stock
+                fetch('/api/update-packing-item/', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': csrfToken
+                    },
+                    body: JSON.stringify({
+                        item_id: itemId,
+                        current_stock: parseInt(currentStock)
+                    })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    // Reset button state
+                    button.disabled = false;
+                    button.innerHTML = '<i class="bi bi-save"></i>';
+                    
+                    if (data.status === 'success') {
+                        // Show success notification
+                        Swal.fire({
+                            icon: 'success',
+                            title: 'Berhasil',
+                            text: 'Stok Saat Ini berhasil diperbarui',
+                            timer: 1500,
+                            showConfirmButton: false
+                        });
+                    } else {
+                        // Show error notification
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'Error',
+                            text: data.message || 'Gagal memperbarui Stok Saat Ini',
+                            timer: 2000,
+                            showConfirmButton: false
+                        });
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    
+                    // Reset button state
+                    button.disabled = false;
+                    button.innerHTML = '<i class="bi bi-save"></i>';
+                    
+                    // Show error notification
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Error',
+                        text: 'Terjadi kesalahan saat menghubungi server',
+                        timer: 2000,
+                        showConfirmButton: false
+                    });
+                });
+            }
+        });
         
         // Save Minimum Stock button click handler
         document.addEventListener('click', function(e) {
