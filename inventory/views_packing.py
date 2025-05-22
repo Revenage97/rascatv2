@@ -156,6 +156,11 @@ def send_packing_to_telegram(request):
         try:
             data = json.loads(request.body)
             item_ids = data.get('item_ids', [])
+            payment_method = data.get('payment_method')
+            
+            # Validate payment method
+            if not payment_method:
+                return JsonResponse({'status': 'error', 'message': 'Metode pembayaran diperlukan'})
             
             # Handle both single item_id and array of item_ids
             if not item_ids:
@@ -181,59 +186,49 @@ def send_packing_to_telegram(request):
             if not webhook_url:
                 return JsonResponse({'status': 'error', 'message': 'Webhook URL not configured'})
             
-            success_count = 0
-            error_count = 0
+            # Start with payment method
+            message = f"Metode Pembayaran: {payment_method}\n\n"
             
+            # Add each item to the message
+            items_list = []
             for item_id in item_ids:
                 try:
                     item = PackingItem.objects.get(id=item_id)
-                    
-                    # Prepare message
-                    message = f"📦 Stok Packing:\n"
-                    message += f"Kode: {item.code}\n"
-                    message += f"Nama: {item.name}\n"
-                    message += f"Kategori: {item.category}\n"
-                    message += f"Stok: {item.current_stock}\n"
-                    
-                    if item.minimum_stock:
-                        message += f"Request Stock: {item.minimum_stock}\n"
-                        
-                        if item.current_stock < item.minimum_stock:
-                            message += f"⚠️ Stok di bawah minimum!\n"
-                    
-                    # Send to webhook
-                    response = requests.post(
-                        webhook_url,
-                        json={'text': message, 'parse_mode': 'Markdown'},
-                        headers={'Content-Type': 'application/json'}
-                    )
-                    
-                    if response.status_code == 200:
-                        # Log activity
-                        ActivityLog.objects.create(
-                            user=request.user,
-                            action='send_packing_to_telegram',
-                            status='success',
-                            notes=f'Sent packing notification for {item.name} to Telegram'
-                        )
-                        success_count += 1
-                    else:
-                        error_count += 1
-                        logger.error(f"Failed to send notification to Telegram for item {item_id}. Status code: {response.status_code}")
-                
+                    items_list.append(f"{item.code} {item.name} - {item.current_stock} Pcs")
                 except PackingItem.DoesNotExist:
-                    error_count += 1
                     logger.error(f"Item with ID {item_id} not found")
-                except Exception as e:
-                    error_count += 1
-                    logger.error(f"Error sending notification for item {item_id}: {str(e)}")
             
-            if success_count > 0 and error_count == 0:
-                return JsonResponse({'status': 'success', 'message': f'Successfully sent {success_count} notification(s) to Telegram'})
-            elif success_count > 0 and error_count > 0:
-                return JsonResponse({'status': 'partial', 'message': f'Sent {success_count} notification(s), but failed to send {error_count}'})
+            # Add items to message
+            message += "\n".join(items_list)
+            
+            # Add footer
+            message += "\n\nTanpa konfirmasi - Request Stock"
+            
+            # Send to webhook
+            response = requests.post(
+                webhook_url,
+                json={'text': message, 'parse_mode': 'Markdown'},
+                headers={'Content-Type': 'application/json'}
+            )
+            
+            if response.status_code == 200:
+                # Log activity
+                ActivityLog.objects.create(
+                    user=request.user,
+                    action='send_packing_to_telegram',
+                    status='success',
+                    notes=f'Sent packing notification with {len(items_list)} items to Telegram'
+                )
+                return JsonResponse({'status': 'success', 'message': 'Notifikasi berhasil dikirim ke Telegram'})
             else:
-                return JsonResponse({'status': 'error', 'message': 'Failed to send notifications to Telegram'})
+                # Log activity
+                ActivityLog.objects.create(
+                    user=request.user,
+                    action='send_packing_to_telegram',
+                    status='failed',
+                    notes=f'Failed to send packing notification to Telegram: {response.text}'
+                )
+                return JsonResponse({'status': 'error', 'message': f'Gagal mengirim notifikasi: {response.text}'})
             
         except Exception as e:
             logger.error(f"Error in send_packing_to_telegram view: {str(e)}")
