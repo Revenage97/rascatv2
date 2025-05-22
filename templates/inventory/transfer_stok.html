@@ -44,6 +44,9 @@
                         <button id="simpanBtn" class="btn btn-sm btn-primary">
                             <i class="bi bi-save"></i> Simpan
                         </button>
+                        <button id="filterBtn" class="btn btn-sm btn-outline-secondary">
+                            <i class="bi bi-funnel"></i> Filter
+                        </button>
                         <button id="resetAsalTujuanBtn" class="btn btn-sm btn-outline-danger">
                             <i class="bi bi-x-circle"></i> Reset
                         </button>
@@ -227,10 +230,242 @@
         </div>
     </div>
 </div>
+
+<!-- Modal Filter Produk -->
+<div class="modal fade" id="filterModal" tabindex="-1" aria-labelledby="filterModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="filterModalLabel">Filter Produk</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p>Filter akan menampilkan produk yang namanya mengandung kata kunci berikut:</p>
+                <ul class="list-group mb-3">
+                    <li class="list-group-item">Drontal Cat</li>
+                    <li class="list-group-item">Megaderm</li>
+                    <li class="list-group-item">Drontal Dog</li>
+                    <li class="list-group-item">Advocate</li>
+                    <li class="list-group-item">Vitamin Kulit & Bulu</li>
+                    <li class="list-group-item">Anthel</li>
+                    <li class="list-group-item">Advantage</li>
+                    <li class="list-group-item">Frontline</li>
+                    <li class="list-group-item">Nutriplus</li>
+                </ul>
+                <p class="text-muted">Filter hanya berlaku untuk halaman ini dan tidak mempengaruhi data asli.</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
+                <button type="button" class="btn btn-primary" id="applyFilter">Terapkan Filter</button>
+            </div>
+        </div>
+    </div>
+</div>
 {% endblock %}
 
 {% block extra_js %}
 <script>
+    // Filter functionality
+    document.addEventListener('DOMContentLoaded', function() {
+        console.log('Filter functionality initialization');
+        
+        // Create Reset Filter button and add it to the page (initially hidden)
+        const resetFilterBtn = document.createElement('button');
+        resetFilterBtn.id = 'resetFilterBtn';
+        resetFilterBtn.className = 'btn btn-warning';
+        resetFilterBtn.innerHTML = '<i class="bi bi-x-circle"></i> Reset Filter';
+        resetFilterBtn.style.display = 'none'; // Initially hidden
+        resetFilterBtn.style.marginLeft = '10px';
+        
+        // Add it after the "Kirim ke Telegram" button
+        const sendToTelegramBtn = document.getElementById('sendToTelegramBtn');
+        sendToTelegramBtn.parentNode.insertBefore(resetFilterBtn, sendToTelegramBtn.nextSibling);
+        
+        // Define the filter keywords
+        const filterKeywords = [
+            'Drontal Cat',
+            'Megaderm',
+            'Drontal Dog',
+            'Advocate',
+            'Vitamin Kulit & Bulu',
+            'Anthel',
+            'Advantage',
+            'Frontline',
+            'Nutriplus'
+        ];
+        
+        // Filter button click event
+        const filterBtn = document.getElementById('filterBtn');
+        filterBtn.addEventListener('click', function() {
+            // Show the filter modal
+            const filterModal = new bootstrap.Modal(document.getElementById('filterModal'));
+            filterModal.show();
+        });
+        
+        // Apply filter button click event
+        const applyFilterBtn = document.getElementById('applyFilter');
+        applyFilterBtn.addEventListener('click', function() {
+            // Apply the filter
+            applyProductFilter();
+            
+            // Hide the modal
+            const filterModal = bootstrap.Modal.getInstance(document.getElementById('filterModal'));
+            filterModal.hide();
+            
+            // Show the reset filter button
+            resetFilterBtn.style.display = 'inline-block';
+            
+            // Show success message
+            Swal.fire({
+                icon: 'success',
+                title: 'Filter Diterapkan',
+                text: 'Hanya menampilkan produk yang sesuai dengan filter',
+                timer: 1500,
+                showConfirmButton: false
+            });
+        });
+        
+        // Reset filter button click event
+        resetFilterBtn.addEventListener('click', function() {
+            // Reset the filter
+            resetProductFilter();
+            
+            // Hide the reset filter button
+            resetFilterBtn.style.display = 'none';
+            
+            // Show success message
+            Swal.fire({
+                icon: 'info',
+                title: 'Filter Direset',
+                text: 'Menampilkan semua produk',
+                timer: 1500,
+                showConfirmButton: false
+            });
+        });
+        
+        // Function to apply the product filter
+        function applyProductFilter() {
+            console.log('Applying product filter');
+            
+            // Get all product rows
+            const rows = document.querySelectorAll('table tbody tr');
+            
+            // Counter for visible rows
+            let visibleCount = 0;
+            
+            // Loop through each row
+            rows.forEach(row => {
+                // Skip the "no data" row if it exists
+                if (row.querySelector('td[colspan]')) {
+                    return;
+                }
+                
+                // Get the product name
+                const nameCell = row.querySelector('td:nth-child(3)');
+                if (!nameCell) return;
+                
+                const productName = nameCell.textContent.trim();
+                
+                // Check if the product name contains any of the filter keywords
+                const matchesFilter = filterKeywords.some(keyword => 
+                    productName.toLowerCase().includes(keyword.toLowerCase())
+                );
+                
+                // Show or hide the row based on the filter
+                if (matchesFilter) {
+                    row.style.display = '';
+                    visibleCount++;
+                } else {
+                    row.style.display = 'none';
+                }
+            });
+            
+            // If no rows are visible, show a message
+            if (visibleCount === 0) {
+                // Check if there's already a "no data" row
+                if (!document.querySelector('table tbody tr td[colspan]')) {
+                    const tbody = document.querySelector('table tbody');
+                    const noDataRow = document.createElement('tr');
+                    noDataRow.className = 'no-data-row';
+                    noDataRow.innerHTML = `
+                        <td colspan="6" class="text-center py-4">
+                            <i class="bi bi-inbox fs-1 text-muted mb-3 d-block"></i>
+                            <h5 class="text-muted">Tidak ada data</h5>
+                            <p class="text-muted">Tidak ada produk yang cocok dengan filter.</p>
+                        </td>
+                    `;
+                    tbody.appendChild(noDataRow);
+                }
+            } else {
+                // Remove any "no data" row if it exists
+                const noDataRow = document.querySelector('table tbody tr.no-data-row');
+                if (noDataRow) {
+                    noDataRow.remove();
+                }
+            }
+            
+            // Update the select all checkbox
+            updateSelectAllCheckbox();
+            
+            // Store filter state in sessionStorage
+            sessionStorage.setItem('transferStok_filterActive', 'true');
+        }
+        
+        // Function to reset the product filter
+        function resetProductFilter() {
+            console.log('Resetting product filter');
+            
+            // Get all product rows
+            const rows = document.querySelectorAll('table tbody tr');
+            
+            // Show all rows
+            rows.forEach(row => {
+                row.style.display = '';
+            });
+            
+            // Remove any "no data" row if it exists
+            const noDataRow = document.querySelector('table tbody tr.no-data-row');
+            if (noDataRow) {
+                noDataRow.remove();
+            }
+            
+            // Update the select all checkbox
+            updateSelectAllCheckbox();
+            
+            // Remove filter state from sessionStorage
+            sessionStorage.removeItem('transferStok_filterActive');
+        }
+        
+        // Function to update the select all checkbox
+        function updateSelectAllCheckbox() {
+            const selectAll = document.getElementById('selectAll');
+            const checkboxes = document.querySelectorAll('.item-checkbox:not(:disabled)');
+            const checkedBoxes = document.querySelectorAll('.item-checkbox:checked:not(:disabled)');
+            
+            // Only consider visible checkboxes
+            const visibleCheckboxes = Array.from(checkboxes).filter(checkbox => {
+                const row = checkbox.closest('tr');
+                return row.style.display !== 'none';
+            });
+            
+            const visibleCheckedBoxes = Array.from(checkedBoxes).filter(checkbox => {
+                const row = checkbox.closest('tr');
+                return row.style.display !== 'none';
+            });
+            
+            selectAll.checked = visibleCheckboxes.length > 0 && visibleCheckboxes.length === visibleCheckedBoxes.length;
+        }
+        
+        // Check if filter was active before page reload
+        if (sessionStorage.getItem('transferStok_filterActive') === 'true') {
+            // Apply the filter
+            setTimeout(() => {
+                applyProductFilter();
+                // Show the reset filter button
+                resetFilterBtn.style.display = 'inline-block';
+            }, 500); // Small delay to ensure DOM is fully loaded
+        }
+    });
     document.addEventListener('DOMContentLoaded', function() {
         console.log('DOMContentLoaded event fired');
         const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
