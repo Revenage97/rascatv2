@@ -178,11 +178,11 @@ def send_transfer_to_telegram(request):
             # Send to webhook as plain text
             import requests
             try:
-                # Send as plain text, not JSON
+                # Send as JSON with text field, not as plain text
                 response = requests.post(
                     webhook_url,
-                    data=message,
-                    headers={'Content-Type': 'text/plain'},
+                    json={'text': message},
+                    headers={'Content-Type': 'application/json'},
                     timeout=10
                 )
                 
