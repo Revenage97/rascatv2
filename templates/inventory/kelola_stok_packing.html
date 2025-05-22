@@ -55,6 +55,31 @@
     </div>
     {% endif %}
 
+    <!-- Payment Method Selection -->
+    <div class="card mb-3">
+        <div class="card-body">
+            <div class="row align-items-end">
+                <div class="col-md-4">
+                    <label for="paymentMethod" class="form-label">Metode Pembayaran</label>
+                    <select class="form-select" id="paymentMethod">
+                        <option value="" selected>Pilih Metode Pembayaran</option>
+                        <option value="BANK BNI">BANK BNI</option>
+                        <option value="BANK BCA">BANK BCA</option>
+                        <option value="SHOPEE PAY">SHOPEE PAY</option>
+                    </select>
+                </div>
+                <div class="col-md-4 d-flex">
+                    <button type="button" id="savePaymentMethod" class="btn btn-primary me-2">
+                        <i class="bi bi-save"></i> Simpan
+                    </button>
+                    <button type="button" id="resetPaymentMethod" class="btn btn-outline-secondary">
+                        <i class="bi bi-arrow-counterclockwise"></i> Reset
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <div class="row mb-3">
         <div class="col-md-6">
             <form method="get" class="d-flex">
@@ -289,6 +314,57 @@
         const toast = new bootstrap.Toast(toastEl);
         const toastMessage = document.getElementById('toastMessage');
         
+        // Payment Method elements
+        const paymentMethodSelect = document.getElementById('paymentMethod');
+        const savePaymentMethodBtn = document.getElementById('savePaymentMethod');
+        const resetPaymentMethodBtn = document.getElementById('resetPaymentMethod');
+        
+        // Load saved payment method from localStorage if exists
+        const savedPaymentMethod = localStorage.getItem('packingPaymentMethod');
+        if (savedPaymentMethod) {
+            paymentMethodSelect.value = savedPaymentMethod;
+        }
+        
+        // Payment Method Save button
+        savePaymentMethodBtn.addEventListener('click', function() {
+            const selectedMethod = paymentMethodSelect.value;
+            if (!selectedMethod) {
+                Swal.fire({
+                    icon: 'warning',
+                    title: 'Perhatian',
+                    text: 'Silakan pilih metode pembayaran terlebih dahulu',
+                    confirmButtonColor: '#3085d6'
+                });
+                return;
+            }
+            
+            // Save to localStorage
+            localStorage.setItem('packingPaymentMethod', selectedMethod);
+            
+            Swal.fire({
+                icon: 'success',
+                title: 'Berhasil',
+                text: 'Metode pembayaran berhasil disimpan',
+                confirmButtonColor: '#3085d6'
+            });
+        });
+        
+        // Payment Method Reset button
+        resetPaymentMethodBtn.addEventListener('click', function() {
+            // Reset dropdown to default
+            paymentMethodSelect.value = '';
+            
+            // Remove from localStorage
+            localStorage.removeItem('packingPaymentMethod');
+            
+            Swal.fire({
+                icon: 'info',
+                title: 'Reset',
+                text: 'Metode pembayaran telah direset',
+                confirmButtonColor: '#3085d6'
+            });
+        });
+        
         // Inline editing functionality
         document.addEventListener('click', function(e) {
             // Check if clicked element is an editable cell
@@ -431,18 +507,10 @@
                         showConfirmButton: false
                     });
                     
-                    // Update row class if stock is below minimum
+                    // No longer applying table-danger class to maintain neutral background
                     if (field === 'current_stock') {
                         const row = cell.closest('tr');
-                        const minStockInput = row.querySelector('.min-stock-input');
-                        const minStock = parseInt(minStockInput.value);
-                        const currentStock = parseInt(newValue);
-                        
-                        if (currentStock < minStock) {
-                            row.classList.add('table-danger');
-                        } else {
-                            row.classList.remove('table-danger');
-                        }
+                        // Keeping neutral background regardless of stock level
                     }
                 } else {
                     // Restore original content and show error
@@ -600,9 +668,6 @@
             
             // Create new row
             const newRow = document.createElement('tr');
-            if (item.current_stock < item.minimum_stock) {
-                newRow.classList.add('table-danger');
-            }
             
             // Create row content
             newRow.innerHTML = `
@@ -782,16 +847,8 @@
                         toastEl.classList.add('bg-success', 'text-white');
                         toast.show();
                         
-                        // Update row class if needed
+                        // No longer applying table-danger class to maintain neutral background
                         const row = button.closest('tr');
-                        const currentStock = parseInt(row.querySelector('td:nth-child(5)').textContent);
-                        const newMinStock = parseInt(minStock);
-                        
-                        if (currentStock < newMinStock) {
-                            row.classList.add('table-danger');
-                        } else {
-                            row.classList.remove('table-danger');
-                        }
                     } else {
                         // Show error toast
                         toastMessage.textContent = data.message || 'Gagal memperbarui stok minimum';
@@ -848,9 +905,8 @@
                             showConfirmButton: false
                         });
                         
-                        // Update row class if needed
+                        // No longer applying table-danger class to maintain neutral background
                         const row = button.closest('tr');
-                        row.classList.remove('table-danger');
                     } else {
                         // Show error notification
                         Swal.fire({
@@ -880,40 +936,56 @@
         // Send to Telegram button click handler
         if (sendToTelegramBtn) {
             sendToTelegramBtn.addEventListener('click', function() {
-                const checkedItems = document.querySelectorAll('.item-checkbox:checked');
-                const itemIds = Array.from(checkedItems).map(checkbox => checkbox.value);
-                
-                if (itemIds.length === 0) {
-                    Swal.fire({
-                        icon: 'warning',
-                        title: 'Tidak ada item yang dipilih',
-                        text: 'Silakan pilih minimal satu item untuk dikirim ke Telegram',
-                        confirmButtonColor: '#3085d6'
-                    });
-                    return;
-                }
-                
-                // Show loading
+                const che        // Send to Telegram button click handler
+        sendToTelegramBtn.addEventListener('click', function() {
+            const checkedItems = document.querySelectorAll('.item-checkbox:checked');
+            
+            // Check if payment method is selected
+            const selectedPaymentMethod = paymentMethodSelect.value;
+            if (!selectedPaymentMethod) {
                 Swal.fire({
-                    title: 'Mengirim notifikasi...',
-                    text: 'Mohon tunggu sebentar',
-                    allowOutsideClick: false,
-                    didOpen: () => {
-                        Swal.showLoading();
-                    }
+                    icon: 'warning',
+                    title: 'Perhatian',
+                    text: 'Pilih metode pembayaran terlebih dahulu',
+                    confirmButtonColor: '#3085d6'
                 });
-                
-                // Make API call to send to Telegram
-                fetch('/api/send-packing-to-telegram/', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRFToken': csrfToken
-                    },
-                    body: JSON.stringify({
-                        item_ids: itemIds
-                    })
+                return;
+            }
+            
+            if (checkedItems.length === 0) {
+                Swal.fire({
+                    icon: 'warning',
+                    title: 'Perhatian',
+                    text: 'Pilih minimal satu item untuk dikirim ke Telegram',
+                    confirmButtonColor: '#3085d6'
+                });
+                return;
+            }
+            
+            const itemIds = Array.from(checkedItems).map(checkbox => checkbox.value);
+            
+            // Show loading
+            Swal.fire({
+                title: 'Mengirim notifikasi...',
+                text: 'Mohon tunggu sebentar',
+                allowOutsideClick: false,
+                didOpen: () => {
+                    Swal.showLoading();
+                }
+            });
+            
+            // Make API call to send to Telegram
+            fetch('/api/send-packing-to-telegram/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': csrfToken
+                },
+                body: JSON.stringify({
+                    item_ids: itemIds,
+                    payment_method: selectedPaymentMethod
                 })
+            })   })
                 .then(response => response.json())
                 .then(data => {
                     Swal.close();
