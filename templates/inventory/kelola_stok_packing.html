@@ -55,7 +55,8 @@
     </div>
     {% endif %}
 
-    <!-- Payment Method Selection -->
+    <!-- Payment Method Selection - Only visible to admin users -->
+    {% if is_admin %}
     <div class="card mb-3">
         <div class="card-body">
             <div class="row align-items-end">
@@ -79,6 +80,7 @@
             </div>
         </div>
     </div>
+    {% endif %}
 
     <div class="row mb-3">
         <div class="col-md-6">
