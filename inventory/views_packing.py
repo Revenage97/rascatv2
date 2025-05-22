@@ -236,28 +236,6 @@ def send_packing_to_telegram(request):
             return JsonResponse({'status': 'error', 'message': str(e)})
     
     return JsonResponse({'status': 'error', 'message': 'Invalid request method'})
-                )
-                
-                return JsonResponse({'status': 'success', 'message': 'Notification sent to Telegram'})
-            else:
-                # Log activity
-                ActivityLog.objects.create(
-                    user=request.user,
-                    action='send_packing_to_telegram',
-                    status='failed',
-                    notes=f'Failed to send packing notification for {item.name} to Telegram: {response.text}'
-                )
-                
-                return JsonResponse({'status': 'error', 'message': f'Failed to send notification: {response.text}'})
-            
-        except PackingItem.DoesNotExist:
-            return JsonResponse({'status': 'error', 'message': 'Item not found'})
-        except Exception as e:
-            logger.error(f"Error in send_packing_to_telegram view: {str(e)}")
-            logger.error(traceback.format_exc())
-            return JsonResponse({'status': 'error', 'message': str(e)})
-    
-    return JsonResponse({'status': 'error', 'message': 'Invalid request method'})
 
 @login_required
 @user_passes_test(is_admin)
