@@ -186,28 +186,37 @@ def send_packing_to_telegram(request):
             if not webhook_url:
                 return JsonResponse({'status': 'error', 'message': 'Webhook URL not configured'})
             
-            # Start with payment method
-            message = f"Metode Pembayaran: {payment_method}\n\n"
+            # Get current local time in 24-hour format
+            from datetime import datetime
+            current_time = datetime.now().strftime("%H:%M - %d %b %Y")
             
-            # Add each item to the message
+            # Format first line with Request Stock and current time
+            message = f"Request Stock ; {current_time}"
+            
+            # Add each item to the message (only name and quantity, no code or category)
             items_list = []
             for item_id in item_ids:
                 try:
                     item = PackingItem.objects.get(id=item_id)
-                    items_list.append(f"{item.code} {item.name} - {item.current_stock} Pcs")
+                    # Only include name and quantity, not code
+                    items_list.append(f"{item.name} - {item.current_stock} Pcs")
                 except PackingItem.DoesNotExist:
                     logger.error(f"Item with ID {item_id} not found")
             
-            # Add items to message
-            message += "\n".join(items_list)
+            # Add items to message as second line
+            if items_list:
+                message += f"\n{items_list[0]}"  # First item
+                # Add additional items if any
+                for item in items_list[1:]:
+                    message += f"\n{item}"
             
-            # Add footer
-            message += "\n\nTanpa konfirmasi - Request Stock"
+            # Add footer as third line
+            message += "\nTanpa konfirmasi"
             
-            # Send to webhook
+            # Send to webhook as plain text (no Markdown)
             response = requests.post(
                 webhook_url,
-                json={'text': message, 'parse_mode': 'Markdown'},
+                json={'text': message},
                 headers={'Content-Type': 'application/json'}
             )
             
