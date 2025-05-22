@@ -12,6 +12,7 @@ import logging
 import traceback
 from .models import Item, WebhookSettings, ActivityLog, UserProfile
 from .forms import LoginForm, WebhookSettingsForm, UserRegistrationForm, UserEditForm, UserProfileForm
+from .views_timezone import get_localized_time, format_datetime
 
 # Configure logging
 logger = logging.getLogger(__name__)
@@ -403,6 +404,10 @@ def activity_logs(request):
     View for displaying activity logs
     """
     logs = ActivityLog.objects.all().order_by('-timestamp')
+    
+    # Convert timestamps to user's timezone for display
+    for log in logs:
+        log.localized_timestamp = get_localized_time(log.timestamp)
     
     context = {
         'logs': logs

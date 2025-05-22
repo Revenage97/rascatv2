@@ -24,7 +24,7 @@
                     <tbody>
                         {% for log in logs %}
                         <tr>
-                            <td>{{ log.timestamp|date:"d/m/Y H:i:s" }}</td>
+                            <td>{{ log.localized_timestamp|date:"d/m/Y H:i:s" }}</td>
                             <td>{{ log.user.username|default:"System" }}</td>
                             <td>{{ log.action }}</td>
                             <td>

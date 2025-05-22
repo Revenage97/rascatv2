@@ -8,6 +8,7 @@ import traceback
 import requests
 from datetime import datetime
 from .models import Item, ActivityLog, WebhookSettings
+from .views_timezone import get_localized_time, format_datetime
 
 # Configure logging
 logger = logging.getLogger(__name__)
@@ -111,12 +112,14 @@ def send_exp_to_telegram(request):
             error_messages = []
             
             for item in items:
-                # Format message
+                # Format message with localized time
                 message = f"📦 Produk Expired:\n"
                 message += f"Nama: {item.name}\n"
                 
                 if item.expiry_date:
-                    message += f"Exp: {item.expiry_date.strftime('%Y-%m-%d')}\n"
+                    # Format the expiry date using the system timezone
+                    localized_date = get_localized_time(datetime.combine(item.expiry_date, datetime.min.time()))
+                    message += f"Exp: {localized_date.strftime('%Y-%m-%d')}\n"
                 else:
                     message += f"Exp: Tidak diatur\n"
                     

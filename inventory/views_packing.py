@@ -9,6 +9,7 @@ import logging
 import traceback
 from .models import PackingItem, WebhookSettings, ActivityLog
 from inventory.views import is_admin
+from .views_timezone import get_localized_time, format_datetime
 
 # Configure logging
 logger = logging.getLogger(__name__)
@@ -186,11 +187,9 @@ def send_packing_to_telegram(request):
             if not webhook_url:
                 return JsonResponse({'status': 'error', 'message': 'Webhook URL not configured'})
             
-            # Get current time in selected timezone
-            from datetime import datetime
-            from inventory.views_timezone import get_current_timezone
-            current_tz = get_current_timezone()
-            current_time = datetime.now(current_tz).strftime("%H:%M - %d %b %Y")
+            # Get current time in selected timezone using the utility functions
+            from inventory.views_timezone import format_datetime
+            current_time = format_datetime()
             
             # Format first line with Request Stock and current time
             message = f"Request Stock ; {current_time}"
