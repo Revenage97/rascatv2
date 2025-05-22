@@ -37,6 +37,7 @@
                             </a>
                             <div class="collapse {% if 'dashboard' in request.path or 'kelola-stok-barang' in request.path or 'kelola-harga' in request.path or 'kelola-stok-packing' in request.path or 'transfer-stok' in request.path or 'data-exp-produk' in request.path %}show{% endif %}" id="dashboardSubmenu">
                                 <ul class="nav flex-column dropdown-menu">
+                                    {% if not user.profile.is_staff_gudang %}
                                     <li>
                                         <a class="dropdown-item {% if 'kelola-stok-barang' in request.path %}active{% endif %}" href="{% url 'inventory:kelola_stok_barang' %}">
                                             <i class="bi bi-box submenu-icon"></i> Kelola Stok Barang
@@ -47,6 +48,7 @@
                                             <i class="bi bi-currency-dollar submenu-icon"></i> Kelola Harga
                                         </a>
                                     </li>
+                                    {% endif %}
                                     <li>
                                         <a class="dropdown-item {% if 'kelola-stok-packing' in request.path %}active{% endif %}" href="{% url 'inventory:kelola_stok_packing' %}">
                                             <i class="bi bi-box-seam submenu-icon"></i> Kelola Stok Packing
@@ -57,11 +59,13 @@
                                             <i class="bi bi-arrow-left-right submenu-icon"></i> Transfer Stok
                                         </a>
                                     </li>
+                                    {% if not user.profile.is_staff_gudang %}
                                     <li>
                                         <a class="dropdown-item {% if 'data-exp-produk' in request.path %}active{% endif %}" href="{% url 'inventory:data_exp_produk' %}">
                                             <i class="bi bi-calendar-event submenu-icon"></i> Data Exp Produk
                                         </a>
                                     </li>
+                                    {% endif %}
                                 </ul>
                             </div>
                         </li>

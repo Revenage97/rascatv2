@@ -13,6 +13,7 @@ from .forms import ExcelUploadForm
 logger = logging.getLogger(__name__)
 
 @login_required
+@user_passes_test(lambda u: not u.profile.is_staff_gudang)
 def upload_file(request):
     """
     View for uploading a single Excel file and distributing data to multiple models

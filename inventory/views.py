@@ -64,6 +64,7 @@ def dashboard(request):
     return render(request, 'inventory/dashboard.html', context)
 
 @login_required
+@user_passes_test(lambda u: not is_staff_gudang(u))
 def forecasting(request):
     """
     View for forecasting
@@ -71,6 +72,7 @@ def forecasting(request):
     return render(request, 'inventory/forecasting.html')
 
 @login_required
+@user_passes_test(lambda u: not is_staff_gudang(u))
 def otomatisasi(request):
     """
     View for otomatisasi
@@ -78,7 +80,7 @@ def otomatisasi(request):
     return render(request, 'inventory/otomatisasi.html')
 
 @login_required
-@user_passes_test(lambda u: is_admin(u) or is_staff_gudang(u))
+@user_passes_test(lambda u: not is_staff_gudang(u))
 def kelola_stok_barang(request):
     """
     View for managing stock items
@@ -119,6 +121,7 @@ def kelola_stok_barang(request):
     return render(request, 'inventory/kelola_stok_barang.html', context)
 
 @login_required
+@user_passes_test(lambda u: not is_staff_gudang(u))
 def data_exp_produk(request):
     """
     View for managing expired products
@@ -165,7 +168,7 @@ def data_exp_produk(request):
     return render(request, 'inventory/data_exp_produk.html', context)
 
 @login_required
-@user_passes_test(lambda u: is_admin(u) or is_manajer(u))
+@user_passes_test(lambda u: not is_staff_gudang(u))
 def kelola_harga(request):
     """
     View for managing prices
@@ -246,6 +249,7 @@ def transfer_stok(request):
         return redirect('inventory:dashboard')
 
 @login_required
+@user_passes_test(lambda u: not is_staff_gudang(u))
 def change_password(request):
     """
     View for changing user password
@@ -378,6 +382,7 @@ def webhook_settings(request):
     return render(request, 'inventory/webhook_settings.html', context)
 
 @login_required
+@user_passes_test(lambda u: not is_staff_gudang(u))
 def activity_logs(request):
     """
     View for displaying activity logs
