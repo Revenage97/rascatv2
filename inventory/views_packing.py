@@ -169,120 +169,76 @@ def delete_packing_min_stock(request):
 @csrf_exempt
 def send_packing_to_telegram(request):
     """
-    API endpoint to send packing item notification to Telegram
+    API endpoint to send pre-formatted packing notification text to Telegram webhook
     """
-    # Enhanced logging for debugging user role issues
     logger.info(f"Accessing send_packing_to_telegram as user: {request.user.username}")
-    
-    # Explicitly check and log staff gudang status
-    try:
-        is_staff = request.user.profile.is_staff_gudang
-        is_admin_user = is_admin(request.user)
-        logger.info(f"User {request.user.username} roles: staff_gudang={is_staff}, admin={is_admin_user}")
-    except Exception as e:
-        logger.error(f"Error checking roles for {request.user.username}: {str(e)}")
     
     if request.method == 'POST':
         try:
-            data = json.loads(request.body)
-            item_ids = data.get('item_ids', [])
-            payment_method = data.get('payment_method')
-            
-            logger.info(f"Telegram request data: item_ids={item_ids}, payment_method={payment_method}")
-            
-            # Validate payment method only for admin users
-            if is_admin(request.user) and not payment_method:
-                logger.info(f"Admin user {request.user.username} missing payment method")
-                return JsonResponse({'status': 'error', 'message': 'Metode pembayaran diperlukan'})
-            
-            # For staff gudang, use default payment method
-            if not is_admin(request.user) or is_staff_gudang(request.user):
-                payment_method = "DEFAULT"
-                logger.info(f"Using DEFAULT payment method for user {request.user.username}")
-            
-            # Handle both single item_id and array of item_ids
-            if not item_ids:
-                item_id = data.get('item_id')
-                if item_id:
-                    item_ids = [item_id]
-                else:
-                    return JsonResponse({'status': 'error', 'message': 'Item ID is required'})
-            
-            # Ensure item_ids is always a list
-            if not isinstance(item_ids, list):
-                item_ids = [item_ids]
-            
-            if not item_ids:
-                return JsonResponse({'status': 'error', 'message': 'No items selected'})
-            
-            # Get webhook URL
+            # Read the plain text message directly from the request body
+            message_text = request.body.decode('utf-8')
+            logger.info(f"Received plain text message for Telegram: \n{message_text}")
+
+            if not message_text:
+                return JsonResponse({'status': 'error', 'message': 'Pesan kosong diterima'})
+
+            # Get webhook URL for Kelola Stok Packing
             webhook_settings = WebhookSettings.objects.first()
             if not webhook_settings:
-                return JsonResponse({'status': 'error', 'message': 'Webhook settings not found'})
+                logger.error("Webhook settings not found")
+                return JsonResponse({'status': 'error', 'message': 'Pengaturan webhook tidak ditemukan'})
             
             webhook_url = webhook_settings.webhook_kelola_stok_packing
             if not webhook_url:
-                return JsonResponse({'status': 'error', 'message': 'Webhook URL not configured'})
+                logger.error("Webhook URL for Kelola Stok Packing not configured")
+                return JsonResponse({'status': 'error', 'message': 'URL webhook Telegram untuk Kelola Stok Packing belum diatur'})
             
-            # Get current time in selected timezone using the utility functions
-            from inventory.views_timezone import format_datetime
-            current_time = format_datetime()
-            
-            # Format first line with Request Stock and current time
-            message = f"Request Stock ; {current_time}"
-            
-            # Add each item to the message (only name and quantity, no code or category)
-            items_list = []
-            for item_id in item_ids:
-                try:
-                    item = PackingItem.objects.get(id=item_id)
-                    # Only include name and quantity, not code
-                    items_list.append(f"{item.name} - {item.current_stock} Pcs")
-                except PackingItem.DoesNotExist:
-                    logger.error(f"Item with ID {item_id} not found")
-            
-            # Add items to message as second line
-            if items_list:
-                message += f"\n{items_list[0]}"  # First item
-                # Add additional items if any
-                for item in items_list[1:]:
-                    message += f"\n{item}"
-            
-            # Add footer as third line
-            message += "\nTanpa konfirmasi"
-            
-            # Send to webhook as plain text (no Markdown)
+            # Send the received plain text message to the webhook as raw text
             response = requests.post(
                 webhook_url,
-                json={'text': message},
-                headers={'Content-Type': 'application/json'}
+                data=message_text.encode('utf-8'), # Send raw bytes
+                headers={'Content-Type': 'text/plain; charset=utf-8'} # Set content type to plain text
             )
             
+            # Check response status code, but don't assume JSON response from webhook
             if response.status_code == 200:
+                logger.info(f"Successfully sent packing notification to webhook for user {request.user.username}. Webhook response status: {response.status_code}")
                 # Log activity
                 ActivityLog.objects.create(
                     user=request.user,
                     action='send_packing_to_telegram',
                     status='success',
-                    notes=f'Sent packing notification with {len(items_list)} items to Telegram'
+                    notes=f'Sent packing notification text to Telegram webhook.'
                 )
+                # Return JSON success to frontend, regardless of webhook response body
                 return JsonResponse({'status': 'success', 'message': 'Notifikasi berhasil dikirim ke Telegram'})
             else:
+                # Log error with webhook response text (which might not be JSON)
+                logger.error(f"Failed to send packing notification to webhook. Status: {response.status_code}, Response: {response.text}")
                 # Log activity
                 ActivityLog.objects.create(
                     user=request.user,
                     action='send_packing_to_telegram',
                     status='failed',
-                    notes=f'Failed to send packing notification to Telegram: {response.text}'
+                    notes=f'Failed to send packing notification to Telegram webhook: {response.status_code} - {response.text}'
                 )
-                return JsonResponse({'status': 'error', 'message': f'Gagal mengirim notifikasi: {response.text}'})
+                # Return JSON error to frontend
+                return JsonResponse({'status': 'error', 'message': f'Gagal mengirim notifikasi: {response.status_code} - {response.text}'})
             
         except Exception as e:
             logger.error(f"Error in send_packing_to_telegram view: {str(e)}")
             logger.error(traceback.format_exc())
-            return JsonResponse({'status': 'error', 'message': str(e)})
+            # Log activity
+            ActivityLog.objects.create(
+                user=request.user,
+                action='send_packing_to_telegram',
+                status='failed',
+                notes=f'Internal server error: {str(e)}'
+            )
+            return JsonResponse({'status': 'error', 'message': f'Terjadi kesalahan internal: {str(e)}'})
     
-    return JsonResponse({'status': 'error', 'message': 'Invalid request method'})
+    logger.warning(f"Invalid request method ({request.method}) for send_packing_to_telegram")
+    return JsonResponse({'status': 'error', 'message': 'Metode request tidak valid'})
 
 @login_required
 @user_passes_test(is_admin)
