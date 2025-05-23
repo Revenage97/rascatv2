@@ -29,13 +29,13 @@
                     <ul class="nav flex-column">
                         <!-- Dashboard dengan dropdown -->
                         <li class="nav-item">
-                            <a class="nav-link dropdown-toggle {% if 'dashboard' in request.path or 'kelola-stok-barang' in request.path or 'kelola-harga' in request.path or 'kelola-stok-packing' in request.path or 'transfer-stok' in request.path or 'data-exp-produk' in request.path %}active{% endif %}" 
+                            <a class="nav-link dropdown-toggle {% if 'dashboard' in request.path or 'kelola-stok-barang' in request.path or 'kelola-harga' in request.path or 'kelola-stok-packing' in request.path or 'transfer-stok' in request.path or 'data-exp-produk' in request.path or 'pesanan-dibatalkan' in request.path %}active{% endif %}" 
                                href="#dashboardSubmenu" 
                                data-bs-toggle="collapse" 
-                               aria-expanded="{% if 'dashboard' in request.path or 'kelola-stok-barang' in request.path or 'kelola-harga' in request.path or 'kelola-stok-packing' in request.path or 'transfer-stok' in request.path or 'data-exp-produk' in request.path %}true{% else %}false{% endif %}">
+                               aria-expanded="{% if 'dashboard' in request.path or 'kelola-stok-barang' in request.path or 'kelola-harga' in request.path or 'kelola-stok-packing' in request.path or 'transfer-stok' in request.path or 'data-exp-produk' in request.path or 'pesanan-dibatalkan' in request.path %}true{% else %}false{% endif %}">
                                 <i class="bi bi-speedometer2 me-2"></i> Dashboard
                             </a>
-                            <div class="collapse {% if 'dashboard' in request.path or 'kelola-stok-barang' in request.path or 'kelola-harga' in request.path or 'kelola-stok-packing' in request.path or 'transfer-stok' in request.path or 'data-exp-produk' in request.path %}show{% endif %}" id="dashboardSubmenu">
+                            <div class="collapse {% if 'dashboard' in request.path or 'kelola-stok-barang' in request.path or 'kelola-harga' in request.path or 'kelola-stok-packing' in request.path or 'transfer-stok' in request.path or 'data-exp-produk' in request.path or 'pesanan-dibatalkan' in request.path %}show{% endif %}" id="dashboardSubmenu">
                                 <ul class="nav flex-column dropdown-menu">
                                     {% if not user.profile.is_staff_gudang %}
                                     <li>
@@ -54,6 +54,13 @@
                                             <i class="bi bi-box-seam submenu-icon"></i> Kelola Stok Packing
                                         </a>
                                     </li>
+                                    {% if user.profile.is_admin or user.profile.is_staff_gudang %}
+                                    <li>
+                                        <a class="dropdown-item {% if 'pesanan-dibatalkan' in request.path %}active{% endif %}" href="{% url 'inventory:pesanan_dibatalkan' %}">
+                                            <i class="bi bi-x-circle submenu-icon"></i> Pesanan Dibatalkan
+                                        </a>
+                                    </li>
+                                    {% endif %}
                                     <li>
                                         <a class="dropdown-item {% if 'transfer-stok' in request.path %}active{% endif %}" href="{% url 'inventory:transfer_stok' %}">
                                             <i class="bi bi-arrow-left-right submenu-icon"></i> Transfer Stok
@@ -183,3 +190,4 @@
     {% block extra_js %}{% endblock %}
 </body>
 </html>
+

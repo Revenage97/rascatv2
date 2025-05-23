@@ -590,3 +590,22 @@ def delete_pengguna(request):
     
     return JsonResponse({"status": "error", "message": "Invalid request method"})
 
+
+
+
+@login_required
+@user_passes_test(lambda u: is_admin(u) or is_staff_gudang(u), login_url="/dashboard/")
+def pesanan_dibatalkan(request):
+    """
+    View for displaying cancelled orders (placeholder).
+    Accessible only by admin and staff gudang.
+    """
+    # Double-check permission inside the view for robustness
+    if not (is_admin(request.user) or is_staff_gudang(request.user)):
+        logger.warning(f"User {request.user.username} (role: {request.user.profile.role}) attempted to access pesanan_dibatalkan without permission.")
+        messages.error(request, "Anda tidak memiliki izin untuk mengakses halaman ini.")
+        return redirect("inventory:dashboard")
+        
+    context = {} # No data needed for now
+    return render(request, "inventory/pesanan_dibatalkan.html", context)
+

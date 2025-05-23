@@ -29,6 +29,7 @@ urlpatterns = [
     path('kelola-stok-barang/', views.kelola_stok_barang, name='kelola_stok_barang'),
     path('kelola-harga/', views.kelola_harga, name='kelola_harga'),
     path('kelola-stok-packing/', kelola_stok_packing, name='kelola_stok_packing'),
+    path('pesanan-dibatalkan/', views.pesanan_dibatalkan, name='pesanan_dibatalkan'), # Added new route
     path('transfer-stok/', views.transfer_stok, name='transfer_stok'),
     path('data-exp-produk/', views.data_exp_produk, name='data_exp_produk'),
     path('upload/', upload_file, name='upload_file'),
@@ -74,3 +75,4 @@ urlpatterns = [
     path('api/update-packing-item/', update_packing_item, name='update_packing_item'),
     path('api/delete-packing-item/', delete_packing_item, name='delete_packing_item'),
 ]
+
