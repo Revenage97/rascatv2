@@ -167,8 +167,11 @@
                                 </div>
                             </td>
                             <td class="text-center">
-                                <button type="button" class="btn btn-sm btn-info send-single-item" data-item-id="{{ item.id }}">
+                                <button type="button" class="btn btn-sm btn-info send-single-item me-1" data-item-id="{{ item.id }}">
                                     <i class="bi bi-telegram"></i>
+                                </button>
+                                <button type="button" class="btn btn-sm btn-danger delete-packing-item" data-item-id="{{ item.id }}">
+                                    <i class="bi bi-trash"></i>
                                 </button>
                             </td>
                         </tr>
@@ -1130,6 +1133,108 @@
                 });
             });
         }
+        
+        // Delete packing item button click handler
+        document.addEventListener('click', function(e) {
+            if (e.target && e.target.classList.contains('delete-packing-item') || 
+                (e.target.parentElement && e.target.parentElement.classList.contains('delete-packing-item'))) {
+                
+                const button = e.target.classList.contains('delete-packing-item') ? e.target : e.target.parentElement;
+                const itemId = button.getAttribute('data-item-id');
+                const row = button.closest('tr');
+                const itemName = row.querySelector('td:nth-child(3)').textContent;
+                
+                // Show confirmation dialog
+                Swal.fire({
+                    title: 'Konfirmasi Hapus',
+                    text: `Apakah Anda yakin ingin menghapus item "${itemName}"?`,
+                    icon: 'warning',
+                    showCancelButton: true,
+                    confirmButtonColor: '#d33',
+                    cancelButtonColor: '#3085d6',
+                    confirmButtonText: 'Ya, Hapus!',
+                    cancelButtonText: 'Batal'
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        // Show loading
+                        Swal.fire({
+                            title: 'Menghapus item...',
+                            text: 'Mohon tunggu sebentar',
+                            allowOutsideClick: false,
+                            didOpen: () => {
+                                Swal.showLoading();
+                            }
+                        });
+                        
+                        // Make API call to delete item
+                        fetch('/api/delete-packing-item/', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'X-CSRFToken': csrfToken
+                            },
+                            body: JSON.stringify({
+                                item_id: itemId
+                            })
+                        })
+                        .then(response => response.json())
+                        .then(data => {
+                            Swal.close();
+                            
+                            if (data.status === 'success') {
+                                // Remove row from table with animation
+                                row.style.backgroundColor = '#ffcccc';
+                                setTimeout(() => {
+                                    row.style.transition = 'opacity 0.5s ease';
+                                    row.style.opacity = '0';
+                                    setTimeout(() => {
+                                        row.remove();
+                                        
+                                        // Check if table is now empty
+                                        const tableBody = document.querySelector('table tbody');
+                                        if (tableBody.children.length === 0) {
+                                            // Add "no data" row
+                                            const noDataRow = document.createElement('tr');
+                                            noDataRow.innerHTML = '<td colspan="7" class="text-center">Tidak ada data barang</td>';
+                                            tableBody.appendChild(noDataRow);
+                                        }
+                                    }, 500);
+                                }, 300);
+                                
+                                // Show success notification
+                                Swal.fire({
+                                    icon: 'success',
+                                    title: 'Berhasil',
+                                    text: 'Item berhasil dihapus',
+                                    timer: 1500,
+                                    showConfirmButton: false
+                                });
+                            } else {
+                                // Show error notification
+                                Swal.fire({
+                                    icon: 'error',
+                                    title: 'Gagal',
+                                    text: data.message || 'Gagal menghapus item',
+                                    confirmButtonColor: '#3085d6'
+                                });
+                            }
+                        })
+                        .catch(error => {
+                            console.error('Error:', error);
+                            Swal.close();
+                            
+                            // Show error notification
+                            Swal.fire({
+                                icon: 'error',
+                                title: 'Gagal',
+                                text: 'Terjadi kesalahan saat menghubungi server',
+                                confirmButtonColor: '#3085d6'
+                            });
+                        });
+                    }
+                });
+            }
+        });
         
         // Individual send to Telegram button click handler
         document.addEventListener('click', function(e) {
