@@ -1,10 +1,11 @@
+import logging # Added back missing import
 from django.http import JsonResponse
 from django.views.decorators.http import require_POST
 from django.contrib.auth.decorators import login_required
 from django.db import transaction
 from .models import Item, ActivityLog
 import json
-import logging
+from .utils import is_admin, is_staff_gudang # Import role checkers
 
 logger = logging.getLogger(__name__)
 
@@ -67,8 +68,9 @@ def reset_transfer_data(request):
     This only affects the Transfer Stok page and does not impact other data.
     """
     try:
-        # Check if user is admin
-        if not request.user.profile.is_admin:
+        # Check if user is admin or staff gudang
+        if not (is_admin(request.user) or is_staff_gudang(request.user)):
+            logger.warning(f"Unauthorized reset attempt by user {request.user.username} on transfer data.") # Added logging
             return JsonResponse({
                 'status': 'error',
                 'message': 'Anda tidak memiliki izin untuk melakukan tindakan ini'
