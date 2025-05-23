@@ -155,3 +155,30 @@ class UploadHistory(models.Model):
         ordering = ['-upload_date']
         verbose_name = "Upload History"
         verbose_name_plural = "Upload Histories"
+
+
+
+class CancelledOrder(models.Model):
+    """
+    Model to store cancelled order details.
+    """
+    order_number = models.CharField(max_length=100, verbose_name="Nomor Pesanan")
+    order_date = models.DateField(verbose_name="Tanggal Pemesanan")
+    cancellation_date = models.DateField(verbose_name="Tanggal Pembatalan")
+    product_name = models.CharField(max_length=255, blank=True, null=True, verbose_name="Produk") # Optional
+    quantity = models.PositiveIntegerField(verbose_name="Jumlah")
+    cancellation_reason = models.TextField(blank=True, null=True, verbose_name="Alasan Pembatalan")
+    created_at = models.DateTimeField(auto_now_add=True)
+    user = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, verbose_name="User Input") # Track who added it
+
+    def __str__(self):
+        return f"Cancelled Order: {self.order_number} - {self.product_name or 'N/A'}"
+
+    class Meta:
+        ordering = [
+            '-cancellation_date', 
+            '-created_at'
+        ] # Default order: newest cancellation first
+        verbose_name = "Pesanan Dibatalkan"
+        verbose_name_plural = "Pesanan Dibatalkan"
+

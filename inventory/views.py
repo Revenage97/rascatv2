@@ -11,7 +11,7 @@ from django.views.decorators.csrf import csrf_exempt # Added missing import
 import json
 import logging
 import traceback
-from .models import Item, WebhookSettings, ActivityLog, UserProfile
+from .models import Item, WebhookSettings, ActivityLog, UserProfile, CancelledOrder # Added CancelledOrder
 from .forms import LoginForm, WebhookSettingsForm, UserRegistrationForm, UserEditForm, UserProfileForm
 from .views_timezone import get_localized_time, format_datetime
 from .utils import is_admin, is_staff_gudang, is_manajer
@@ -435,33 +435,38 @@ def login_view(request):
                 # Redirect to next URL if it's safe, otherwise to dashboard
                 if next_url and url_has_allowed_host_and_scheme(next_url, allowed_hosts=None):
                     return redirect(next_url)
-                return redirect("inventory:dashboard")
+                else:
+                    return redirect("inventory:dashboard")
             else:
                 messages.error(request, "Username atau password salah")
+                # Log failed login attempt
+                ActivityLog.objects.create(
+                    user=None, # No user associated with failed login
+                    action="login_failed",
+                    status="failed",
+                    notes=f"Failed login attempt for username: {username}"
+                )
+        else:
+            messages.error(request, "Input tidak valid")
     else:
         form = LoginForm()
     
-    context = {
-        "form": form,
-        "next": next_url  # Pass the sanitized next URL to the template
-    }
-    
-    return render(request, "inventory/login.html", context)
+    return render(request, "inventory/login.html", {"form": form, "next": next_url})
 
-@login_required
 def logout_view(request):
     """
     View for user logout
     """
-    # Log activity
-    ActivityLog.objects.create(
-        user=request.user,
-        action="logout",
-        status="success",
-        notes=f"User {request.user.username} logged out"
-    )
-    
-    logout(request)
+    if request.user.is_authenticated:
+        # Log activity before logout
+        ActivityLog.objects.create(
+            user=request.user,
+            action="logout",
+            status="success",
+            notes=f"User {request.user.username} logged out"
+        )
+        logout(request)
+        messages.success(request, "Anda berhasil logout")
     return redirect("inventory:login")
 
 @login_required
@@ -470,41 +475,50 @@ def kelola_pengguna(request):
     """
     View for managing users
     """
-    users = User.objects.all().order_by("username") # Default sort users by username
+    users = User.objects.select_related("profile").all()
     
     if request.method == "POST":
         form = UserRegistrationForm(request.POST)
-        if form.is_valid():
-            # Create user
-            user = form.save()
-            
-            # Create user profile
-            UserProfile.objects.create(
-                user=user,
-                is_staff_gudang=form.cleaned_data.get("is_staff_gudang", False),
-                is_manajer=form.cleaned_data.get("is_manajer", False)
-            )
-            
-            # Log activity
-            ActivityLog.objects.create(
-                user=request.user,
-                action="create_user",
-                status="success",
-                notes=f"User {user.username} created by {request.user.username}"
-            )
-            
-            messages.success(request, f"Pengguna {user.username} berhasil dibuat")
-            return redirect("inventory:kelola_pengguna")
+        profile_form = UserProfileForm(request.POST)
+        if form.is_valid() and profile_form.is_valid():
+            try:
+                user = form.save()
+                profile = profile_form.save(commit=False)
+                profile.user = user
+                profile.save()
+                messages.success(request, f"Pengguna {user.username} berhasil ditambahkan")
+                # Log activity
+                ActivityLog.objects.create(
+                    user=request.user,
+                    action="create_user",
+                    status="success",
+                    notes=f"Admin {request.user.username} created user {user.username} with role {profile.role}"
+                )
+                return redirect("inventory:kelola_pengguna")
+            except Exception as e:
+                messages.error(request, f"Gagal menambahkan pengguna: {e}")
+                # Log error
+                ActivityLog.objects.create(
+                    user=request.user,
+                    action="create_user_failed",
+                    status="failed",
+                    notes=f"Failed to create user. Error: {e}"
+                )
         else:
-            messages.error(request, "Gagal membuat pengguna. Periksa kembali data yang dimasukkan.")
+            # Combine errors from both forms
+            all_errors = {**form.errors, **profile_form.errors}
+            for field, errors in all_errors.items():
+                for error in errors:
+                    messages.error(request, f"Error pada {field}: {error}")
     else:
         form = UserRegistrationForm()
-    
+        profile_form = UserProfileForm()
+        
     context = {
         "users": users,
-        "form": form
+        "form": form,
+        "profile_form": profile_form
     }
-    
     return render(request, "inventory/kelola_pengguna.html", context)
 
 @login_required
@@ -517,87 +531,94 @@ def edit_pengguna(request, user_id):
     profile_to_edit = get_object_or_404(UserProfile, user=user_to_edit)
     
     if request.method == "POST":
-        user_form = UserEditForm(request.POST, instance=user_to_edit)
+        form = UserEditForm(request.POST, instance=user_to_edit)
         profile_form = UserProfileForm(request.POST, instance=profile_to_edit)
         
-        if user_form.is_valid() and profile_form.is_valid():
-            user_form.save()
-            profile_form.save()
-            
-            # Log activity
-            ActivityLog.objects.create(
-                user=request.user,
-                action="edit_user",
-                status="success",
-                notes=f"User {user_to_edit.username} edited by {request.user.username}"
-            )
-            
-            messages.success(request, f"Pengguna {user_to_edit.username} berhasil diperbarui")
-            return redirect("inventory:kelola_pengguna")
+        if form.is_valid() and profile_form.is_valid():
+            try:
+                user = form.save()
+                profile = profile_form.save()
+                messages.success(request, f"Data pengguna {user.username} berhasil diperbarui")
+                # Log activity
+                ActivityLog.objects.create(
+                    user=request.user,
+                    action="edit_user",
+                    status="success",
+                    notes=f"Admin {request.user.username} edited user {user.username}. New role: {profile.role}"
+                )
+                return redirect("inventory:kelola_pengguna")
+            except Exception as e:
+                messages.error(request, f"Gagal memperbarui pengguna: {e}")
+                # Log error
+                ActivityLog.objects.create(
+                    user=request.user,
+                    action="edit_user_failed",
+                    status="failed",
+                    notes=f"Failed to edit user {user_to_edit.username}. Error: {e}"
+                )
         else:
-            messages.error(request, "Gagal memperbarui pengguna. Periksa kembali data yang dimasukkan.")
+            # Combine errors from both forms
+            all_errors = {**form.errors, **profile_form.errors}
+            for field, errors in all_errors.items():
+                for error in errors:
+                    messages.error(request, f"Error pada {field}: {error}")
     else:
-        user_form = UserEditForm(instance=user_to_edit)
+        form = UserEditForm(instance=user_to_edit)
         profile_form = UserProfileForm(instance=profile_to_edit)
-    
+        
     context = {
-        "user_to_edit": user_to_edit,
-        "user_form": user_form,
-        "profile_form": profile_form
+        "form": form,
+        "profile_form": profile_form,
+        "user_to_edit": user_to_edit
     }
-    
     return render(request, "inventory/edit_pengguna.html", context)
 
 @login_required
 @user_passes_test(is_admin)
-@csrf_exempt
-def delete_pengguna(request):
+def delete_pengguna(request, user_id):
     """
-    API endpoint to delete a user
+    View for deleting a user
     """
+    user_to_delete = get_object_or_404(User, pk=user_id)
+    
+    # Prevent admin from deleting themselves
+    if user_to_delete == request.user:
+        messages.error(request, "Anda tidak dapat menghapus akun Anda sendiri")
+        return redirect("inventory:kelola_pengguna")
+        
     if request.method == "POST":
         try:
-            data = json.loads(request.body)
-            user_id = data.get("user_id")
-            
-            if not user_id:
-                return JsonResponse({"status": "error", "message": "User ID is required"})
-            
-            # Prevent deleting the current admin user
-            if user_id == request.user.id:
-                return JsonResponse({"status": "error", "message": "Anda tidak dapat menghapus akun Anda sendiri"})
-            
-            user_to_delete = get_object_or_404(User, pk=user_id)
             username_deleted = user_to_delete.username
             user_to_delete.delete()
-            
+            messages.success(request, f"Pengguna {username_deleted} berhasil dihapus")
             # Log activity
             ActivityLog.objects.create(
                 user=request.user,
                 action="delete_user",
                 status="success",
-                notes=f"User {username_deleted} deleted by {request.user.username}"
+                notes=f"Admin {request.user.username} deleted user {username_deleted}"
             )
-            
-            return JsonResponse({"status": "success", "message": f"Pengguna {username_deleted} berhasil dihapus"})
-            
-        except User.DoesNotExist:
-            return JsonResponse({"status": "error", "message": "Pengguna tidak ditemukan"})
         except Exception as e:
-            logger.error(f"Error deleting user: {str(e)}")
-            logger.error(traceback.format_exc())
-            return JsonResponse({"status": "error", "message": str(e)})
-    
-    return JsonResponse({"status": "error", "message": "Invalid request method"})
-
-
+            messages.error(request, f"Gagal menghapus pengguna: {e}")
+            # Log error
+            ActivityLog.objects.create(
+                user=request.user,
+                action="delete_user_failed",
+                status="failed",
+                notes=f"Failed to delete user {user_to_delete.username}. Error: {e}"
+            )
+        return redirect("inventory:kelola_pengguna")
+    else:
+        # For GET request, maybe show a confirmation page?
+        # For now, redirect back as deletion should only happen via POST
+        return redirect("inventory:kelola_pengguna")
 
 
 @login_required
 @user_passes_test(lambda u: is_admin(u) or is_staff_gudang(u), login_url="/dashboard/")
 def pesanan_dibatalkan(request):
     """
-    View for displaying cancelled orders (placeholder).
+    View for displaying and adding cancelled orders.
     Accessible only by admin and staff gudang.
     """
     # Double-check permission inside the view for robustness
@@ -606,6 +627,65 @@ def pesanan_dibatalkan(request):
         messages.error(request, "Anda tidak memiliki izin untuk mengakses halaman ini.")
         return redirect("inventory:dashboard")
         
-    context = {} # No data needed for now
+    if request.method == "POST":
+        try:
+            order_number = request.POST.get("nomor_pesanan")
+            order_date_str = request.POST.get("tanggal_pemesanan") # Get the new field
+            cancellation_date_str = request.POST.get("tanggal_pembatalan")
+            product_name = request.POST.get("produk") # Optional
+            quantity_str = request.POST.get("jumlah")
+            cancellation_reason = request.POST.get("alasan_pembatalan") # Optional
+
+            # Basic validation
+            if not order_number or not order_date_str or not cancellation_date_str or not quantity_str:
+                messages.error(request, "Field Nomor Pesanan, Tanggal Pemesanan, Tanggal Pembatalan, dan Jumlah wajib diisi.")
+            else:
+                # Convert quantity to integer
+                try:
+                    quantity = int(quantity_str)
+                    if quantity <= 0:
+                        raise ValueError("Jumlah harus lebih besar dari 0")
+                except ValueError as e:
+                    messages.error(request, f"Input Jumlah tidak valid: {e}")
+                    # Reload page with existing orders
+                    cancelled_orders = CancelledOrder.objects.all()
+                    context = {"cancelled_orders": cancelled_orders}
+                    return render(request, "inventory/pesanan_dibatalkan.html", context)
+
+                # Create and save the new cancelled order
+                CancelledOrder.objects.create(
+                    order_number=order_number,
+                    order_date=order_date_str,
+                    cancellation_date=cancellation_date_str,
+                    product_name=product_name, # Will be None if empty
+                    quantity=quantity,
+                    cancellation_reason=cancellation_reason, # Will be None if empty
+                    user=request.user
+                )
+                messages.success(request, f"Pesanan dibatalkan ({order_number}) berhasil ditambahkan.")
+                # Log activity
+                ActivityLog.objects.create(
+                    user=request.user,
+                    action="create_cancelled_order",
+                    status="success",
+                    notes=f"User {request.user.username} added cancelled order {order_number}"
+                )
+                return redirect("inventory:pesanan_dibatalkan") # Redirect after successful POST
+
+        except Exception as e:
+            logger.error(f"Error saving cancelled order: {e}")
+            logger.error(traceback.format_exc())
+            messages.error(request, f"Terjadi kesalahan saat menyimpan data: {e}")
+            # Log error
+            ActivityLog.objects.create(
+                user=request.user,
+                action="create_cancelled_order_failed",
+                status="failed",
+                notes=f"Failed to add cancelled order. Error: {e}"
+            )
+
+    # For GET request or if POST failed validation and needs reload
+    cancelled_orders = CancelledOrder.objects.all()
+    context = {"cancelled_orders": cancelled_orders}
     return render(request, "inventory/pesanan_dibatalkan.html", context)
 
