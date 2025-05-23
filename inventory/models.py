@@ -83,6 +83,7 @@ class WebhookSettings(models.Model):
     webhook_data_exp_produk = models.URLField(max_length=500, blank=True, null=True, verbose_name="URL Webhook Telegram - Data Exp Produk")
     webhook_kelola_harga = models.URLField(max_length=500, blank=True, null=True, verbose_name="URL Webhook Telegram - Kelola Harga")
     webhook_kelola_stok_packing = models.URLField(max_length=500, blank=True, null=True, verbose_name="URL Webhook Telegram - Kelola Stok Packing")
+    webhook_pesanan_dibatalkan = models.URLField(max_length=500, blank=True, null=True, verbose_name="URL Webhook Telegram - Pesanan Dibatalkan") # Added missing field
     updated_at = models.DateTimeField(auto_now=True)
     updated_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True)
 
