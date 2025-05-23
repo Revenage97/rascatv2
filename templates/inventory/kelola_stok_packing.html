@@ -1061,34 +1061,29 @@
                         confirmButtonColor: '#3085d6'
                     });
                     return;
-                }
-
-                // 2. Get payment method (handle admin/staff logic)
-                let selectedPaymentMethod = "DEFAULT"; // Default for staff or if not found
-                const paymentMethodSelect = document.getElementById('paymentMethod');
-                const isAdmin = document.body.classList.contains('admin-user'); // Assuming class is set on body
-                const isStaffGudang = document.body.classList.contains('staff-gudang-user'); // Assuming class is set on body
-
-                if (isAdmin && !isStaffGudang && paymentMethodSelect) {
+                                // Get selected payment method - Always read from dropdown
+                const paymentMethodSelect = document.getElementById("paymentMethod"); // Use the correct ID
+                let selectedPaymentMethod = ""; // Initialize
+                if (paymentMethodSelect) {
                     selectedPaymentMethod = paymentMethodSelect.value;
+                    // Check if a valid method is selected
                     if (!selectedPaymentMethod) {
+                        Swal.close();
                         Swal.fire({
-                            icon: 'warning',
-                            title: 'Perhatian',
-                            text: 'Admin harus memilih metode pembayaran terlebih dahulu',
-                            confirmButtonColor: '#3085d6'
+                            icon: "warning",
+                            title: "Perhatian",
+                            text: "Anda harus memilih metode pembayaran terlebih dahulu",
+                            confirmButtonColor: "#3085d6"
                         });
-                        return;
+                        return; // Stop if no payment method is selected
                     }
-                } else if (isStaffGudang) {
-                     selectedPaymentMethod = "DEFAULT"; // Explicitly default for staff
-                } else if (!paymentMethodSelect) {
-                     console.warn("Payment method dropdown not found, using DEFAULT.");
-                     selectedPaymentMethod = "DEFAULT";
-                }
-
-
-                // 3. Format timestamp in GMT+7 (Asia/Jakarta)
+                } else {
+                    // This case should ideally not happen if the dropdown is always present
+                    console.error("Payment method dropdown #paymentMethod not found!");
+                    Swal.close();
+                    Swal.fire({ icon: "error", title: "Error", text: "Komponen metode pembayaran tidak ditemukan." });
+                    return;
+                }             // 3. Format timestamp in GMT+7 (Asia/Jakarta)
                 const now = new Date();
                 const optionsDate = { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'Asia/Jakarta' };
                 const optionsTime = { hour: '2-digit', minute: '2-digit', hour12: false, timeZone: 'Asia/Jakarta' };
@@ -1298,33 +1293,28 @@
                     return; // Don't send if request stock is 0 or invalid
                 }
 
-                // Get selected payment method (only for admin users)
-                let selectedPaymentMethod = "DEFAULT";
-                const paymentMethodSelect = document.getElementById('paymentMethod'); // Ensure this is defined
-                const isAdmin = document.body.classList.contains('admin-user');
-                const isStaffGudang = document.body.classList.contains('staff-gudang-user');
-
-                // Staff gudang always uses DEFAULT payment method
-                if (isStaffGudang) {
-                    selectedPaymentMethod = "DEFAULT";
-                }
-                // Only validate payment method for admin users
-                else if (isAdmin && paymentMethodSelect) {
+                // Get selected payment method - Always read from dropdown
+                const paymentMethodSelect = document.getElementById("paymentMethod"); // Use the correct ID
+                let selectedPaymentMethod = ""; // Initialize
+                if (paymentMethodSelect) {
                     selectedPaymentMethod = paymentMethodSelect.value;
+                    // Check if a valid method is selected
                     if (!selectedPaymentMethod) {
                         Swal.close();
                         Swal.fire({
-                            icon: 'warning',
-                            title: 'Perhatian',
-                            text: 'Admin harus memilih metode pembayaran terlebih dahulu',
-                            confirmButtonColor: '#3085d6'
+                            icon: "warning",
+                            title: "Perhatian",
+                            text: "Anda harus memilih metode pembayaran terlebih dahulu",
+                            confirmButtonColor: "#3085d6"
                         });
-                        return;
+                        return; // Stop if no payment method is selected
                     }
-                } else if (isAdmin && !paymentMethodSelect) {
-                    // Handle case where admin is logged in but dropdown doesn't exist (shouldn't happen ideally)
-                    console.warn("Payment method dropdown not found for admin, using DEFAULT.");
-                    selectedPaymentMethod = "DEFAULT";
+                } else {
+                    // This case should ideally not happen if the dropdown is always present
+                    console.error("Payment method dropdown #paymentMethod not found!");
+                    Swal.close();
+                    Swal.fire({ icon: "error", title: "Error", text: "Komponen metode pembayaran tidak ditemukan." });
+                    return;
                 }
 
                 // Format timestamp in GMT+7 (Asia/Jakarta)
