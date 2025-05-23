@@ -103,7 +103,7 @@
                                 <li><a class="dropdown-item" href="?">Reset Filter</a></li>
                             </ul>
                         </div>
-                        {% if user.profile.is_admin %}
+                        {% if is_admin %}
                         <button id="resetDataBtn" class="btn btn-danger mb-2 mb-sm-0">
                             <i class="bi bi-trash"></i> Reset Data
                         </button>
@@ -354,6 +354,39 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // --- Event Listeners Setup ---
 
+    // Load saved payment method from localStorage if exists
+    if (paymentMethodSelect) {
+        const savedPaymentMethod = localStorage.getItem('packingPaymentMethod');
+        if (savedPaymentMethod) {
+            paymentMethodSelect.value = savedPaymentMethod;
+        }
+    }
+
+    // Payment Method Save button
+    if (savePaymentMethodBtn && paymentMethodSelect) {
+        savePaymentMethodBtn.addEventListener('click', function() {
+            const selectedMethod = paymentMethodSelect.value;
+            if (!selectedMethod) {
+                showWarning('Perhatian', 'Silakan pilih metode pembayaran terlebih dahulu');
+                return;
+            }
+            // Save to localStorage
+            localStorage.setItem('packingPaymentMethod', selectedMethod);
+            showSuccess('Berhasil', 'Metode pembayaran berhasil disimpan');
+        });
+    }
+
+    // Payment Method Reset button
+    if (resetPaymentMethodBtn && paymentMethodSelect) {
+        resetPaymentMethodBtn.addEventListener('click', function() {
+            // Reset dropdown to default
+            paymentMethodSelect.value = '';
+            // Remove from localStorage
+            localStorage.removeItem('packingPaymentMethod');
+            showToast('Metode pembayaran telah direset.', 'info');
+        });
+    }
+
     // Select All Checkbox
     if (selectAllCheckbox && tableBody) {
         selectAllCheckbox.addEventListener('change', function() {
@@ -435,14 +468,11 @@ document.addEventListener('DOMContentLoaded', function() {
                 const input = tableBody.querySelector(`.min-stock-input[data-item-id="${itemId}"]`);
                 let minStock = input.value.trim();
 
+                // Allow 0, but treat empty or negative as 0 after warning
                 if (minStock === '' || isNaN(minStock) || parseInt(minStock) < 0) {
-                    if (minStock !== '0') {
-                        showWarning('Perhatian', 'Request Stock harus berupa angka 0 atau lebih besar. Menggunakan nilai 0.');
-                        minStock = 0;
-                        input.value = 0;
-                    } else {
-                        minStock = 0;
-                    }
+                     showWarning('Perhatian', 'Request Stock harus berupa angka 0 atau lebih besar. Menggunakan nilai 0.');
+                     minStock = 0;
+                     input.value = 0; // Update input visually
                 } else {
                     minStock = parseInt(minStock);
                 }
@@ -483,7 +513,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 const itemId = button.getAttribute('data-item-id');
                 const input = tableBody.querySelector(`.min-stock-input[data-item-id="${itemId}"]`);
 
-                input.value = 0;
+                input.value = 0; // Set input to 0 visually
 
                 button.disabled = true;
                 const originalIconHTML = button.innerHTML;
@@ -517,8 +547,8 @@ document.addEventListener('DOMContentLoaded', function() {
 
             // Send Single Item to Telegram
             else if (sendSingleItemBtn) {
-                if (!validatePaymentMethod()) return;
-                const selectedPaymentMethod = paymentMethodSelect.value;
+                if (!validatePaymentMethod()) return; // Validate payment method first
+                const selectedPaymentMethod = paymentMethodSelect.value; // Get current value
                 const button = sendSingleItemBtn;
                 const itemId = button.getAttribute('data-item-id');
                 const row = button.closest('tr');
@@ -540,7 +570,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
                 const formattedTimestamp = getFormattedTimestamp();
                 let message = `Request Stock ; ${formattedTimestamp}\n`;
-                message += `Metode Pembayaran : ${selectedPaymentMethod}\n`;
+                message += `Metode Pembayaran : ${selectedPaymentMethod}\n`; // Use current selection
                 message += `\n`;
                 message += `${itemName} - ${requestStockValue} Pcs\n`;
                 message += `\n`;
@@ -615,8 +645,8 @@ document.addEventListener('DOMContentLoaded', function() {
     // Send to Telegram (Main Button)
     if (sendToTelegramBtn) {
         sendToTelegramBtn.addEventListener('click', function() {
-            if (!validatePaymentMethod()) return;
-            const selectedPaymentMethod = paymentMethodSelect.value;
+            if (!validatePaymentMethod()) return; // Validate payment method first
+            const selectedPaymentMethod = paymentMethodSelect.value; // Get current value
             const itemsToRequest = [];
             const checkedCheckboxes = tableBody ? tableBody.querySelectorAll('.item-checkbox:checked') : [];
 
@@ -647,7 +677,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
             const formattedTimestamp = getFormattedTimestamp();
             let message = `Request Stock ; ${formattedTimestamp}\n`;
-            message += `Metode Pembayaran : ${selectedPaymentMethod}\n`;
+            message += `Metode Pembayaran : ${selectedPaymentMethod}\n`; // Use current selection
             message += `\n`;
             itemsToRequest.forEach(item => {
                 message += `${item.name} - ${item.quantity} Pcs\n`;
@@ -680,6 +710,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 Swal.close();
                 if (data.status === 'success') {
                     showSuccess('Berhasil', 'Semua Request Stock berhasil direset ke 0.', 2000);
+                    // Reload page after success
                     setTimeout(() => window.location.reload(), 2000);
                 } else {
                     showError('Error', data.message || 'Terjadi kesalahan saat mereset data');
@@ -723,6 +754,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 stokSaatIniInput.classList.add('is-invalid');
                 isValid = false;
             }
+            // Validate min stock only if not empty
             if (stokMinimum && (isNaN(stokMinimum) || parseInt(stokMinimum) < 0)) {
                  stokMinimumInput.classList.add('is-invalid');
                  isValid = false;
@@ -742,7 +774,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     name: namaBarang,
                     category: kategori,
                     current_stock: parseInt(stokSaatIni),
-                    minimum_stock: parseInt(stokMinimum || 0)
+                    minimum_stock: parseInt(stokMinimum || 0) // Default to 0 if empty
                 })
             })
             .then(response => response.json())
@@ -819,21 +851,6 @@ document.addEventListener('DOMContentLoaded', function() {
              selectAllCheckbox.checked = false;
         }
         updateSendButtonState();
-    }
-
-    // Payment Method Save/Reset Buttons (Functionality removed as not needed/requested)
-    // These buttons are present in HTML but have no JS handlers attached.
-    // If functionality is needed later, add event listeners here.
-    if (savePaymentMethodBtn) {
-        savePaymentMethodBtn.addEventListener('click', () => {
-            showToast('Fungsi Simpan Metode Pembayaran belum diimplementasikan.', 'info');
-        });
-    }
-    if (resetPaymentMethodBtn) {
-        resetPaymentMethodBtn.addEventListener('click', () => {
-            if(paymentMethodSelect) paymentMethodSelect.value = '';
-            showToast('Pilihan Metode Pembayaran direset.', 'info');
-        });
     }
 
     // Initial setup
