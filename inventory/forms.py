@@ -23,7 +23,7 @@ class ExcelUploadForm(forms.Form):
 class WebhookSettingsForm(forms.ModelForm):
     class Meta:
         model = WebhookSettings
-        fields = ['telegram_webhook_url', 'webhook_kelola_stok', 'webhook_transfer_stok', 'webhook_data_exp_produk', 'webhook_kelola_harga', 'webhook_kelola_stok_packing']
+        fields = ['telegram_webhook_url', 'webhook_kelola_stok', 'webhook_transfer_stok', 'webhook_data_exp_produk', 'webhook_kelola_harga', 'webhook_kelola_stok_packing', 'webhook_pesanan_dibatalkan']
         widgets = {
             'telegram_webhook_url': forms.URLInput(attrs={'class': 'form-control', 'placeholder': 'https://example.com/webhook'}),
             'webhook_kelola_stok': forms.URLInput(attrs={'class': 'form-control', 'placeholder': 'https://example.com/webhook/kelola-stok'}),
@@ -31,6 +31,7 @@ class WebhookSettingsForm(forms.ModelForm):
             'webhook_data_exp_produk': forms.URLInput(attrs={'class': 'form-control', 'placeholder': 'https://hooks.zapier.com/hooks/catch/...'}),
             'webhook_kelola_harga': forms.URLInput(attrs={'class': 'form-control', 'placeholder': 'https://hooks.zapier.com/hooks/catch/...'}),
             'webhook_kelola_stok_packing': forms.URLInput(attrs={'class': 'form-control', 'placeholder': 'https://hooks.zapier.com/hooks/catch/...'}),
+            'webhook_pesanan_dibatalkan': forms.URLInput(attrs={'class': 'form-control', 'placeholder': 'https://hooks.zapier.com/hooks/catch/...'}),
         }
 
 class UserProfileForm(forms.ModelForm):

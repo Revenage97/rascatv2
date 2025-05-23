@@ -108,7 +108,7 @@
                     </form>
                     
                     <!-- Kelola Stok Packing Webhook Form -->
-                    <form method="post" action="{% url 'inventory:webhook_settings' %}?type=kelola_stok_packing">
+                    <form method="post" action="{% url 'inventory:webhook_settings' %}?type=kelola_stok_packing" class="mb-4">
                         {% csrf_token %}
                         <div class="mb-3">
                             <label for="{{ form.webhook_kelola_stok_packing.id_for_label }}" class="form-label">URL Webhook Telegram - Kelola Stok Packing</label>
@@ -122,6 +122,30 @@
                             {% if messages %}
                                 {% for message in messages %}
                                     {% if 'kelola_stok_packing' in message.extra_tags %}
+                                        <div class="mt-2 {% if message.tags %}alert alert-{{ message.level_tag }}{% endif %} py-1 px-2 small">
+                                            {{ message }}
+                                        </div>
+                                    {% endif %}
+                                {% endfor %}
+                            {% endif %}
+                        </div>
+                    </form>
+                    
+                    <!-- Pesanan Dibatalkan Webhook Form -->
+                    <form method="post" action="{% url 'inventory:webhook_settings' %}?type=pesanan_dibatalkan">
+                        {% csrf_token %}
+                        <div class="mb-3">
+                            <label for="{{ form.webhook_pesanan_dibatalkan.id_for_label }}" class="form-label">URL Webhook Telegram - Pesanan Dibatalkan</label>
+                            <div class="input-group">
+                                {{ form.webhook_pesanan_dibatalkan }}
+                                <button type="submit" class="btn btn-primary">
+                                    <i class="bi bi-save"></i> Simpan
+                                </button>
+                            </div>
+                            <div class="form-text">Contoh: https://hooks.zapier.com/hooks/catch/...</div>
+                            {% if messages %}
+                                {% for message in messages %}
+                                    {% if 'pesanan_dibatalkan' in message.extra_tags %}
                                         <div class="mt-2 {% if message.tags %}alert alert-{{ message.level_tag }}{% endif %} py-1 px-2 small">
                                             {{ message }}
                                         </div>

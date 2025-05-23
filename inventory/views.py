@@ -322,6 +322,8 @@ def webhook_settings(request):
                 field_to_update = "webhook_kelola_harga"
             elif webhook_type == "kelola_stok_packing":
                 field_to_update = "webhook_kelola_stok_packing"
+            elif webhook_type == "pesanan_dibatalkan":
+                field_to_update = "webhook_pesanan_dibatalkan"
             
             if field_to_update:
                 # Only update the specific field
