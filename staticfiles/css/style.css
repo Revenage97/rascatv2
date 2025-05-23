@@ -1,0 +1,176 @@
+/* Custom CSS for Stock Management Dashboard */
+
+/* Sidebar styles */
+.sidebar {
+    min-height: 100vh;
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+}
+
+.sidebar .nav-link {
+    color: rgba(255, 255, 255, 0.8);
+    padding: 0.75rem 1rem;
+    border-radius: 0.25rem;
+    margin-bottom: 0.25rem;
+}
+
+.sidebar .nav-link:hover {
+    color: #fff;
+    background-color: rgba(255, 255, 255, 0.1);
+}
+
+.sidebar .nav-link.active {
+    color: #fff;
+    background-color: #0d6efd;
+}
+
+.sidebar .nav-link i {
+    margin-right: 0.5rem;
+}
+
+/* Dropdown menu styles */
+.sidebar .dropdown-toggle::after {
+    float: right;
+    margin-top: 8px;
+}
+
+.sidebar .dropdown-menu {
+    position: static !important;
+    margin: 0;
+    padding: 0;
+    width: 100%;
+    border: none;
+    border-radius: 0;
+    box-shadow: none;
+    background-color: transparent;
+}
+
+.sidebar .dropdown-item {
+    padding: 0.75rem 1rem 0.75rem 2.5rem;
+    color: rgba(255, 255, 255, 0.8);
+    border-radius: 0.25rem;
+    margin-bottom: 0.25rem;
+}
+
+.sidebar .dropdown-item:hover {
+    color: #fff;
+    background-color: rgba(255, 255, 255, 0.1);
+}
+
+.sidebar .dropdown-item.active {
+    color: #fff;
+    background-color: #0d6efd;
+}
+
+.sidebar .dropdown-menu.show {
+    display: block;
+}
+
+.sidebar .dropdown-toggle[aria-expanded="true"] {
+    color: #fff;
+    background-color: rgba(255, 255, 255, 0.1);
+}
+
+.sidebar .submenu-icon {
+    margin-right: 0.5rem;
+}
+
+/* Main content area */
+main {
+    padding-top: 1.5rem;
+}
+
+/* Table styles */
+.table th {
+    background-color: #f8f9fa;
+    font-weight: 600;
+}
+
+/* Card styles */
+.card {
+    box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+    margin-bottom: 1.5rem;
+}
+
+.card-header {
+    background-color: #f8f9fa;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.125);
+}
+
+/* Form styles */
+.form-control:focus {
+    border-color: #0d6efd;
+    box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25);
+}
+
+/* Button styles */
+.btn-telegram {
+    background-color: #0088cc;
+    border-color: #0088cc;
+    color: white;
+}
+
+.btn-telegram:hover {
+    background-color: #006699;
+    border-color: #006699;
+    color: white;
+}
+
+/* Login page styles */
+.login-card {
+    max-width: 400px;
+    margin: 0 auto;
+}
+
+/* Responsive adjustments */
+@media (max-width: 767.98px) {
+    .sidebar {
+        position: fixed;
+        top: 0;
+        bottom: 0;
+        left: 0;
+        z-index: 100;
+        padding: 0;
+        box-shadow: inset -1px 0 0 rgba(0, 0, 0, .1);
+        transform: translateX(-100%);
+        transition: transform .35s ease-out;
+    }
+    
+    .sidebar.show {
+        transform: translateX(0);
+    }
+    
+    .sidebar-toggle {
+        display: block !important;
+    }
+}
+
+@media (min-width: 768px) {
+    .sidebar-toggle {
+        display: none !important;
+    }
+}
+
+/* Toast notification styles */
+.toast {
+    opacity: 1 !important;
+}
+
+/* Highlight low stock items */
+.low-stock {
+    background-color: #fff3cd;
+}
+
+/* Custom checkbox styles */
+.form-check-input:checked {
+    background-color: #0d6efd;
+    border-color: #0d6efd;
+}
+
+/* Collapsible arrow icons */
+.collapse-icon {
+    transition: transform 0.3s;
+}
+
+.collapsed .collapse-icon {
+    transform: rotate(-90deg);
+}

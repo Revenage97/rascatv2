@@ -76,6 +76,7 @@
                             <th>Produk</th>
                             <th class="text-center">Jumlah</th>
                             <th>Alasan Pembatalan</th>
+                            <th class="text-center">Aksi</th> {# Added Aksi column #}
                         </tr>
                     </thead>
                     <tbody>
@@ -88,6 +89,14 @@
                             <td>{{ order.product_name|default:"-" }}</td>
                             <td class="text-center">{{ order.quantity }}</td>
                             <td>{{ order.cancellation_reason|default:"-" }}</td>
+                            <td class="text-center">
+                                <form method="POST" action="{% url 'send_cancelled_order_telegram' order.id %}" style="display: inline;">
+                                    {% csrf_token %}
+                                    <button type="submit" class="btn btn-info btn-sm" title="Kirim ke Telegram">
+                                        <i class="bi bi-telegram"></i>
+                                    </button>
+                                </form>
+                            </td>
                         </tr>
                         {% empty %}
                         {# Empty state row #}

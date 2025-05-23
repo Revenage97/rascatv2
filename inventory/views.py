@@ -691,3 +691,85 @@ def pesanan_dibatalkan(request):
     context = {"cancelled_orders": cancelled_orders}
     return render(request, "inventory/pesanan_dibatalkan.html", context)
 
+
+
+
+@login_required
+@user_passes_test(lambda u: is_admin(u) or is_staff_gudang(u), login_url="/dashboard/")
+def send_cancelled_order_telegram(request, order_id):
+    """
+    Sends the details of a specific cancelled order to the configured Telegram webhook.
+    """
+    order = get_object_or_404(CancelledOrder, pk=order_id)
+    webhook_settings = WebhookSettings.objects.first() # Assuming only one settings object
+
+    if not webhook_settings or not webhook_settings.webhook_pesanan_dibatalkan:
+        messages.error(request, "URL Webhook Telegram untuk Pesanan Dibatalkan belum diatur.")
+        return redirect("inventory:pesanan_dibatalkan")
+
+    if request.method == "POST":
+        try:
+            # Format data as a dictionary
+            data_to_send = {
+                "Nomor Pesanan": order.order_number,
+                "Tanggal Pemesanan": order.order_date.strftime("%Y-%m-%d") if order.order_date else None,
+                "Tanggal Pembatalan": order.cancellation_date.strftime("%Y-%m-%d") if order.cancellation_date else None,
+                "Produk": order.product_name or "-",
+                "Jumlah": order.quantity,
+                "Alasan Pembatalan": order.cancellation_reason or "-",
+                "Dikirim Oleh": request.user.username
+            }
+            
+            # Convert dictionary to a nicely formatted JSON string for the message body
+            # Using indent for readability in Telegram message
+            json_string_payload = json.dumps(data_to_send, indent=2, ensure_ascii=False)
+            
+            # Prepare the message text
+            message_text = f"🔔 Pesanan Dibatalkan Baru Telah Dikirim:\n```json\n{json_string_payload}\n```"
+            
+            # Send to webhook (assuming simple text payload is sufficient for most webhooks like Zapier/Make)
+            # If the webhook expects a specific JSON structure, adjust the payload accordingly.
+            # For many simple webhooks, sending a dictionary with a 'text' key works.
+            webhook_payload = {"text": message_text} 
+            
+            import requests # Import requests library
+            response = requests.post(webhook_settings.webhook_pesanan_dibatalkan, json=webhook_payload)
+            response.raise_for_status() # Raise an exception for bad status codes (4xx or 5xx)
+
+            messages.success(request, f"Data pesanan dibatalkan ({order.order_number}) berhasil dikirim ke Telegram.")
+            # Log activity
+            ActivityLog.objects.create(
+                user=request.user,
+                action="send_cancelled_telegram",
+                status="success",
+                notes=f"Sent cancelled order {order.order_number} to Telegram webhook."
+            )
+
+        except requests.exceptions.RequestException as e:
+            logger.error(f"Error sending cancelled order {order.id} to Telegram: {e}")
+            messages.error(request, f"Gagal mengirim data ke Telegram: {e}")
+            # Log error
+            ActivityLog.objects.create(
+                user=request.user,
+                action="send_cancelled_telegram_failed",
+                status="failed",
+                notes=f"Failed to send cancelled order {order.order_number} to Telegram. Error: {e}"
+            )
+        except Exception as e:
+            logger.error(f"Unexpected error sending cancelled order {order.id} to Telegram: {e}")
+            logger.error(traceback.format_exc())
+            messages.error(request, f"Terjadi kesalahan tidak terduga: {e}")
+            # Log error
+            ActivityLog.objects.create(
+                user=request.user,
+                action="send_cancelled_telegram_failed",
+                status="failed",
+                notes=f"Failed to send cancelled order {order.order_number} to Telegram. Unexpected Error: {e}"
+            )
+            
+        return redirect("inventory:pesanan_dibatalkan")
+    else:
+        # If accessed via GET, just redirect back
+        return redirect("inventory:pesanan_dibatalkan")
+
+
