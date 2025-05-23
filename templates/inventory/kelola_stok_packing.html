@@ -55,8 +55,7 @@
     </div>
     {% endif %}
 
-    <!-- Payment Method Selection - Only visible to admin users - Moved to toolbar -->
-
+    <!-- Toolbar -->
     <div class="card mb-3">
         <div class="card-body">
             <div class="row align-items-center">
@@ -72,20 +71,13 @@
                                 <option value="SHOPEE PAY">SHOPEE PAY</option>
                             </select>
                         </div>
-                        <div class="d-flex">
-                            <button type="button" id="savePaymentMethod" class="btn btn-primary me-2">
-                                <i class="bi bi-save"></i> <span class="d-none d-sm-inline">Simpan</span>
-                            </button>
-                            <button type="button" id="resetPaymentMethod" class="btn btn-outline-secondary">
-                                <i class="bi bi-arrow-counterclockwise"></i> <span class="d-none d-sm-inline">Reset</span>
-                            </button>
-                        </div>
+                        <!-- Removed Save/Reset buttons for payment method as they are not needed -->
                     </div>
                     {% endif %}
                 </div>
                 <div class="col-lg-6">
                     <div class="d-flex flex-wrap justify-content-lg-end">
-                        <button id="sendToTelegramBtn" class="btn btn-info me-2 mb-2 mb-sm-0">
+                        <button id="sendToTelegramBtn" class="btn btn-info me-2 mb-2 mb-sm-0" disabled>
                             <i class="bi bi-telegram"></i> Kirim ke Telegram
                         </button>
                         <div class="btn-group me-2 mb-2 mb-sm-0">
@@ -115,6 +107,7 @@
         </div>
     </div>
     
+    <!-- Table -->
     <div class="card">
         <div class="card-body">
             <div class="table-responsive">
@@ -187,82 +180,20 @@
     </div>
 </div>
 
-<!-- Modal Edit Item -->
-<div class="modal fade" id="editItemModal" tabindex="-1" aria-labelledby="editItemModalLabel" aria-hidden="true">
+<!-- Modal Konfirmasi Reset Data -->
+<div class="modal fade" id="resetDataModal" tabindex="-1" aria-labelledby="resetDataModalLabel" aria-hidden="true">
     <div class="modal-dialog">
         <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title" id="editItemModalLabel">Edit Item</h5>
+                <h5 class="modal-title" id="resetDataModalLabel">Konfirmasi Reset Data</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body">
-                <form id="editItemForm">
-                    <input type="hidden" id="editItemId">
-                    <div class="mb-3">
-                        <label for="editCode" class="form-label">Kode Barang</label>
-                        <input type="text" class="form-control" id="editCode" required>
-                    </div>
-                    <div class="mb-3">
-                        <label for="editName" class="form-label">Nama Barang</label>
-                        <input type="text" class="form-control" id="editName" required>
-                    </div>
-                    <div class="mb-3">
-                        <label for="editCategory" class="form-label">Kategori</label>
-                        <input type="text" class="form-control" id="editCategory" required>
-                    </div>
-                    <div class="mb-3">
-                        <label for="editStock" class="form-label">Stok Saat Ini</label>
-                        <input type="number" class="form-control" id="editStock" required min="0">
-                    </div>
-                    <div class="mb-3">
-                        <label for="editMinStock" class="form-label">Request Stock</label>
-                        <input type="number" class="form-control" id="editMinStock" required min="0">
-                    </div>
-                </form>
+                Apakah Anda yakin ingin mereset semua data Request Stock menjadi 0?
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
-                <button type="button" class="btn btn-primary" id="saveItemChanges">Simpan</button>
-            </div>
-        </div>
-    </div>
-</div>
-
-<!-- Modal Add Item -->
-<div class="modal fade" id="addItemModal" tabindex="-1" aria-labelledby="addItemModalLabel" aria-hidden="true">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="addItemModalLabel">Tambah Item Baru</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <div class="modal-body">
-                <form id="addItemForm">
-                    <div class="mb-3">
-                        <label for="addCode" class="form-label">Kode Barang</label>
-                        <input type="text" class="form-control" id="addCode" required>
-                    </div>
-                    <div class="mb-3">
-                        <label for="addName" class="form-label">Nama Barang</label>
-                        <input type="text" class="form-control" id="addName" required>
-                    </div>
-                    <div class="mb-3">
-                        <label for="addCategory" class="form-label">Kategori</label>
-                        <input type="text" class="form-control" id="addCategory" required>
-                    </div>
-                    <div class="mb-3">
-                        <label for="addStock" class="form-label">Stok Saat Ini</label>
-                        <input type="number" class="form-control" id="addStock" required min="0" value="0">
-                    </div>
-                    <div class="mb-3">
-                        <label for="addMinStock" class="form-label">Request Stock</label>
-                        <input type="number" class="form-control" id="addMinStock" required min="0" value="0">
-                    </div>
-                </form>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
-                <button type="button" class="btn btn-primary" id="saveNewItem">Simpan</button>
+                <button type="button" class="btn btn-danger" id="confirmResetData">Ya, Reset</button>
             </div>
         </div>
     </div>
@@ -281,1100 +212,628 @@
     </div>
 </div>
 
-<!-- Modal Konfirmasi Reset Data -->
-<div class="modal fade" id="resetDataModal" tabindex="-1" aria-labelledby="resetDataModalLabel" aria-hidden="true">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="resetDataModalLabel">Konfirmasi Reset Data</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <div class="modal-body">
-                <div class="alert alert-danger">
-                    <i class="bi bi-exclamation-triangle-fill me-2"></i>
-                    Apakah Anda yakin ingin menghapus semua data stok packing? Tindakan ini hanya akan menghapus data di halaman Kelola Stok Packing dan tidak bisa dibatalkan.
-                </div>
-                <p class="text-muted">Data di halaman lain tidak akan terpengaruh oleh tindakan ini.</p>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
-                <button type="button" class="btn btn-danger" id="confirmResetData">Hapus Semua Data</button>
-            </div>
-        </div>
-    </div>
-</div>
 {% endblock %}
 
-{% block extra_js %}
-<!-- SweetAlert2 CDN -->
-<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-
+{% block scripts %}
 <script>
-    document.addEventListener('DOMContentLoaded', function() {
-        // Get CSRF token
-        const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
-        const sendToTelegramBtn = document.getElementById('sendToTelegramBtn');
-        const resetDataBtn = document.getElementById('resetDataBtn');
-        const resetDataModal = new bootstrap.Modal(document.getElementById('resetDataModal'));
-        const confirmResetDataBtn = document.getElementById('confirmResetData');
-        const toastEl = document.getElementById('notificationToast');
-        const toast = new bootstrap.Toast(toastEl);
-        const toastMessage = document.getElementById('toastMessage');
-        
-        // Payment Method elements
-        const paymentMethodSelect = document.getElementById('paymentMethod');
-        const savePaymentMethodBtn = document.getElementById('savePaymentMethod');
-        const resetPaymentMethodBtn = document.getElementById('resetPaymentMethod');
-        
-        // Load saved payment method from localStorage if exists
-        const savedPaymentMethod = localStorage.getItem('packingPaymentMethod');
-        if (savedPaymentMethod) {
-            paymentMethodSelect.value = savedPaymentMethod;
+document.addEventListener('DOMContentLoaded', function() {
+    const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+    const sendToTelegramBtn = document.getElementById('sendToTelegramBtn');
+    const resetDataBtn = document.getElementById('resetDataBtn');
+    const resetDataModal = new bootstrap.Modal(document.getElementById('resetDataModal'));
+    const confirmResetDataBtn = document.getElementById('confirmResetData');
+    const toastEl = document.getElementById('notificationToast');
+    const toastMessage = document.getElementById('toastMessage');
+    const toast = new bootstrap.Toast(toastEl);
+    const paymentMethodSelect = document.getElementById("paymentMethod");
+
+    // --- Helper Functions ---
+    function showToast(message, type = 'success') {
+        toastMessage.textContent = message;
+        toastEl.classList.remove('bg-success', 'bg-danger', 'bg-warning');
+        if (type === 'success') {
+            toastEl.classList.add('bg-success', 'text-white');
+        } else if (type === 'danger') {
+            toastEl.classList.add('bg-danger', 'text-white');
+        } else if (type === 'warning') {
+            toastEl.classList.add('bg-warning', 'text-dark');
         }
-        
-        // Payment Method Save button
-        savePaymentMethodBtn.addEventListener('click', function() {
-            const selectedMethod = paymentMethodSelect.value;
-            if (!selectedMethod) {
-                Swal.fire({
-                    icon: 'warning',
-                    title: 'Perhatian',
-                    text: 'Silakan pilih metode pembayaran terlebih dahulu',
-                    confirmButtonColor: '#3085d6'
-                });
-                return;
+        toast.show();
+    }
+
+    function showLoading(title = 'Memproses...', text = 'Mohon tunggu sebentar') {
+        Swal.fire({
+            title: title,
+            text: text,
+            allowOutsideClick: false,
+            didOpen: () => {
+                Swal.showLoading();
             }
-            
-            // Save to localStorage
-            localStorage.setItem('packingPaymentMethod', selectedMethod);
-            
-            Swal.fire({
-                icon: 'success',
-                title: 'Berhasil',
-                text: 'Metode pembayaran berhasil disimpan',
-                confirmButtonColor: '#3085d6'
+        });
+    }
+
+    function showSuccess(title, text, timer = 1500) {
+        Swal.fire({
+            icon: 'success',
+            title: title,
+            text: text,
+            timer: timer,
+            showConfirmButton: false
+        });
+    }
+
+    function showError(title, text) {
+        Swal.fire({
+            icon: 'error',
+            title: title,
+            text: text,
+            confirmButtonColor: '#3085d6'
+        });
+    }
+
+    function showWarning(title, text) {
+        Swal.fire({
+            icon: 'warning',
+            title: title,
+            text: text,
+            confirmButtonColor: '#3085d6'
+        });
+    }
+
+    function validatePaymentMethod() {
+        if (paymentMethodSelect && !paymentMethodSelect.value) {
+            showWarning("Perhatian", "Anda harus memilih metode pembayaran terlebih dahulu");
+            return false;
+        }
+        return true;
+    }
+
+    function getFormattedTimestamp() {
+        const now = new Date();
+        const optionsDate = { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'Asia/Jakarta' };
+        const optionsTime = { hour: '2-digit', minute: '2-digit', hour12: false, timeZone: 'Asia/Jakarta' };
+        const jakartaDate = now.toLocaleDateString('id-ID', optionsDate);
+        const jakartaTime = now.toLocaleTimeString('id-ID', optionsTime).replace('.', ':'); // Ensure HH:MM format
+        return `${jakartaTime} - ${jakartaDate}`;
+    }
+
+    function sendTelegramMessage(message) {
+        showLoading('Mengirim notifikasi...');
+        fetch('/api/send-packing-to-telegram/', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json', // Send as JSON
+                'X-CSRFToken': csrfToken
+            },
+            body: JSON.stringify({ text: message }) // Wrap message in JSON
+        })
+        .then(response => response.json())
+        .then(data => {
+            Swal.close();
+            if (data.status === 'success') {
+                showSuccess('Berhasil', 'Notifikasi berhasil dikirim ke Telegram');
+            } else {
+                showError('Gagal', data.message || 'Gagal mengirim notifikasi ke Telegram');
+            }
+        })
+        .catch(error => {
+            console.error('Error sending Telegram message:', error);
+            Swal.close();
+            showError('Gagal', 'Terjadi kesalahan saat mengirim notifikasi ke Telegram');
+        });
+    }
+
+    // --- Event Listeners ---
+
+    // Select All Checkbox
+    const selectAllCheckbox = document.getElementById('selectAll');
+    if (selectAllCheckbox) {
+        selectAllCheckbox.addEventListener('change', function() {
+            const isChecked = this.checked;
+            document.querySelectorAll('.item-checkbox').forEach(checkbox => {
+                checkbox.checked = isChecked;
             });
+            updateSendButtonState();
         });
-        
-        // Payment Method Reset button
-        resetPaymentMethodBtn.addEventListener('click', function() {
-            // Reset dropdown to default
-            paymentMethodSelect.value = '';
-            
-            // Remove from localStorage
-            localStorage.removeItem('packingPaymentMethod');
-            
-            Swal.fire({
-                icon: 'info',
-                title: 'Reset',
-                text: 'Metode pembayaran telah direset',
-                confirmButtonColor: '#3085d6'
-            });
-        });
-        
-        // Inline editing functionality
-        document.addEventListener('click', function(e) {
-            // Check if clicked element is an editable cell
-            if (e.target && e.target.classList.contains('editable-cell')) {
-                const cell = e.target;
-                const field = cell.getAttribute('data-field');
-                const itemId = cell.getAttribute('data-item-id');
-                const currentValue = cell.textContent.trim();
-                
-                // Don't create a new input if already editing
-                if (cell.querySelector('input')) return;
-                
-                // Store original content for cancel operation
-                cell.setAttribute('data-original', currentValue);
-                
-                // Create input field based on field type
-                let inputType = 'text';
-                let inputAttributes = '';
-                
-                if (field === 'current_stock') {
-                    inputType = 'number';
-                    inputAttributes = 'min="0"';
-                }
-                
-                // Replace cell content with input field and buttons
-                cell.innerHTML = `
-                    <div class="d-flex">
-                        <input type="${inputType}" class="form-control form-control-sm me-1" value="${currentValue}" ${inputAttributes}>
-                        <div class="btn-group btn-group-sm">
-                            <button class="btn btn-success save-inline-edit" title="Simpan">
-                                <i class="bi bi-check"></i>
-                            </button>
-                            <button class="btn btn-danger cancel-inline-edit" title="Batal">
-                                <i class="bi bi-x"></i>
-                            </button>
-                        </div>
-                    </div>
-                `;
-                
-                // Focus the input
-                const input = cell.querySelector('input');
-                input.focus();
-                
-                // Select all text in the input
-                input.select();
-                
-                // Prevent clicks inside the cell from bubbling up
-                cell.addEventListener('click', function(event) {
-                    event.stopPropagation();
-                });
-                
-                // Handle Enter key press
-                input.addEventListener('keydown', function(event) {
-                    if (event.key === 'Enter') {
-                        saveInlineEdit(cell, field, itemId);
-                    } else if (event.key === 'Escape') {
-                        cancelInlineEdit(cell);
-                    }
-                });
+    }
+
+    // Individual Item Checkbox
+    document.addEventListener('change', function(e) {
+        if (e.target && e.target.classList.contains('item-checkbox')) {
+            updateSendButtonState();
+            // Update selectAll state
+            const allCheckboxes = document.querySelectorAll('.item-checkbox');
+            const checkedCheckboxes = document.querySelectorAll('.item-checkbox:checked');
+            if (selectAllCheckbox) {
+                selectAllCheckbox.checked = allCheckboxes.length > 0 && allCheckboxes.length === checkedCheckboxes.length;
             }
-            
-            // Handle save button click
-            if (e.target && (e.target.classList.contains('save-inline-edit') || 
-                (e.target.parentElement && e.target.parentElement.classList.contains('save-inline-edit')))) {
-                const button = e.target.classList.contains('save-inline-edit') ? e.target : e.target.parentElement;
-                const cell = button.closest('.editable-cell');
-                const field = cell.getAttribute('data-field');
-                const itemId = cell.getAttribute('data-item-id');
-                
-                saveInlineEdit(cell, field, itemId);
-                e.stopPropagation();
-            }
-            
-            // Handle cancel button click
-            if (e.target && (e.target.classList.contains('cancel-inline-edit') || 
-                (e.target.parentElement && e.target.parentElement.classList.contains('cancel-inline-edit')))) {
-                const button = e.target.classList.contains('cancel-inline-edit') ? e.target : e.target.parentElement;
-                const cell = button.closest('.editable-cell');
-                
-                cancelInlineEdit(cell);
-                e.stopPropagation();
-            }
-        });
-        
-        // Function to save inline edit
-        function saveInlineEdit(cell, field, itemId) {
-            const input = cell.querySelector('input');
-            const newValue = input.value.trim();
-            const originalValue = cell.getAttribute('data-original');
-            
-            // Validate input
-            if (!newValue) {
-                Swal.fire({
-                    icon: 'error',
-                    title: 'Error',
-                    text: 'Nilai tidak boleh kosong',
-                    timer: 1500,
-                    showConfirmButton: false
-                });
-                input.focus();
+        }
+    });
+
+    // Update Send Button State (Enable/Disable)
+    function updateSendButtonState() {
+        const checkedItems = document.querySelectorAll('.item-checkbox:checked');
+        if (sendToTelegramBtn) {
+            sendToTelegramBtn.disabled = checkedItems.length === 0;
+        }
+    }
+    // Initial state check
+    updateSendButtonState(); 
+
+    // Save Current Stock
+    document.addEventListener('click', function(e) {
+        const button = e.target.closest('.save-current-stock');
+        if (button) {
+            const itemId = button.getAttribute('data-item-id');
+            const input = document.querySelector(`.current-stock-input[data-item-id="${itemId}"]`);
+            const currentStock = input.value;
+
+            if (currentStock === '' || isNaN(currentStock) || parseInt(currentStock) < 0) {
+                showWarning('Error', 'Stok Saat Ini harus berupa angka positif');
                 return;
             }
-            
-            // If value hasn't changed, just cancel
-            if (newValue === originalValue) {
-                cancelInlineEdit(cell);
-                return;
-            }
-            
-            // Show loading indicator
-            cell.innerHTML = `<div class="text-center"><div class="spinner-border spinner-border-sm text-primary" role="status"></div></div>`;
-            
-            // Prepare data for API call
-            const data = {
-                item_id: itemId
-            };
-            data[field] = field === 'current_stock' ? parseInt(newValue) : newValue;
-            
-            // Make API call to update the field
+
+            button.disabled = true;
+            button.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>';
+
             fetch('/api/update-packing-item/', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                     'X-CSRFToken': csrfToken
                 },
-                body: JSON.stringify(data)
+                body: JSON.stringify({ item_id: itemId, current_stock: parseInt(currentStock) })
             })
             .then(response => response.json())
             .then(data => {
                 if (data.status === 'success') {
-                    // Update cell with new value
-                    cell.textContent = newValue;
-                    
-                    // Show success notification
-                    Swal.fire({
-                        icon: 'success',
-                        title: 'Berhasil',
-                        text: 'Data berhasil diperbarui',
-                        timer: 1500,
-                        showConfirmButton: false
-                    });
-                    
-                    // No longer applying table-danger class to maintain neutral background
-                    if (field === 'current_stock') {
-                        const row = cell.closest('tr');
-                        // Keeping neutral background regardless of stock level
-                    }
+                    showSuccess('Berhasil', 'Stok Saat Ini berhasil diperbarui');
                 } else {
-                    // Restore original content and show error
-                    cell.textContent = originalValue;
-                    
-                    Swal.fire({
-                        icon: 'error',
-                        title: 'Error',
-                        text: data.message || 'Gagal memperbarui data',
-                        timer: 2000,
-                        showConfirmButton: false
-                    });
+                    showError('Error', data.message || 'Gagal memperbarui Stok Saat Ini');
                 }
             })
             .catch(error => {
-                console.error('Error:', error);
-                
-                // Restore original content and show error
-                cell.textContent = originalValue;
-                
-                Swal.fire({
-                    icon: 'error',
-                    title: 'Error',
-                    text: 'Terjadi kesalahan saat menghubungi server',
-                    timer: 2000,
-                    showConfirmButton: false
-                });
+                console.error('Error updating current stock:', error);
+                showError('Error', 'Terjadi kesalahan saat menghubungi server');
+            })
+            .finally(() => {
+                button.disabled = false;
+                button.innerHTML = '<i class="bi bi-save"></i>';
             });
         }
-        
-        // Function to cancel inline edit
-        function cancelInlineEdit(cell) {
-            const originalValue = cell.getAttribute('data-original');
-            cell.textContent = originalValue;
-        }
-        
-        // Manual Input Form Handling
-        const manualInputForm = document.getElementById('manualInputForm');
-        const btnSimpanManual = document.getElementById('btnSimpanManual');
-        
-        if (btnSimpanManual) {
-            btnSimpanManual.addEventListener('click', function() {
-                // Validate form
-                const kodeBarang = document.getElementById('inputKodeBarang').value.trim();
-                const namaBarang = document.getElementById('inputNamaBarang').value.trim();
-                const kategori = document.getElementById('inputKategori').value.trim();
-                const stokSaatIni = document.getElementById('inputStokSaatIni').value;
-                const stokMinimum = document.getElementById('inputStokMinimum').value;
-                
-                // Reset validation state
-                manualInputForm.querySelectorAll('.is-invalid').forEach(el => {
-                    el.classList.remove('is-invalid');
-                });
-                
-                // Validate required fields
-                let isValid = true;
-                
-                if (!kodeBarang) {
-                    document.getElementById('inputKodeBarang').classList.add('is-invalid');
-                    isValid = false;
-                }
-                
-                if (!namaBarang) {
-                    document.getElementById('inputNamaBarang').classList.add('is-invalid');
-                    isValid = false;
-                }
-                
-                if (!stokSaatIni || isNaN(stokSaatIni) || parseInt(stokSaatIni) < 0) {
-                    document.getElementById('inputStokSaatIni').classList.add('is-invalid');
-                    isValid = false;
-                }
-                
-                if (!isValid) {
-                    return;
-                }
-                
-                // Show loading
-                Swal.fire({
-                    title: 'Menyimpan data...',
-                    text: 'Mohon tunggu sebentar',
-                    allowOutsideClick: false,
-                    didOpen: () => {
-                        Swal.showLoading();
-                    }
-                });
-                
-                // Send data to server
-                fetch('/api/create-packing-item/', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRFToken': csrfToken
-                    },
-                    body: JSON.stringify({
-                        code: kodeBarang,
-                        name: namaBarang,
-                        category: kategori,
-                        current_stock: parseInt(stokSaatIni),
-                        minimum_stock: parseInt(stokMinimum)
-                    })
-                })
-                .then(response => response.json())
-                .then(data => {
-                    Swal.close();
-                    
-                    if (data.status === 'success') {
-                        // Show success message
-                        Swal.fire({
-                            icon: 'success',
-                            title: 'Berhasil',
-                            text: 'Data berhasil disimpan',
-                            timer: 1500,
-                            showConfirmButton: false
-                        });
-                        
-                        // Add new row to table
-                        addNewRowToTable(data.item);
-                        
-                        // Reset form
-                        manualInputForm.reset();
-                    } else {
-                        // Show error message
-                        Swal.fire({
-                            icon: 'error',
-                            title: 'Gagal',
-                            text: data.message || 'Terjadi kesalahan saat menyimpan data',
-                            confirmButtonColor: '#3085d6'
-                        });
-                    }
-                })
-                .catch(error => {
-                    console.error('Error:', error);
-                    Swal.close();
-                    
-                    // Show error message
-                    Swal.fire({
-                        icon: 'error',
-                        title: 'Gagal',
-                        text: 'Terjadi kesalahan saat menghubungi server',
-                        confirmButtonColor: '#3085d6'
-                    });
-                });
-            });
-        }
-        
-        // Function to add new row to table
-        function addNewRowToTable(item) {
-            const tableBody = document.querySelector('table tbody');
-            
-            // Check if "no data" row exists and remove it
-            const noDataRow = tableBody.querySelector('tr td[colspan]');
-            if (noDataRow) {
-                noDataRow.closest('tr').remove();
-            }
-            
-            // Create new row
-            const newRow = document.createElement('tr');
-            
-            // Create row content
-            newRow.innerHTML = `
-                <td class="text-center">
-                    <div class="form-check">
-                        <input class="form-check-input item-checkbox" type="checkbox" value="${item.id}" id="item${item.id}">
-                    </div>
-                </td>
-                <td>${item.code}</td>
-                <td>${item.name}</td>
-                <td>${item.category}</td>
-                <td class="text-center">${item.current_stock}</td>
-                <td class="text-center">
-                    <div class="input-group input-group-sm">
-                        <input type="number" class="form-control form-control-sm min-stock-input" 
-                               data-item-id="${item.id}" value="${item.minimum_stock}" min="0">
-                        <button class="btn btn-outline-secondary save-min-stock" type="button" data-item-id="${item.id}">
-                            <i class="bi bi-save"></i>
-                        </button>
-                        <button class="btn btn-outline-danger delete-min-stock" type="button" data-item-id="${item.id}">
-                            <i class="bi bi-x"></i>
-                        </button>
-                    </div>
-                </td>
-                <td class="text-center">
-                    <button type="button" class="btn btn-sm btn-info send-single-item" data-item-id="${item.id}">
-                        <i class="bi bi-telegram"></i>
-                    </button>
-                </td>
-            `;
-            
-            // Add row to table
-            tableBody.prepend(newRow);
-            
-            // Re-initialize event listeners for the new row
-            setupSelectAll();
-            
-            // Highlight the new row temporarily
-            newRow.classList.add('bg-light');
-            setTimeout(() => {
-                newRow.classList.remove('bg-light');
-            }, 3000);
-        }
-        
-        // Completely rewritten Select All functionality
-        function setupSelectAll() {
-            const selectAllCheckbox = document.getElementById('selectAll');
-            if (!selectAllCheckbox) return;
-            
-            // Remove any existing event listeners by cloning and replacing
-            const newSelectAll = selectAllCheckbox.cloneNode(true);
-            selectAllCheckbox.parentNode.replaceChild(newSelectAll, selectAllCheckbox);
-            
-            // Add new event listener
-            newSelectAll.addEventListener('change', function() {
-                const isChecked = this.checked;
-                console.log('Select All clicked, setting all checkboxes to:', isChecked);
-                
-                const checkboxes = document.querySelectorAll('.item-checkbox');
-                checkboxes.forEach(function(checkbox) {
-                    checkbox.checked = isChecked;
-                });
-                
-                updateSendButtonState();
-            });
-        }
-        
-        // Setup select all on page load
-        setupSelectAll();
-        
-        // Individual checkbox change
-        document.addEventListener('change', function(e) {
-            if (e.target && e.target.classList.contains('item-checkbox')) {
-                updateSendButtonState();
-                
-                // Check if all checkboxes are checked and update selectAll accordingly
-                const allCheckboxes = document.querySelectorAll('.item-checkbox');
-                const checkedCheckboxes = document.querySelectorAll('.item-checkbox:checked');
-                const selectAllCheckbox = document.getElementById('selectAll');
-                
-                if (selectAllCheckbox) {
-                    selectAllCheckbox.checked = allCheckboxes.length === checkedCheckboxes.length;
-                }
-            }
-        });
-        
-        // Update send button state
-        function updateSendButtonState() {
-            const checkedItems = document.querySelectorAll('.item-checkbox:checked');
-            if (sendToTelegramBtn) {
-                sendToTelegramBtn.disabled = checkedItems.length === 0;
-            }
-        }
-        
-        // Reset Data button click handler
-        if (resetDataBtn) {
-            resetDataBtn.addEventListener('click', function() {
-                resetDataModal.show();
-            });
-        }
-        
-        // Confirm Reset Data button click handler
-        if (confirmResetDataBtn) {
-            confirmResetDataBtn.addEventListener('click', function() {
-                // Make API call to reset all items
-                fetch('/api/reset-all-packing-items/', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRFToken': csrfToken
-                    }
-                })
-                .then(response => response.json())
-                .then(data => {
-                    resetDataModal.hide();
-                    
-                    if (data.status === 'success') {
-                        Swal.fire({
-                            icon: 'success',
-                            title: 'Berhasil',
-                            text: data.message,
-                            confirmButtonColor: '#3085d6'
-                        }).then(() => {
-                            // Reload page to show updated data
-                            window.location.reload();
-                        });
-                    } else {
-                        Swal.fire({
-                            icon: 'error',
-                            title: 'Error',
-                            text: data.message || 'Terjadi kesalahan saat menghapus data',
-                            confirmButtonColor: '#3085d6'
-                        });
-                    }
-                })
-                .catch(error => {
-                    resetDataModal.hide();
-                    Swal.fire({
-                        icon: 'error',
-                        title: 'Error',
-                        text: 'Terjadi kesalahan saat menghubungi server',
-                        confirmButtonColor: '#3085d6'
-                    });
-                    console.error('Error:', error);
-                });
-            });
-        }
-        
-        // Save Current Stock button click handler
-        document.addEventListener('click', function(e) {
-            if (e.target && e.target.classList.contains('save-current-stock') || 
-                (e.target.parentElement && e.target.parentElement.classList.contains('save-current-stock'))) {
-                
-                const button = e.target.classList.contains('save-current-stock') ? e.target : e.target.parentElement;
-                const itemId = button.getAttribute('data-item-id');
-                const input = document.querySelector(`.current-stock-input[data-item-id="${itemId}"]`);
-                const currentStock = input.value;
-                
-                console.log("Save Current Stock clicked for item ID:", itemId, "with value:", currentStock);
-                
-                // Validate input
-                if (currentStock === '' || isNaN(currentStock) || parseInt(currentStock) < 0) {
-                    Swal.fire({
-                        icon: 'error',
-                        title: 'Error',
-                        text: 'Stok Saat Ini harus berupa angka positif',
-                        timer: 2000,
-                        showConfirmButton: false
-                    });
-                    return;
-                }
-                
-                // Show loading indicator
-                button.disabled = true;
-                button.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>';
-                
-                // Make API call to update current stock
-                fetch('/api/update-packing-item/', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRFToken': csrfToken
-                    },
-                    body: JSON.stringify({
-                        item_id: itemId,
-                        current_stock: parseInt(currentStock)
-                    })
-                })
-                .then(response => response.json())
-                .then(data => {
-                    // Reset button state
-                    button.disabled = false;
-                    button.innerHTML = '<i class="bi bi-save"></i>';
-                    
-                    if (data.status === 'success') {
-                        // Show success notification
-                        Swal.fire({
-                            icon: 'success',
-                            title: 'Berhasil',
-                            text: 'Stok Saat Ini berhasil diperbarui',
-                            timer: 1500,
-                            showConfirmButton: false
-                        });
-                    } else {
-                        // Show error notification
-                        Swal.fire({
-                            icon: 'error',
-                            title: 'Error',
-                            text: data.message || 'Gagal memperbarui Stok Saat Ini',
-                            timer: 2000,
-                            showConfirmButton: false
-                        });
-                    }
-                })
-                .catch(error => {
-                    console.error('Error:', error);
-                    
-                    // Reset button state
-                    button.disabled = false;
-                    button.innerHTML = '<i class="bi bi-save"></i>';
-                    
-                    // Show error notification
-                    Swal.fire({
-                        icon: 'error',
-                        title: 'Error',
-                        text: 'Terjadi kesalahan saat menghubungi server',
-                        timer: 2000,
-                        showConfirmButton: false
-                    });
-                });
-            }
-        });
-        
-        // Save Minimum Stock button click handler
-        document.addEventListener('click', function(e) {
-            if (e.target && e.target.classList.contains('save-min-stock') || 
-                (e.target.parentElement && e.target.parentElement.classList.contains('save-min-stock'))) {
-                
-                const button = e.target.classList.contains('save-min-stock') ? e.target : e.target.parentElement;
-                const itemId = button.getAttribute('data-item-id');
-                const input = document.querySelector(`.min-stock-input[data-item-id="${itemId}"]`);
-                const minStock = input.value;
-                
-                console.log("Save Request Stock clicked for item ID:", itemId, "with value:", minStock);
-                
-                // Make API call to update minimum stock
-                fetch('/api/update-packing-min-stock/', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRFToken': csrfToken
-                    },
-                    body: JSON.stringify({
-                        item_id: itemId,
-                        min_stock: minStock
-                    })
-                })
-                .then(response => response.json())
-                .then(data => {
-                    if (data.status === 'success') {
-                        // Show success toast
-                        toastMessage.textContent = 'Stok minimum berhasil diperbarui';
-                        toastEl.classList.remove('bg-danger');
-                        toastEl.classList.add('bg-success', 'text-white');
-                        toast.show();
-                        
-                        // No longer applying table-danger class to maintain neutral background
-                        const row = button.closest('tr');
-                    } else {
-                        // Show error toast
-                        toastMessage.textContent = data.message || 'Gagal memperbarui stok minimum';
-                        toastEl.classList.remove('bg-success');
-                        toastEl.classList.add('bg-danger', 'text-white');
-                        toast.show();
-                    }
-                })
-                .catch(error => {
-                    console.error('Error:', error);
-                    
-                    // Show error toast
-                    toastMessage.textContent = 'Terjadi kesalahan saat memperbarui stok minimum';
-                    toastEl.classList.remove('bg-success');
-                    toastEl.classList.add('bg-danger', 'text-white');
-                    toast.show();
-                });
-            }
-        });
-        
-        // Delete Minimum Stock button click handler
-        document.addEventListener('click', function(e) {
-            if (e.target && (e.target.classList.contains('delete-min-stock') || 
-                (e.target.parentElement && e.target.parentElement.classList.contains('delete-min-stock')))) {
-                
-                const button = e.target.classList.contains('delete-min-stock') ? e.target : e.target.parentElement;
-                const itemId = button.getAttribute('data-item-id');
-                const input = document.querySelector(`.min-stock-input[data-item-id="${itemId}"]`);
-                
-                console.log("Delete Request Stock clicked for item ID:", itemId);
-                
-                // Set input value to 0
-                input.value = 0;
-                
-                // Make API call to update minimum stock to 0
-                fetch('/api/update-packing-min-stock/', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRFToken': csrfToken
-                    },
-                    body: JSON.stringify({
-                        item_id: itemId,
-                        min_stock: 0
-                    })
-                })
-                .then(response => response.json())
-                .then(data => {
-                    if (data.status === 'success') {
-                        // Show success notification
-                        Swal.fire({
-                            icon: 'success',
-                            title: 'Berhasil',
-                            text: 'Request Stock disetel ke 0',
-                            timer: 1500,
-                            showConfirmButton: false
-                        });
-                        
-                        // No longer applying table-danger class to maintain neutral background
-                        const row = button.closest('tr');
-                    } else {
-                        // Show error notification
-                        Swal.fire({
-                            icon: 'error',
-                            title: 'Error',
-                            text: data.message || 'Gagal mengatur stok minimum ke 0',
-                            timer: 2000,
-                            showConfirmButton: false
-                        });
-                    }
-                })
-                .catch(error => {
-                    console.error('Error:', error);
-                    
-                    // Show error notification
-                    Swal.fire({
-                        icon: 'error',
-                        title: 'Error',
-                        text: 'Terjadi kesalahan saat menghubungi server',
-                        timer: 2000,
-                        showConfirmButton: false
-                    });
-                });
-            }
-        });
-        
-        // Send to Telegram button click handler
-        if (sendToTelegramBtn) {
-            sendToTelegramBtn.addEventListener('click', function() {
-                // 1. Collect items with request stock > 0
-                const itemsToRequest = [];
-                const allRows = document.querySelectorAll('table tbody tr');
-                allRows.forEach(row => {
-                    // Skip header or potential empty row placeholders
-                    if (row.children.length < 7 || !row.querySelector('.min-stock-input')) {
-                        return;
-                    }
-                    const itemNameElement = row.querySelector('td:nth-child(3)'); // Assuming name is 3rd column
-                    const requestStockInput = row.querySelector('.min-stock-input');
-                    
-                    if (itemNameElement && requestStockInput) {
-                        const itemName = itemNameElement.textContent.trim();
-                        const requestStockValue = parseInt(requestStockInput.value, 10);
-                        
-                        if (!isNaN(requestStockValue) && requestStockValue > 0) {
-                            itemsToRequest.push({ name: itemName, quantity: requestStockValue });
-                        }
-                    }
-                });
-
-                if (itemsToRequest.length === 0) {
-                    Swal.fire({
-                        icon: 'warning',
-                        title: 'Perhatian',
-                        text: 'Tidak ada item dengan Request Stock > 0 untuk dikirim',
-                        confirmButtonColor: '#3085d6'
-                    });
-                    return;
-                                // Get selected payment method - Always read from dropdown
-                const paymentMethodSelect = document.getElementById("paymentMethod"); // Use the correct ID
-                let selectedPaymentMethod = ""; // Initialize
-                if (paymentMethodSelect) {
-                    selectedPaymentMethod = paymentMethodSelect.value;
-                    // Check if a valid method is selected
-                    if (!selectedPaymentMethod) {
-                        Swal.close();
-                        Swal.fire({
-                            icon: "warning",
-                            title: "Perhatian",
-                            text: "Anda harus memilih metode pembayaran terlebih dahulu",
-                            confirmButtonColor: "#3085d6"
-                        });
-                        return; // Stop if no payment method is selected
-                    }
-                } else {
-                    // This case should ideally not happen if the dropdown is always present
-                    console.error("Payment method dropdown #paymentMethod not found!");
-                    Swal.close();
-                    Swal.fire({ icon: "error", title: "Error", text: "Komponen metode pembayaran tidak ditemukan." });
-                    return;
-                }             // 3. Format timestamp in GMT+7 (Asia/Jakarta)
-                const now = new Date();
-                const optionsDate = { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'Asia/Jakarta' };
-                const optionsTime = { hour: '2-digit', minute: '2-digit', hour12: false, timeZone: 'Asia/Jakarta' };
-                // Use 'id-ID' locale for Indonesian month names, adjust if needed
-                const jakartaDate = now.toLocaleDateString('id-ID', optionsDate); 
-                const jakartaTime = now.toLocaleTimeString('id-ID', optionsTime).replace('.',':'); // Ensure HH:MM format
-                const formattedTimestamp = `${jakartaTime} - ${jakartaDate}`;
-
-                // 4. Construct the plain text message - Revised
-                let message = `Request Stock ; ${formattedTimestamp}\n`;
-                message += `Metode Pembayaran : ${selectedPaymentMethod}\n`; // Line 2: Payment Method
-                message += `\n`; // Line 3: Blank line
-                itemsToRequest.forEach(item => {
-                    message += `${item.name} - ${item.quantity} Pcs\n`; // Line 4 onwards: Items
-                });
-                message += `\n`; // Blank line before confirmation
-                message += `Tanpa konfirmasi`; // Last line: Confirmation
-
-                // 5. Show loading
-                Swal.fire({
-                    title: 'Mengirim notifikasi...',
-                    text: 'Mohon tunggu sebentar',
-                    allowOutsideClick: false,
-                    didOpen: () => {
-                        Swal.showLoading();
-                    }
-                });
-
-                // 6. Make API call to send plain text to Telegram endpoint
-                fetch('/api/send-packing-to-telegram/', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'text/plain', // Send as plain text
-                        'X-CSRFToken': csrfToken
-                    },
-                    body: message // Send the constructed message string
-                })
-                .then(response => response.json()) // Still expect JSON response from backend
-                .then(data => {
-                    Swal.close();
-                    if (data.status === 'success') {
-                        Swal.fire({
-                            icon: 'success',
-                            title: 'Berhasil',
-                            text: 'Notifikasi berhasil dikirim ke Telegram',
-                            confirmButtonColor: '#3085d6'
-                        });
-                    } else {
-                        Swal.fire({
-                            icon: 'error',
-                            title: 'Gagal',
-                            text: data.message || 'Gagal mengirim notifikasi ke Telegram',
-                            confirmButtonColor: '#3085d6'
-                        });
-                    }
-                })
-                .catch(error => {
-                    console.error('Error:', error);
-                    Swal.close();
-                    Swal.fire({
-                        icon: 'error',
-                        title: 'Gagal',
-                        text: 'Terjadi kesalahan saat mengirim notifikasi ke Telegram',
-                        confirmButtonColor: '#3085d6'
-                    });
-                });
-            });
-        }
-        
-        // Delete packing item button click handler
-        document.addEventListener('click', function(e) {
-            if (e.target && e.target.classList.contains('delete-packing-item') || 
-                (e.target.parentElement && e.target.parentElement.classList.contains('delete-packing-item'))) {
-                
-                const button = e.target.classList.contains('delete-packing-item') ? e.target : e.target.parentElement;
-                const itemId = button.getAttribute('data-item-id');
-                const row = button.closest('tr');
-                const itemName = row.querySelector('td:nth-child(3)').textContent;
-                
-                // Show confirmation dialog
-                Swal.fire({
-                    title: 'Konfirmasi Hapus',
-                    text: `Apakah Anda yakin ingin menghapus item "${itemName}"?`,
-                    icon: 'warning',
-                    showCancelButton: true,
-                    confirmButtonColor: '#d33',
-                    cancelButtonColor: '#3085d6',
-                    confirmButtonText: 'Ya, Hapus!',
-                    cancelButtonText: 'Batal'
-                }).then((result) => {
-                    if (result.isConfirmed) {
-                        // Show loading
-                        Swal.fire({
-                            title: 'Menghapus item...',
-                            text: 'Mohon tunggu sebentar',
-                            allowOutsideClick: false,
-                            didOpen: () => {
-                                Swal.showLoading();
-                            }
-                        });
-                        
-                        // Make API call to delete item
-                        fetch('/api/delete-packing-item/', {
-                            method: 'POST',
-                            headers: {
-                                'Content-Type': 'application/json',
-                                'X-CSRFToken': csrfToken
-                            },
-                            body: JSON.stringify({
-                                item_id: itemId
-                            })
-                        })
-                        .then(response => response.json())
-                        .then(data => {
-                            Swal.close();
-                            
-                            if (data.status === 'success') {
-                                // Remove row from table with animation
-                                row.style.backgroundColor = '#ffcccc';
-                                setTimeout(() => {
-                                    row.style.transition = 'opacity 0.5s ease';
-                                    row.style.opacity = '0';
-                                    setTimeout(() => {
-                                        row.remove();
-                                        
-                                        // Check if table is now empty
-                                        const tableBody = document.querySelector('table tbody');
-                                        if (tableBody.children.length === 0) {
-                                            // Add "no data" row
-                                            const noDataRow = document.createElement('tr');
-                                            noDataRow.innerHTML = '<td colspan="7" class="text-center">Tidak ada data barang</td>';
-                                            tableBody.appendChild(noDataRow);
-                                        }
-                                    }, 500);
-                                }, 300);
-                                
-                                // Show success notification
-                                Swal.fire({
-                                    icon: 'success',
-                                    title: 'Berhasil',
-                                    text: 'Item berhasil dihapus',
-                                    timer: 1500,
-                                    showConfirmButton: false
-                                });
-                            } else {
-                                // Show error notification
-                                Swal.fire({
-                                    icon: 'error',
-                                    title: 'Gagal',
-                                    text: data.message || 'Gagal menghapus item',
-                                    confirmButtonColor: '#3085d6'
-                                });
-                            }
-                        })
-                        .catch(error => {
-                            console.error('Error:', error);
-                            Swal.close();
-                            
-                            // Show error notification
-                            Swal.fire({
-                                icon: 'error',
-                                title: 'Gagal',
-                                text: 'Terjadi kesalahan saat menghubungi server',
-                                confirmButtonColor: '#3085d6'
-                            });
-                        });
-                    }
-                });
-            }
-        });
-        
-        // Individual send to Telegram button click handler
-        document.addEventListener('click', function(e) {
-            if (e.target && e.target.classList.contains('send-single-item') || 
-                (e.target.parentElement && e.target.parentElement.classList.contains('send-single-item'))) {
-                
-                const button = e.target.classList.contains('send-single-item') ? e.target : e.target.parentElement;
-                const itemId = button.getAttribute('data-item-id');
-                
-                // Show loading
-                Swal.fire({
-                    title: 'Mengirim notifikasi...',
-                    text: 'Mohon tunggu sebentar',
-                    allowOutsideClick: false,
-                    didOpen: () => {
-                        Swal.showLoading();
-                    }
-                });
-                
-                // Get item details for the message
-                const row = button.closest('tr');
-                const itemNameElement = row.querySelector('td:nth-child(3)'); // Assuming name is 3rd column
-                const requestStockInput = row.querySelector('.min-stock-input'); // Assuming request stock is in this input
-
-                if (!itemNameElement || !requestStockInput) {
-                    Swal.close();
-                    Swal.fire({ icon: 'error', title: 'Error', text: 'Tidak dapat menemukan detail item untuk dikirim.' });
-                    return;
-                }
-
-                const itemName = itemNameElement.textContent.trim();
-                const requestStockValue = parseInt(requestStockInput.value, 10);
-
-                if (isNaN(requestStockValue) || requestStockValue <= 0) {
-                    Swal.close();
-                    Swal.fire({ icon: 'warning', title: 'Perhatian', text: 'Item ini tidak memiliki Request Stock > 0 untuk dikirim.' });
-                    return; // Don't send if request stock is 0 or invalid
-                }
-
-                // Get selected payment method - Always read from dropdown
-                const paymentMethodSelect = document.getElementById("paymentMethod"); // Use the correct ID
-                let selectedPaymentMethod = ""; // Initialize
-                if (paymentMethodSelect) {
-                    selectedPaymentMethod = paymentMethodSelect.value;
-                    // Check if a valid method is selected
-                    if (!selectedPaymentMethod) {
-                        Swal.close();
-                        Swal.fire({
-                            icon: "warning",
-                            title: "Perhatian",
-                            text: "Anda harus memilih metode pembayaran terlebih dahulu",
-                            confirmButtonColor: "#3085d6"
-                        });
-                        return; // Stop if no payment method is selected
-                    }
-                } else {
-                    // This case should ideally not happen if the dropdown is always present
-                    console.error("Payment method dropdown #paymentMethod not found!");
-                    Swal.close();
-                    Swal.fire({ icon: "error", title: "Error", text: "Komponen metode pembayaran tidak ditemukan." });
-                    return;
-                }
-
-                // Format timestamp in GMT+7 (Asia/Jakarta)
-                const now = new Date();
-                const optionsDate = { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'Asia/Jakarta' };
-                const optionsTime = { hour: '2-digit', minute: '2-digit', hour12: false, timeZone: 'Asia/Jakarta' };
-                const jakartaDate = now.toLocaleDateString('id-ID', optionsDate);
-                const jakartaTime = now.toLocaleTimeString('id-ID', optionsTime).replace('.', ':'); // Ensure HH:MM format
-                const formattedTimestamp = `${jakartaTime} - ${jakartaDate}`;
-
-                // Construct the plain text message
-                let message = `Request Stock ; ${formattedTimestamp}\n`;
-                message += `Metode Pembayaran : ${selectedPaymentMethod}\n`;
-                message += `\n`;
-                message += `${itemName} - ${requestStockValue} Pcs\n`; // Only this single item
-                message += `\n`;
-                message += `Tanpa konfirmasi`;
-
-                // Make API call to send plain text to Telegram endpoint
-                fetch('/api/send-packing-to-telegram/', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'text/plain; charset=utf-8', // Send as plain text
-                        'X-CSRFToken': csrfToken
-                    },
-                    body: message // Send the constructed message string
-                })
-                .then(response => response.json())
-                .then(data => {
-                    Swal.close();
-                    
-                    if (data.status === 'success') {
-                        Swal.fire({
-                            icon: 'success',
-                            title: 'Berhasil',
-                            text: 'Notifikasi berhasil dikirim ke Telegram',
-                            confirmButtonColor: '#3085d6'
-                        });
-                    } else {
-                        Swal.fire({
-                            icon: 'error',
-                            title: 'Gagal',
-                            text: data.message || 'Gagal mengirim notifikasi ke Telegram',
-                            confirmButtonColor: '#3085d6'
-                        });
-                    }
-                })
-                .catch(error => {
-                    console.error('Error:', error);
-                    Swal.close();
-                    
-                    Swal.fire({
-                        icon: 'error',
-                        title: 'Gagal',
-                        text: 'Terjadi kesalahan saat mengirim notifikasi ke Telegram',
-                        confirmButtonColor: '#3085d6'
-                    });
-                });
-            }
-        });
     });
+
+    // Save Request Stock (Minimum Stock)
+    document.addEventListener('click', function(e) {
+        const button = e.target.closest('.save-min-stock');
+        if (button) {
+            const itemId = button.getAttribute('data-item-id');
+            const input = document.querySelector(`.min-stock-input[data-item-id="${itemId}"]`);
+            let minStock = input.value.trim(); // Trim whitespace
+
+            // Default to 0 if empty or invalid, but allow 0
+            if (minStock === '' || isNaN(minStock) || parseInt(minStock) < 0) {
+                 if (minStock !== '0') { // Allow explicit 0
+                    showWarning('Perhatian', 'Request Stock harus berupa angka 0 atau lebih besar. Menggunakan nilai 0.');
+                    minStock = 0;
+                    input.value = 0; // Update input visually
+                 } else {
+                     minStock = 0; // Ensure it's treated as number 0
+                 }
+            } else {
+                minStock = parseInt(minStock);
+            }
+
+            // Show loading indicator on button
+            button.disabled = true;
+            const originalIcon = button.innerHTML;
+            button.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>';
+
+            fetch('/api/update-packing-min-stock/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': csrfToken
+                },
+                body: JSON.stringify({ item_id: itemId, min_stock: minStock })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    showToast('Request Stock berhasil diperbarui.');
+                } else {
+                    showToast(data.message || 'Gagal memperbarui Request Stock.', 'danger');
+                }
+            })
+            .catch(error => {
+                console.error('Error updating min stock:', error);
+                showToast('Terjadi kesalahan saat memperbarui Request Stock.', 'danger');
+            })
+            .finally(() => {
+                button.disabled = false;
+                button.innerHTML = originalIcon;
+            });
+        }
+    });
+
+    // Delete Request Stock (Set to 0)
+    document.addEventListener('click', function(e) {
+        const button = e.target.closest('.delete-min-stock');
+        if (button) {
+            const itemId = button.getAttribute('data-item-id');
+            const input = document.querySelector(`.min-stock-input[data-item-id="${itemId}"]`);
+
+            input.value = 0;
+
+            // Show loading indicator on button
+            button.disabled = true;
+            const originalIcon = button.innerHTML;
+            button.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>';
+
+            fetch('/api/update-packing-min-stock/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': csrfToken
+                },
+                body: JSON.stringify({ item_id: itemId, min_stock: 0 })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    showSuccess('Berhasil', 'Request Stock disetel ke 0');
+                } else {
+                    showError('Error', data.message || 'Gagal mengatur Request Stock ke 0');
+                }
+            })
+            .catch(error => {
+                console.error('Error deleting min stock:', error);
+                showError('Error', 'Terjadi kesalahan saat menghubungi server');
+            })
+            .finally(() => {
+                button.disabled = false;
+                button.innerHTML = originalIcon;
+            });
+        }
+    });
+
+    // Send to Telegram (Main Button)
+    if (sendToTelegramBtn) {
+        sendToTelegramBtn.addEventListener('click', function() {
+            // 1. Validate Payment Method
+            if (!validatePaymentMethod()) {
+                return;
+            }
+            const selectedPaymentMethod = paymentMethodSelect.value;
+
+            // 2. Collect selected items with request stock > 0
+            const itemsToRequest = [];
+            const checkedCheckboxes = document.querySelectorAll('.item-checkbox:checked');
+            
+            if (checkedCheckboxes.length === 0) {
+                 showWarning('Perhatian', 'Tidak ada item yang dipilih untuk dikirim.');
+                 return;
+            }
+
+            checkedCheckboxes.forEach(checkbox => {
+                const row = checkbox.closest('tr');
+                const itemNameElement = row.querySelector('td:nth-child(3)');
+                const requestStockInput = row.querySelector('.min-stock-input');
+                
+                if (itemNameElement && requestStockInput) {
+                    const itemName = itemNameElement.textContent.trim();
+                    const requestStockValue = parseInt(requestStockInput.value, 10);
+                    
+                    if (!isNaN(requestStockValue) && requestStockValue > 0) {
+                        itemsToRequest.push({ name: itemName, quantity: requestStockValue });
+                    }
+                }
+            });
+
+            if (itemsToRequest.length === 0) {
+                showWarning('Perhatian', 'Tidak ada item terpilih dengan Request Stock > 0 untuk dikirim.');
+                return;
+            }
+
+            // 3. Format timestamp
+            const formattedTimestamp = getFormattedTimestamp();
+
+            // 4. Construct the message
+            let message = `Request Stock ; ${formattedTimestamp}\n`;
+            message += `Metode Pembayaran : ${selectedPaymentMethod}\n`;
+            message += `\n`;
+            itemsToRequest.forEach(item => {
+                message += `${item.name} - ${item.quantity} Pcs\n`;
+            });
+            message += `\n`;
+            message += `Tanpa konfirmasi`;
+
+            // 5. Send message
+            sendTelegramMessage(message);
+        });
+    }
+
+    // Send Single Item to Telegram
+    document.addEventListener('click', function(e) {
+        const button = e.target.closest('.send-single-item');
+        if (button) {
+            // 1. Validate Payment Method
+            if (!validatePaymentMethod()) {
+                return;
+            }
+            const selectedPaymentMethod = paymentMethodSelect.value;
+
+            // 2. Get item details
+            const itemId = button.getAttribute('data-item-id');
+            const row = button.closest('tr');
+            const itemNameElement = row.querySelector('td:nth-child(3)');
+            const requestStockInput = row.querySelector('.min-stock-input');
+
+            if (!itemNameElement || !requestStockInput) {
+                showError('Error', 'Tidak dapat menemukan detail item untuk dikirim.');
+                return;
+            }
+
+            const itemName = itemNameElement.textContent.trim();
+            const requestStockValue = parseInt(requestStockInput.value, 10);
+
+            if (isNaN(requestStockValue) || requestStockValue <= 0) {
+                showWarning('Perhatian', 'Item ini tidak memiliki Request Stock > 0 untuk dikirim.');
+                return;
+            }
+
+            // 3. Format timestamp
+            const formattedTimestamp = getFormattedTimestamp();
+
+            // 4. Construct the message
+            let message = `Request Stock ; ${formattedTimestamp}\n`;
+            message += `Metode Pembayaran : ${selectedPaymentMethod}\n`;
+            message += `\n`;
+            message += `${itemName} - ${requestStockValue} Pcs\n`;
+            message += `\n`;
+            message += `Tanpa konfirmasi`;
+
+            // 5. Send message
+            sendTelegramMessage(message);
+        }
+    });
+
+    // Delete Packing Item
+    document.addEventListener('click', function(e) {
+        const button = e.target.closest('.delete-packing-item');
+        if (button) {
+            const itemId = button.getAttribute('data-item-id');
+            const row = button.closest('tr');
+            const itemName = row.querySelector('td:nth-child(3)').textContent;
+
+            Swal.fire({
+                title: 'Konfirmasi Hapus',
+                text: `Apakah Anda yakin ingin menghapus item "${itemName}"?`,
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#d33',
+                cancelButtonColor: '#3085d6',
+                confirmButtonText: 'Ya, Hapus!',
+                cancelButtonText: 'Batal'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    showLoading('Menghapus item...');
+                    fetch('/api/delete-packing-item/', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRFToken': csrfToken
+                        },
+                        body: JSON.stringify({ item_id: itemId })
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        Swal.close();
+                        if (data.status === 'success') {
+                            // Animate removal
+                            row.style.transition = 'opacity 0.5s ease';
+                            row.style.opacity = '0';
+                            setTimeout(() => {
+                                row.remove();
+                                // Check if table is empty
+                                const tableBody = document.querySelector('table tbody');
+                                if (tableBody.children.length === 0) {
+                                    const noDataRow = document.createElement('tr');
+                                    noDataRow.innerHTML = '<td colspan="7" class="text-center">Tidak ada data barang</td>';
+                                    tableBody.appendChild(noDataRow);
+                                }
+                                // Update select all state if needed
+                                if (selectAllCheckbox) {
+                                    const allCheckboxes = document.querySelectorAll('.item-checkbox');
+                                    selectAllCheckbox.checked = allCheckboxes.length === 0 ? false : selectAllCheckbox.checked;
+                                }
+                                updateSendButtonState(); // Update button state after deletion
+                            }, 500);
+                            showSuccess('Berhasil', 'Item berhasil dihapus');
+                        } else {
+                            showError('Gagal', data.message || 'Gagal menghapus item');
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error deleting item:', error);
+                        Swal.close();
+                        showError('Gagal', 'Terjadi kesalahan saat menghubungi server');
+                    });
+                }
+            });
+        }
+    });
+
+    // Reset Data Button
+    if (resetDataBtn) {
+        resetDataBtn.addEventListener('click', function() {
+            resetDataModal.show();
+        });
+    }
+
+    // Confirm Reset Data Button
+    if (confirmResetDataBtn) {
+        confirmResetDataBtn.addEventListener('click', function() {
+            resetDataModal.hide();
+            showLoading('Mereset data...');
+            fetch('/api/reset-packing-stock/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': csrfToken
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                Swal.close();
+                if (data.status === 'success') {
+                    showSuccess('Berhasil', 'Semua Request Stock berhasil direset ke 0.', 2000);
+                    // Reload page to show updated data
+                    setTimeout(() => window.location.reload(), 2000);
+                } else {
+                    showError('Error', data.message || 'Terjadi kesalahan saat mereset data');
+                }
+            })
+            .catch(error => {
+                console.error('Error resetting data:', error);
+                Swal.close();
+                showError('Error', 'Terjadi kesalahan saat menghubungi server');
+            });
+        });
+    }
+
+    // Manual Input Form Handling
+    const manualInputForm = document.getElementById('manualInputForm');
+    const btnSimpanManual = document.getElementById('btnSimpanManual');
+    if (manualInputForm && btnSimpanManual) {
+        btnSimpanManual.addEventListener('click', function() {
+            const kodeBarangInput = document.getElementById('inputKodeBarang');
+            const namaBarangInput = document.getElementById('inputNamaBarang');
+            const kategoriInput = document.getElementById('inputKategori');
+            const stokSaatIniInput = document.getElementById('inputStokSaatIni');
+            const stokMinimumInput = document.getElementById('inputStokMinimum');
+
+            const kodeBarang = kodeBarangInput.value.trim();
+            const namaBarang = namaBarangInput.value.trim();
+            const kategori = kategoriInput.value.trim();
+            const stokSaatIni = stokSaatIniInput.value;
+            const stokMinimum = stokMinimumInput.value;
+
+            // Reset validation
+            manualInputForm.querySelectorAll('.is-invalid').forEach(el => el.classList.remove('is-invalid'));
+            let isValid = true;
+
+            if (!kodeBarang) {
+                kodeBarangInput.classList.add('is-invalid');
+                isValid = false;
+            }
+            if (!namaBarang) {
+                namaBarangInput.classList.add('is-invalid');
+                isValid = false;
+            }
+            if (!stokSaatIni || isNaN(stokSaatIni) || parseInt(stokSaatIni) < 0) {
+                stokSaatIniInput.classList.add('is-invalid');
+                isValid = false;
+            }
+            // Stok minimum is optional, but validate if provided
+            if (stokMinimum && (isNaN(stokMinimum) || parseInt(stokMinimum) < 0)) {
+                 stokMinimumInput.classList.add('is-invalid');
+                 isValid = false;
+            }
+
+            if (!isValid) return;
+
+            showLoading('Menyimpan data...');
+            fetch('/api/create-packing-item/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': csrfToken
+                },
+                body: JSON.stringify({
+                    code: kodeBarang,
+                    name: namaBarang,
+                    category: kategori,
+                    current_stock: parseInt(stokSaatIni),
+                    minimum_stock: parseInt(stokMinimum || 0) // Default to 0 if empty
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                Swal.close();
+                if (data.status === 'success') {
+                    showSuccess('Berhasil', 'Data berhasil disimpan');
+                    addNewRowToTable(data.item);
+                    manualInputForm.reset();
+                } else {
+                    showError('Gagal', data.message || 'Terjadi kesalahan saat menyimpan data');
+                }
+            })
+            .catch(error => {
+                console.error('Error creating item:', error);
+                Swal.close();
+                showError('Gagal', 'Terjadi kesalahan saat menghubungi server');
+            });
+        });
+    }
+
+    // Function to add new row to table (for manual input)
+    function addNewRowToTable(item) {
+        const tableBody = document.querySelector('table tbody');
+        const noDataRow = tableBody.querySelector('tr td[colspan="7"]');
+        if (noDataRow) {
+            noDataRow.closest('tr').remove();
+        }
+
+        const newRow = document.createElement('tr');
+        newRow.innerHTML = `
+            <td class="text-center">
+                <div class="form-check">
+                    <input class="form-check-input item-checkbox" type="checkbox" value="${item.id}" id="item${item.id}">
+                </div>
+            </td>
+            <td data-field="code" data-item-id="${item.id}">${item.code}</td>
+            <td data-field="name" data-item-id="${item.id}">${item.name}</td>
+            <td>${item.category || ''}</td>
+            <td class="text-center">
+                <div class="input-group input-group-sm">
+                    <input type="number" class="form-control form-control-sm current-stock-input" 
+                           data-item-id="${item.id}" value="${item.current_stock}" min="0">
+                    <button class="btn btn-outline-secondary save-current-stock" type="button" data-item-id="${item.id}">
+                        <i class="bi bi-save"></i>
+                    </button>
+                </div>
+            </td>
+            <td class="text-center">
+                <div class="input-group input-group-sm">
+                    <input type="number" class="form-control form-control-sm min-stock-input" 
+                           data-item-id="${item.id}" value="${item.minimum_stock}" min="0">
+                    <button class="btn btn-outline-secondary save-min-stock" type="button" data-item-id="${item.id}">
+                        <i class="bi bi-save"></i>
+                    </button>
+                    <button class="btn btn-outline-danger delete-min-stock" type="button" data-item-id="${item.id}">
+                        <i class="bi bi-x"></i>
+                    </button>
+                </div>
+            </td>
+            <td class="text-center">
+                <button type="button" class="btn btn-sm btn-info send-single-item me-1" data-item-id="${item.id}">
+                    <i class="bi bi-telegram"></i>
+                </button>
+                <button type="button" class="btn btn-sm btn-danger delete-packing-item" data-item-id="${item.id}">
+                    <i class="bi bi-trash"></i>
+                </button>
+            </td>
+        `;
+        tableBody.prepend(newRow);
+        // Update select all state if needed
+        if (selectAllCheckbox) {
+             selectAllCheckbox.checked = false; // New item added, uncheck select all
+        }
+        updateSendButtonState(); // Update button state after adding
+    }
+
+});
 </script>
 {% endblock %}
+
