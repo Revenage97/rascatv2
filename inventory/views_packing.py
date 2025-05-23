@@ -193,11 +193,12 @@ def send_packing_to_telegram(request):
                 logger.error("Webhook URL for Kelola Stok Packing not configured")
                 return JsonResponse({'status': 'error', 'message': 'URL webhook Telegram untuk Kelola Stok Packing belum diatur'})
             
-            # Send the received plain text message to the webhook as raw text
+            # Send the received plain text message to the webhook as JSON with a 'text' field
             response = requests.post(
                 webhook_url,
-                data=message_text.encode('utf-8'), # Send raw bytes
-                headers={'Content-Type': 'text/plain; charset=utf-8'} # Set content type to plain text
+                json={'text': message_text}, # Send as JSON with 'text' field
+                headers={'Content-Type': 'application/json'}, # Set content type to JSON
+                timeout=10 # Add a timeout
             )
             
             # Check response status code, but don't assume JSON response from webhook
