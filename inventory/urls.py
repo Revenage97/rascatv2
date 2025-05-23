@@ -36,8 +36,8 @@ urlpatterns = [
     path('webhook-settings/', views.webhook_settings, name='webhook_settings'),
     path('timezone-settings/', timezone_settings, name='timezone_settings'),
     path('kelola-pengguna/', views.kelola_pengguna, name='kelola_pengguna'),
-    path('edit-user/<int:user_id>/', views.edit_user, name='edit_user'),
-    path('delete-user/<int:user_id>/', views.delete_user, name='delete_user'),
+    path("edit-user/<int:user_id>/", views.edit_pengguna, name="edit_user"),
+    path("delete-user/<int:user_id>/", views.delete_pengguna, name="delete_user"),
     path('activity-logs/', views.activity_logs, name='activity_logs'),
     
     # API endpoints for expiry date
