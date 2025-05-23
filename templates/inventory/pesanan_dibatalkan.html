@@ -1,9 +1,54 @@
 {% extends 'base.html' %}
 
+{% block extra_head %}
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+{% endblock %}
+
 {% block content %}
 <div class="container-fluid py-4">
     <h2 class="mb-4">Pesanan Dibatalkan</h2>
 
+    {# Manual Input Form - Visible only to admin and staff gudang #}
+    {% if user.profile.is_admin or user.profile.is_staff_gudang %}
+    <div class="card mb-4">
+        <div class="card-header bg-primary text-white">
+            Input Manual Pesanan Dibatalkan
+        </div>
+        <div class="card-body">
+            <form id="cancelledOrderForm">
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <label for="nomorPesanan" class="form-label">Nomor Pesanan <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control form-control-sm" id="nomorPesanan" name="nomor_pesanan" required>
+                    </div>
+                    <div class="col-md-6">
+                        <label for="tanggalPembatalan" class="form-label">Tanggal Pembatalan <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control form-control-sm datepicker" id="tanggalPembatalan" name="tanggal_pembatalan" placeholder="YYYY-MM-DD" required>
+                    </div>
+                    <div class="col-md-8">
+                        <label for="namaProduk" class="form-label">Produk <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control form-control-sm" id="namaProduk" name="produk" required>
+                    </div>
+                    <div class="col-md-4">
+                        <label for="jumlahProduk" class="form-label">Jumlah <span class="text-danger">*</span></label>
+                        <input type="number" class="form-control form-control-sm" id="jumlahProduk" name="jumlah" min="1" required>
+                    </div>
+                    <div class="col-12">
+                        <label for="alasanPembatalan" class="form-label">Alasan Pembatalan</label>
+                        <textarea class="form-control form-control-sm" id="alasanPembatalan" name="alasan_pembatalan" rows="3"></textarea>
+                    </div>
+                </div>
+                <div class="mt-3 text-end">
+                    <button type="submit" class="btn btn-success btn-sm">
+                        <i class="bi bi-save me-1"></i> Simpan Data
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+    {% endif %}
+
+    {# Table Section #}
     <div class="card">
         <div class="card-body">
             <div class="table-responsive">
@@ -32,5 +77,30 @@
         </div>
     </div>
 </div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Initialize datepicker
+        flatpickr(".datepicker", {
+            dateFormat: "Y-m-d",
+            allowInput: true
+        });
+
+        // Handle form submission (placeholder - no actual saving logic needed yet)
+        const form = document.getElementById('cancelledOrderForm');
+        if (form) {
+            form.addEventListener('submit', function(event) {
+                event.preventDefault();
+                // For now, just show a success message placeholder
+                alert('Fungsi simpan belum diimplementasikan.'); 
+                // In a real scenario, you would send data via AJAX here.
+                // form.reset(); // Optionally reset form after submission
+            });
+        }
+    });
+</script>
 {% endblock %}
 
