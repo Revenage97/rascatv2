@@ -324,7 +324,7 @@ def reset_all_packing_items(request):
     return JsonResponse({'status': 'error', 'message': 'Invalid request method'})
 
 @login_required
-@user_passes_test(is_admin)
+# @user_passes_test(is_admin) # Removed admin check to allow staff gudang access
 @csrf_exempt
 def create_packing_item(request):
     """

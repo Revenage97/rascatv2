@@ -59,13 +59,13 @@
                                             <i class="bi bi-arrow-left-right submenu-icon"></i> Transfer Stok
                                         </a>
                                     </li>
-                                    {% if not user.profile.is_staff_gudang %}
+                                    {# Removed staff gudang check to allow access #}
                                     <li>
                                         <a class="dropdown-item {% if 'data-exp-produk' in request.path %}active{% endif %}" href="{% url 'inventory:data_exp_produk' %}">
                                             <i class="bi bi-calendar-event submenu-icon"></i> Data Exp Produk
                                         </a>
                                     </li>
-                                    {% endif %}
+                                    {# End removed check #}
                                 </ul>
                             </div>
                         </li>

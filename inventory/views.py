@@ -102,7 +102,7 @@ def kelola_stok_barang(request):
     return render(request, 'inventory/kelola_stok_barang.html', context)
 
 @login_required
-@user_passes_test(lambda u: not is_staff_gudang(u))
+# @user_passes_test(lambda u: not is_staff_gudang(u)) # Removed staff gudang check
 def data_exp_produk(request):
     """
     View for managing expired products
