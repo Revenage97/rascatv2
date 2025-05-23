@@ -30,11 +30,14 @@ def kelola_stok_packing(request):
     except Exception as e:
         logger.error(f"Error checking staff_gudang for {request.user.username}: {str(e)}")
     
-    query = request.GET.get('query', '')
-    sort = request.GET.get('sort', '')
-    filter_option = request.GET.get('filter', '')
+    query = request.GET.get("query", "")
+    sort = request.GET.get("sort", "")
+    filter_option = request.GET.get("filter", "")
     
     items = PackingItem.objects.all()
+    
+    # Default sort by name ascending
+    items = items.order_by("name")
     
     # Search functionality
     if query:
@@ -44,23 +47,24 @@ def kelola_stok_packing(request):
             Q(category__icontains=query)
         )
     
-    # Sorting functionality
-    if sort == 'name':
-        items = items.order_by('name')
-    elif sort == 'name_desc':
-        items = items.order_by('-name')
-    elif sort == 'category':
-        items = items.order_by('category')
-    elif sort == 'category_desc':
-        items = items.order_by('-category')
-    elif sort == 'stock_asc':
-        items = items.order_by('current_stock')
-    elif sort == 'stock_desc':
-        items = items.order_by('-current_stock')
+    # Specific sorting functionality (overrides default)
+    if sort == "name_desc":
+        items = items.order_by("-name")
+    elif sort == "category":
+        items = items.order_by("category")
+    elif sort == "category_desc":
+        items = items.order_by("-category")
+    elif sort == "stock_asc":
+        items = items.order_by("current_stock")
+    elif sort == "stock_desc":
+        items = items.order_by("-current_stock")
+    # No need for sort == 'name' as it's the default
     
     # Filtering functionality
-    if filter_option == 'low_stock':
-        items = [item for item in items if item.minimum_stock and item.current_stock < item.minimum_stock]
+    if filter_option == "low_stock":
+        # Ensure filtering works with potentially already filtered/sorted querysets
+        # Note: This filter might be slow on large datasets as it evaluates in Python
+        items = [item for item in items if item.minimum_stock is not None and item.current_stock < item.minimum_stock]
     
     # Explicitly set staff_gudang status in context
     is_admin_user = is_admin(request.user)
@@ -69,13 +73,13 @@ def kelola_stok_packing(request):
     logger.info(f"Setting context for {request.user.username}: is_admin={is_admin_user}, is_staff_gudang={is_staff_gudang_user}")
     
     context = {
-        'items': items,
-        'query': query,
-        'is_admin': is_admin_user,
-        'is_staff_gudang': is_staff_gudang_user,
+        "items": items,
+        "query": query,
+        "is_admin": is_admin_user,
+        "is_staff_gudang": is_staff_gudang_user,
     }
     
-    return render(request, 'inventory/kelola_stok_packing.html', context)
+    return render(request, "inventory/kelola_stok_packing.html", context)
 
 @login_required
 @csrf_exempt
@@ -83,14 +87,14 @@ def update_packing_min_stock(request):
     """
     API endpoint to update minimum stock for a packing item
     """
-    if request.method == 'POST':
+    if request.method == "POST":
         try:
             data = json.loads(request.body)
-            item_id = data.get('item_id')
-            min_stock = data.get('min_stock')
+            item_id = data.get("item_id")
+            min_stock = data.get("min_stock")
             
             if not item_id:
-                return JsonResponse({'status': 'error', 'message': 'Item ID is required'})
+                return JsonResponse({"status": "error", "message": "Item ID is required"})
             
             item = PackingItem.objects.get(id=item_id)
             
@@ -100,31 +104,31 @@ def update_packing_min_stock(request):
                     min_stock = int(min_stock)
                     item.minimum_stock = min_stock
                 except ValueError:
-                    return JsonResponse({'status': 'error', 'message': 'Invalid minimum stock value'})
+                    return JsonResponse({"status": "error", "message": "Invalid minimum stock value"})
             else:
                 # Set minimum stock to 0 if empty or null (not NULL)
                 item.minimum_stock = 0
             
-            item.save(update_fields=['minimum_stock'])
+            item.save(update_fields=["minimum_stock"])
             
             # Log activity
             ActivityLog.objects.create(
                 user=request.user,
-                action='update_packing_min_stock',
-                status='success',
-                notes=f'Updated minimum stock for {item.name} to {min_stock}'
+                action="update_packing_min_stock",
+                status="success",
+                notes=f"Updated minimum stock for {item.name} to {min_stock}"
             )
             
-            return JsonResponse({'status': 'success', 'message': 'Minimum stock updated successfully'})
+            return JsonResponse({"status": "success", "message": "Minimum stock updated successfully"})
             
         except PackingItem.DoesNotExist:
-            return JsonResponse({'status': 'error', 'message': 'Item not found'})
+            return JsonResponse({"status": "error", "message": "Item not found"})
         except Exception as e:
             logger.error(f"Error in update_packing_min_stock view: {str(e)}")
             logger.error(traceback.format_exc())
-            return JsonResponse({'status': 'error', 'message': str(e)})
+            return JsonResponse({"status": "error", "message": str(e)})
     
-    return JsonResponse({'status': 'error', 'message': 'Invalid request method'})
+    return JsonResponse({"status": "error", "message": "Invalid request method"})
 
 @login_required
 @csrf_exempt
@@ -132,38 +136,38 @@ def delete_packing_min_stock(request):
     """
     API endpoint to delete minimum stock for a packing item
     """
-    if request.method == 'POST':
+    if request.method == "POST":
         try:
             data = json.loads(request.body)
-            item_id = data.get('item_id')
+            item_id = data.get("item_id")
             
             if not item_id:
-                return JsonResponse({'status': 'error', 'message': 'Item ID is required'})
+                return JsonResponse({"status": "error", "message": "Item ID is required"})
             
             item = PackingItem.objects.get(id=item_id)
             
             # Clear minimum stock (set to 0, not NULL)
             item.minimum_stock = 0
-            item.save(update_fields=['minimum_stock'])
+            item.save(update_fields=["minimum_stock"])
             
             # Log activity
             ActivityLog.objects.create(
                 user=request.user,
-                action='delete_packing_min_stock',
-                status='success',
-                notes=f'Deleted minimum stock for {item.name}'
+                action="delete_packing_min_stock",
+                status="success",
+                notes=f"Deleted minimum stock for {item.name}"
             )
             
-            return JsonResponse({'status': 'success', 'message': 'Minimum stock deleted successfully'})
+            return JsonResponse({"status": "success", "message": "Minimum stock deleted successfully"})
             
         except PackingItem.DoesNotExist:
-            return JsonResponse({'status': 'error', 'message': 'Item not found'})
+            return JsonResponse({"status": "error", "message": "Item not found"})
         except Exception as e:
             logger.error(f"Error in delete_packing_min_stock view: {str(e)}")
             logger.error(traceback.format_exc())
-            return JsonResponse({'status': 'error', 'message': str(e)})
+            return JsonResponse({"status": "error", "message": str(e)})
     
-    return JsonResponse({'status': 'error', 'message': 'Invalid request method'})
+    return JsonResponse({"status": "error", "message": "Invalid request method"})
 
 @login_required
 @csrf_exempt
@@ -173,31 +177,31 @@ def send_packing_to_telegram(request):
     """
     logger.info(f"Accessing send_packing_to_telegram as user: {request.user.username}")
     
-    if request.method == 'POST':
+    if request.method == "POST":
         try:
             # Read the plain text message directly from the request body
-            message_text = request.body.decode('utf-8')
+            message_text = request.body.decode("utf-8")
             logger.info(f"Received plain text message for Telegram: \n{message_text}")
 
             if not message_text:
-                return JsonResponse({'status': 'error', 'message': 'Pesan kosong diterima'})
+                return JsonResponse({"status": "error", "message": "Pesan kosong diterima"})
 
             # Get webhook URL for Kelola Stok Packing
             webhook_settings = WebhookSettings.objects.first()
             if not webhook_settings:
                 logger.error("Webhook settings not found")
-                return JsonResponse({'status': 'error', 'message': 'Pengaturan webhook tidak ditemukan'})
+                return JsonResponse({"status": "error", "message": "Pengaturan webhook tidak ditemukan"})
             
             webhook_url = webhook_settings.webhook_kelola_stok_packing
             if not webhook_url:
                 logger.error("Webhook URL for Kelola Stok Packing not configured")
-                return JsonResponse({'status': 'error', 'message': 'URL webhook Telegram untuk Kelola Stok Packing belum diatur'})
+                return JsonResponse({"status": "error", "message": "URL webhook Telegram untuk Kelola Stok Packing belum diatur"})
             
             # Send the received plain text message to the webhook as JSON with a 'text' field
             response = requests.post(
                 webhook_url,
-                json={'text': message_text}, # Send as JSON with 'text' field
-                headers={'Content-Type': 'application/json'}, # Set content type to JSON
+                json={"text": message_text}, # Send as JSON with 'text' field
+                headers={"Content-Type": "application/json"}, # Set content type to JSON
                 timeout=10 # Add a timeout
             )
             
@@ -207,24 +211,24 @@ def send_packing_to_telegram(request):
                 # Log activity
                 ActivityLog.objects.create(
                     user=request.user,
-                    action='send_packing_to_telegram',
-                    status='success',
-                    notes=f'Sent packing notification text to Telegram webhook.'
+                    action="send_packing_to_telegram",
+                    status="success",
+                    notes=f"Sent packing notification text to Telegram webhook."
                 )
                 # Return JSON success to frontend, regardless of webhook response body
-                return JsonResponse({'status': 'success', 'message': 'Notifikasi berhasil dikirim ke Telegram'})
+                return JsonResponse({"status": "success", "message": "Notifikasi berhasil dikirim ke Telegram"})
             else:
                 # Log error with webhook response text (which might not be JSON)
                 logger.error(f"Failed to send packing notification to webhook. Status: {response.status_code}, Response: {response.text}")
                 # Log activity
                 ActivityLog.objects.create(
                     user=request.user,
-                    action='send_packing_to_telegram',
-                    status='failed',
-                    notes=f'Failed to send packing notification to Telegram webhook: {response.status_code} - {response.text}'
+                    action="send_packing_to_telegram",
+                    status="failed",
+                    notes=f"Failed to send packing notification to Telegram webhook: {response.status_code} - {response.text}"
                 )
                 # Return JSON error to frontend
-                return JsonResponse({'status': 'error', 'message': f'Gagal mengirim notifikasi: {response.status_code} - {response.text}'})
+                return JsonResponse({"status": "error", "message": f"Gagal mengirim notifikasi: {response.status_code} - {response.text}"})
             
         except Exception as e:
             logger.error(f"Error in send_packing_to_telegram view: {str(e)}")
@@ -232,14 +236,14 @@ def send_packing_to_telegram(request):
             # Log activity
             ActivityLog.objects.create(
                 user=request.user,
-                action='send_packing_to_telegram',
-                status='failed',
-                notes=f'Internal server error: {str(e)}'
+                action="send_packing_to_telegram",
+                status="failed",
+                notes=f"Internal server error: {str(e)}"
             )
-            return JsonResponse({'status': 'error', 'message': f'Terjadi kesalahan internal: {str(e)}'})
+            return JsonResponse({"status": "error", "message": f"Terjadi kesalahan internal: {str(e)}"})
     
     logger.warning(f"Invalid request method ({request.method}) for send_packing_to_telegram")
-    return JsonResponse({'status': 'error', 'message': 'Metode request tidak valid'})
+    return JsonResponse({"status": "error", "message": "Metode request tidak valid"})
 
 @login_required
 @user_passes_test(is_admin)
@@ -248,7 +252,7 @@ def reset_all_packing_items(request):
     """
     API endpoint to reset all packing items
     """
-    if request.method == 'POST':
+    if request.method == "POST":
         try:
             # Delete all packing items
             count = PackingItem.objects.all().count()
@@ -257,12 +261,12 @@ def reset_all_packing_items(request):
             # Log activity
             ActivityLog.objects.create(
                 user=request.user,
-                action='reset_all_packing_items',
-                status='success',
-                notes=f'Reset all packing items ({count} items deleted)'
+                action="reset_all_packing_items",
+                status="success",
+                notes=f"Reset all packing items ({count} items deleted)"
             )
             
-            return JsonResponse({'status': 'success', 'message': f'All packing items reset successfully ({count} items deleted)'})
+            return JsonResponse({"status": "success", "message": f"All packing items reset successfully ({count} items deleted)"})
             
         except Exception as e:
             logger.error(f"Error in reset_all_packing_items view: {str(e)}")
@@ -271,14 +275,14 @@ def reset_all_packing_items(request):
             # Log activity
             ActivityLog.objects.create(
                 user=request.user,
-                action='reset_all_packing_items',
-                status='failed',
-                notes=f'Failed to reset all packing items: {str(e)}'
+                action="reset_all_packing_items",
+                status="failed",
+                notes=f"Failed to reset all packing items: {str(e)}"
             )
             
-            return JsonResponse({'status': 'error', 'message': str(e)})
+            return JsonResponse({"status": "error", "message": str(e)})
     
-    return JsonResponse({'status': 'error', 'message': 'Invalid request method'})
+    return JsonResponse({"status": "error", "message": "Invalid request method"})
 
 @login_required
 # @user_passes_test(is_admin) # Removed admin check to allow staff gudang access
@@ -287,24 +291,24 @@ def create_packing_item(request):
     """
     API endpoint to create a new packing item
     """
-    if request.method == 'POST':
+    if request.method == "POST":
         try:
             data = json.loads(request.body)
-            code = data.get('code')
-            name = data.get('name')
-            category = data.get('category')
-            current_stock = data.get('current_stock')
-            minimum_stock = data.get('minimum_stock')
+            code = data.get("code")
+            name = data.get("name")
+            category = data.get("category")
+            current_stock = data.get("current_stock")
+            minimum_stock = data.get("minimum_stock")
             
             # Validate required fields
             if not code or not name or current_stock is None:
-                return JsonResponse({'status': 'error', 'message': 'Code, name, and current stock are required'})
+                return JsonResponse({"status": "error", "message": "Code, name, and current stock are required"})
             
             # Create new item
             item = PackingItem.objects.create(
                 code=code,
                 name=name,
-                category=category or '',
+                category=category or "",
                 current_stock=current_stock,
                 minimum_stock=minimum_stock
             )
@@ -312,30 +316,30 @@ def create_packing_item(request):
             # Log activity
             ActivityLog.objects.create(
                 user=request.user,
-                action='create_packing_item',
-                status='success',
-                notes=f'Created new packing item: {item.name}'
+                action="create_packing_item",
+                status="success",
+                notes=f"Created new packing item: {item.name}"
             )
             
             return JsonResponse({
-                'status': 'success', 
-                'message': 'Packing item created successfully',
-                'item': {
-                    'id': item.id,
-                    'code': item.code,
-                    'name': item.name,
-                    'category': item.category,
-                    'current_stock': item.current_stock,
-                    'minimum_stock': item.minimum_stock
+                "status": "success", 
+                "message": "Packing item created successfully",
+                "item": {
+                    "id": item.id,
+                    "code": item.code,
+                    "name": item.name,
+                    "category": item.category,
+                    "current_stock": item.current_stock,
+                    "minimum_stock": item.minimum_stock
                 }
             })
             
         except Exception as e:
             logger.error(f"Error in create_packing_item view: {str(e)}")
             logger.error(traceback.format_exc())
-            return JsonResponse({'status': 'error', 'message': str(e)})
+            return JsonResponse({"status": "error", "message": str(e)})
     
-    return JsonResponse({'status': 'error', 'message': 'Invalid request method'})
+    return JsonResponse({"status": "error", "message": "Invalid request method"})
 
 @login_required
 @csrf_exempt
@@ -343,19 +347,19 @@ def update_packing_item(request):
     """
     API endpoint to update an existing packing item
     """
-    if request.method == 'POST':
+    if request.method == "POST":
         try:
             data = json.loads(request.body)
-            item_id = data.get('item_id')
-            code = data.get('code')
-            name = data.get('name')
-            category = data.get('category')
-            current_stock = data.get('current_stock')
-            minimum_stock = data.get('minimum_stock')
+            item_id = data.get("item_id")
+            code = data.get("code")
+            name = data.get("name")
+            category = data.get("category")
+            current_stock = data.get("current_stock")
+            minimum_stock = data.get("minimum_stock")
             
             # Validate required fields
             if not item_id:
-                return JsonResponse({'status': 'error', 'message': 'Item ID is required'})
+                return JsonResponse({"status": "error", "message": "Item ID is required"})
             
             # Get item
             item = PackingItem.objects.get(id=item_id)
@@ -377,69 +381,68 @@ def update_packing_item(request):
             # Log activity
             ActivityLog.objects.create(
                 user=request.user,
-                action='update_packing_item',
-                status='success',
-                notes=f'Updated packing item: {item.name}'
+                action="update_packing_item",
+                status="success",
+                notes=f"Updated packing item: {item.name}"
             )
             
             return JsonResponse({
-                'status': 'success', 
-                'message': 'Packing item updated successfully',
-                'item': {
-                    'id': item.id,
-                    'code': item.code,
-                    'name': item.name,
-                    'category': item.category,
-                    'current_stock': item.current_stock,
-                    'minimum_stock': item.minimum_stock
+                "status": "success", 
+                "message": "Packing item updated successfully",
+                "item": {
+                    "id": item.id,
+                    "code": item.code,
+                    "name": item.name,
+                    "category": item.category,
+                    "current_stock": item.current_stock,
+                    "minimum_stock": item.minimum_stock
                 }
             })
             
         except PackingItem.DoesNotExist:
-            return JsonResponse({'status': 'error', 'message': 'Item not found'})
+            return JsonResponse({"status": "error", "message": "Item not found"})
         except Exception as e:
             logger.error(f"Error in update_packing_item view: {str(e)}")
             logger.error(traceback.format_exc())
-            return JsonResponse({'status': 'error', 'message': str(e)})
+            return JsonResponse({"status": "error", "message": str(e)})
     
-    return JsonResponse({'status': 'error', 'message': 'Invalid request method'})
+    return JsonResponse({"status": "error", "message": "Invalid request method"})
 
 @login_required
+@user_passes_test(is_admin)
 @csrf_exempt
 def delete_packing_item(request):
     """
     API endpoint to delete a packing item
     """
-    if request.method == 'POST':
+    if request.method == "POST":
         try:
             data = json.loads(request.body)
-            item_id = data.get('item_id')
+            item_id = data.get("item_id")
             
             if not item_id:
-                return JsonResponse({'status': 'error', 'message': 'Item ID is required'})
+                return JsonResponse({"status": "error", "message": "Item ID is required"})
             
-            # Get item
-            item = PackingItem.objects.get(id=item_id)
-            item_name = item.name
-            
-            # Delete item
+            item = get_object_or_404(PackingItem, id=item_id)
+            item_name = item.name # Store name before deleting
             item.delete()
             
             # Log activity
             ActivityLog.objects.create(
                 user=request.user,
-                action='delete_packing_item',
-                status='success',
-                notes=f'Deleted packing item: {item_name}'
+                action="delete_packing_item",
+                status="success",
+                notes=f"Deleted packing item: {item_name}"
             )
             
-            return JsonResponse({'status': 'success', 'message': 'Packing item deleted successfully'})
+            return JsonResponse({"status": "success", "message": "Packing item deleted successfully"})
             
         except PackingItem.DoesNotExist:
-            return JsonResponse({'status': 'error', 'message': 'Item not found'})
+            return JsonResponse({"status": "error", "message": "Item not found"})
         except Exception as e:
             logger.error(f"Error in delete_packing_item view: {str(e)}")
             logger.error(traceback.format_exc())
-            return JsonResponse({'status': 'error', 'message': str(e)})
+            return JsonResponse({"status": "error", "message": str(e)})
     
-    return JsonResponse({'status': 'error', 'message': 'Invalid request method'})
+    return JsonResponse({"status": "error", "message": "Invalid request method"})
+
