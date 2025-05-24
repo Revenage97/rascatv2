@@ -509,3 +509,70 @@
     });
 </script>
 {% endblock %}
+
+
+        // Delete Harga Item button click handler (using event delegation)
+        document.addEventListener("click", function(e) {
+            const deleteBtn = e.target.closest(".delete-harga-item-btn"); // Changed selector
+            if (deleteBtn) {
+                const button = deleteBtn;
+                const itemId = button.getAttribute("data-item-id");
+                const row = button.closest("tr");
+                const itemNameElement = row.querySelector("td:nth-child(3)"); // Assuming Name is 3rd column
+                const itemName = itemNameElement ? itemNameElement.textContent.trim() : "item ini";
+
+                Swal.fire({
+                    title: "Konfirmasi Hapus",
+                    text: `Apakah Anda yakin ingin menghapus item \"${itemName}\"? Tindakan ini tidak dapat dibatalkan.`,
+                    icon: "warning",
+                    showCancelButton: true,
+                    confirmButtonColor: "#d33",
+                    cancelButtonColor: "#3085d6",
+                    confirmButtonText: "Ya, Hapus!",
+                    cancelButtonText: "Batal"
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        Swal.fire({ title: "Menghapus item...", allowOutsideClick: false, didOpen: () => { Swal.showLoading(); } });
+                        fetch(`/api/delete-harga-item/${itemId}/`, { // Changed endpoint
+                            method: "POST",
+                            headers: {
+                                "Content-Type": "application/json",
+                                "X-CSRFToken": csrfToken // Use the csrfToken variable defined earlier
+                            },
+                            // No body needed if just using URL parameter for ID
+                        })
+                        .then(response => response.json())
+                        .then(data => {
+                            Swal.close();
+                            if (data.status === "success") {
+                                row.style.transition = "opacity 0.5s ease";
+                                row.style.opacity = "0";
+                                setTimeout(() => {
+                                    row.remove();
+                                    // Check if table is empty and add "no data" row if needed
+                                    const tableBody = document.querySelector("table tbody");
+                                    if (tableBody && tableBody.querySelectorAll("tr").length === 0) {
+                                        const noDataRow = document.createElement("tr");
+                                        // Adjusted colspan to 7 for Kelola Harga
+                                        noDataRow.innerHTML = "<td colspan=\"7\" class=\"text-center\">Tidak ada data barang</td>"; 
+                                        tableBody.appendChild(noDataRow);
+                                    }
+                                    updateSendButtonState(); // Update button state after delete
+                                }, 500);
+                                Swal.fire("Berhasil", "Item berhasil dihapus", "success");
+                            } else {
+                                Swal.fire("Gagal", data.message || "Gagal menghapus item", "error");
+                            }
+                        })
+                        .catch(error => {
+                            console.error("Error deleting item:", error);
+                            Swal.close();
+                            Swal.fire("Gagal", "Terjadi kesalahan saat menghubungi server", "error");
+                        });
+                    }
+                });
+            }
+        });
+    });
+</script>
+{% endblock %}
