@@ -709,26 +709,19 @@ def send_cancelled_order_telegram(request, order_id):
 
     if request.method == "POST":
         try:
-            # Format data as a dictionary
-            data_to_send = {
-                "Nomor Pesanan": order.order_number,
-                "Tanggal Pemesanan": order.order_date.strftime("%Y-%m-%d") if order.order_date else None,
-                "Tanggal Pembatalan": order.cancellation_date.strftime("%Y-%m-%d") if order.cancellation_date else None,
-                "Produk": order.product_name or "-",
-                "Jumlah": order.quantity,
-                "Alasan Pembatalan": order.cancellation_reason or "-",
-                "Dikirim Oleh": request.user.username
-            }
-            
-            # Convert dictionary to a nicely formatted JSON string for the message body
-            # Using indent for readability in Telegram message
-            json_string_payload = json.dumps(data_to_send, indent=2, ensure_ascii=False)
-            
-            # Prepare the message text
-            message_text = f"🔔 Pesanan Dibatalkan Baru Telah Dikirim:\n```json\n{json_string_payload}\n```"
+            # Prepare the message text in plain text format
+            message_text = (
+                f"Pesanan Dibatalkan :\n\n"
+                f"Nomor Pesanan: {order.order_number}\n"
+                f"Tanggal Pemesanan: {order.order_date.strftime('%Y-%m-%d') if order.order_date else '-'}\n"
+                f"Tanggal Pembatalan: {order.cancellation_date.strftime('%Y-%m-%d') if order.cancellation_date else '-'}\n"
+                f"Produk: {order.product_name or '-'}\n"
+                f"Jumlah: {order.quantity}\n"
+                f"Alasan Pembatalan: {order.cancellation_reason or '-'}\n\n"
+                f"Tanpa Konfirmasi - Kembalikan Ke Stok Kasir"
+            )
             
             # Send to webhook (assuming simple text payload is sufficient for most webhooks like Zapier/Make)
-            # If the webhook expects a specific JSON structure, adjust the payload accordingly.
             # For many simple webhooks, sending a dictionary with a 'text' key works.
             webhook_payload = {"text": message_text} 
             
