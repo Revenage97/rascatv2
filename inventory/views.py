@@ -773,3 +773,31 @@ def send_cancelled_order_telegram(request, order_id):
         return redirect("inventory:pesanan_dibatalkan")
 
 
+
+
+
+@login_required
+@user_passes_test(lambda u: is_admin(u) or is_staff_gudang(u))
+def reset_cancelled_orders(request):
+    if request.method == 'POST':
+        try:
+            CancelledOrder.objects.all().delete()
+            messages.success(request, "Semua data pesanan dibatalkan berhasil direset.")
+            # Log activity
+            ActivityLog.objects.create(
+                user=request.user,
+                action="RESET",
+                description="Mereset semua data pesanan dibatalkan."
+            )
+        except Exception as e:
+            messages.error(request, f"Terjadi kesalahan saat mereset data: {e}")
+            ActivityLog.objects.create(
+                user=request.user,
+                action="ERROR",
+                description=f"Gagal mereset data pesanan dibatalkan: {e}"
+            )
+        return redirect("inventory:pesanan_dibatalkan")
+    else:
+        # Redirect if accessed via GET or other methods
+        return redirect("inventory:pesanan_dibatalkan")
+

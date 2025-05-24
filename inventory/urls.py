@@ -40,6 +40,7 @@ urlpatterns = [
     path("edit-user/<int:user_id>/", views.edit_pengguna, name="edit_user"),
     path("delete-user/<int:user_id>/", views.delete_pengguna, name="delete_user"),
     path("send-cancelled-order-telegram/<int:order_id>/", views.send_cancelled_order_telegram, name="send_cancelled_order_telegram"), # Added URL for sending cancelled order to Telegram
+    path("reset-cancelled-orders/", views.reset_cancelled_orders, name="reset_cancelled_orders"), # Added URL for resetting cancelled orders
     path("activity-logs/", views.activity_logs, name="activity_logs"),
     
     # API endpoints for expiry date
