@@ -801,3 +801,49 @@ def reset_cancelled_orders(request):
         # Redirect if accessed via GET or other methods
         return redirect("inventory:pesanan_dibatalkan")
 
+
+
+
+@login_required
+@user_passes_test(is_admin) # Only admin can delete items directly
+@csrf_exempt # Consider CSRF protection if not using API tokens
+def delete_item(request, item_id):
+    """
+    API endpoint to delete a specific stock item.
+    """
+    if request.method == 'POST':
+        try:
+            item = get_object_or_404(Item, pk=item_id)
+            item_name = item.name # Store name for logging before deletion
+            item.delete()
+            
+            # Log activity
+            ActivityLog.objects.create(
+                user=request.user,
+                action="delete_item",
+                status="success",
+                notes=f"Item 	'{item_name}	' (ID: {item_id}) deleted."
+            )
+            
+            return JsonResponse({"status": "success", "message": f"Item 	'{item_name}	' berhasil dihapus."}, status=200)
+        except Item.DoesNotExist:
+             ActivityLog.objects.create(
+                user=request.user,
+                action="delete_item_failed",
+                status="failed",
+                notes=f"Attempted to delete non-existent item ID: {item_id}."
+            )
+             return JsonResponse({"status": "error", "message": "Item tidak ditemukan."}, status=404)
+        except Exception as e:
+            logger.error(f"Error deleting item {item_id}: {e}")
+            logger.error(traceback.format_exc())
+            ActivityLog.objects.create(
+                user=request.user,
+                action="delete_item_failed",
+                status="failed",
+                notes=f"Error deleting item ID {item_id}: {e}"
+            )
+            return JsonResponse({"status": "error", "message": f"Terjadi kesalahan: {e}"}, status=500)
+    else:
+        return JsonResponse({"status": "error", "message": "Metode request tidak valid."}, status=405)
+

@@ -43,6 +43,9 @@ urlpatterns = [
     path("reset-cancelled-orders/", views.reset_cancelled_orders, name="reset_cancelled_orders"), # Added URL for resetting cancelled orders
     path("activity-logs/", views.activity_logs, name="activity_logs"),
     
+    # API endpoint for deleting an item
+    path("api/delete-item/<int:item_id>/", views.delete_item, name="delete_item"),
+    
     # API endpoints for expiry date
     path('api/save-expiry-date/', save_expiry_date, name='save_expiry_date'),
     path('api/delete-expiry-date/', save_expiry_date, name='delete_expiry_date'),  # Reusing same view with different param

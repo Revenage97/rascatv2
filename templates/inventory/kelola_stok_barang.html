@@ -98,8 +98,11 @@
                                 </div>
                             </td>
                             <td class="text-center">
-                                <button type="button" class="btn btn-sm btn-info send-single-item" data-item-id="{{ item.id }}">
+                                <button type="button" class="btn btn-sm btn-info send-single-item me-1" data-item-id="{{ item.id }}" title="Kirim ke Telegram">
                                     <i class="bi bi-telegram"></i>
+                                </button>
+                                <button type="button" class="btn btn-sm btn-danger delete-item-btn" data-item-id="{{ item.id }}" title="Hapus Item">
+                                    <i class="bi bi-trash"></i>
                                 </button>
                             </td>
                         </tr>
@@ -598,3 +601,72 @@
     });
 </script>
 {% endblock %}
+
+
+        // Delete Item button click handler
+        document.addEventListener("click", function(e) {
+            if (e.target && e.target.closest(".delete-item-btn")) {
+                const button = e.target.closest(".delete-item-btn");
+                const itemId = button.getAttribute("data-item-id");
+                const row = button.closest("tr");
+                const itemName = row.cells[2].textContent; // Get item name from the 3rd cell (index 2)
+
+                Swal.fire({
+                    title: "Konfirmasi Hapus",
+                    html: `Apakah Anda yakin ingin menghapus item <strong>${itemName}</strong>? <br><strong class=\"text-danger\">Tindakan ini tidak dapat dibatalkan.</strong>`,
+                    icon: "warning",
+                    showCancelButton: true,
+                    confirmButtonColor: "#d33",
+                    cancelButtonColor: "#3085d6",
+                    confirmButtonText: "Ya, Hapus Item!",
+                    cancelButtonText: "Batal"
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        // Disable button and show loading state
+                        button.disabled = true;
+                        const originalContent = button.innerHTML;
+                        button.innerHTML = 	'<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>	';
+                        
+                        // Send API request to delete the item
+                        fetch(`/api/delete-item/${itemId}/`, {
+                            method: "POST",
+                            headers: {
+                                "Content-Type": "application/json",
+                                "X-CSRFToken": csrfToken
+                            }
+                        })
+                        .then(response => response.json())
+                        .then(data => {
+                            if (data.status === "success") {
+                                Swal.fire(
+                                    "Dihapus!",
+                                    data.message || `Item ${itemName} telah dihapus.`,
+                                    "success"
+                                );
+                                // Remove the table row from the DOM
+                                row.remove();
+                            } else {
+                                button.disabled = false; // Re-enable button on failure
+                                button.innerHTML = originalContent;
+                                Swal.fire(
+                                    "Gagal!",
+                                    data.message || "Gagal menghapus item.",
+                                    "error"
+                                );
+                            }
+                        })
+                        .catch(error => {
+                            button.disabled = false; // Re-enable button on error
+                            button.innerHTML = originalContent;
+                            Swal.fire(
+                                "Error!",
+                                "Terjadi kesalahan saat menghubungi server.",
+                                "error"
+                            );
+                            console.error("Error:", error);
+                        });
+                    }
+                });
+            }
+        });
+
