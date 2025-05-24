@@ -98,12 +98,15 @@
                             <td class="text-center">{{ order.quantity }}</td>
                             <td>{{ order.cancellation_reason|default:"-" }}</td>
                             <td class="text-center">
-                                <form method="POST" action="{% url 'inventory:send_cancelled_order_telegram' order.id %}" style="display: inline;">
+                                <form method="POST" action="{% url 'inventory:send_cancelled_order_telegram' order.id %}" style="display: inline;" class="me-1">
                                     {% csrf_token %}
                                     <button type="submit" class="btn btn-info btn-sm" title="Kirim ke Telegram">
                                         <i class="bi bi-telegram"></i>
                                     </button>
                                 </form>
+                                <button type="button" class="btn btn-sm btn-danger delete-cancelled-order-btn" data-order-id="{{ order.id }}" title="Hapus Pesanan Dibatalkan">
+                                    <i class="bi bi-trash"></i>
+                                </button>
                             </td>
                         </tr>
                         {% empty %}

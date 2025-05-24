@@ -122,8 +122,11 @@
                                 </div>
                             </td>
                             <td class="text-center">
-                                <button type="button" class="btn btn-sm btn-info send-single-item" data-item-id="{{ item.id }}">
+                                <button type="button" class="btn btn-sm btn-info send-single-item me-1" data-item-id="{{ item.id }}" title="Kirim ke Telegram">
                                     <i class="bi bi-telegram"></i>
+                                </button>
+                                <button type="button" class="btn btn-sm btn-danger delete-harga-item-btn" data-item-id="{{ item.id }}" title="Hapus Item">
+                                    <i class="bi bi-trash"></i>
                                 </button>
                             </td>
                         </tr>

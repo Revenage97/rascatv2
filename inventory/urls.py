@@ -45,6 +45,10 @@ urlpatterns = [
     
     # API endpoint for deleting an item
     path("api/delete-item/<int:item_id>/", views.delete_item, name="delete_item"),
+    path("api/delete-exp-item/<int:item_id>/", views.delete_exp_item, name="delete_exp_item"), # Added for Data Exp Produk delete
+    path("api/delete-transfer-item/<int:item_id>/", views.delete_transfer_item, name="delete_transfer_item"), # Added for Transfer Stok delete
+    path("api/delete-cancelled-order/<int:order_id>/", views.delete_cancelled_order, name="delete_cancelled_order"), # Added for Pesanan Dibatalkan delete
+    path("api/delete-harga-item/<int:item_id>/", views.delete_harga_item, name="delete_harga_item"), # Added for Kelola Harga delete
     
     # API endpoints for expiry date
     path('api/save-expiry-date/', save_expiry_date, name='save_expiry_date'),
