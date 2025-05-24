@@ -53,20 +53,23 @@
                         <textarea class="form-control form-control-sm" id="alasanPembatalan" name="alasan_pembatalan" rows="2"></textarea>
                     </div>
                 </div>
-                <div class="mt-3 d-flex justify-content-end">
-                    {# Reset Button Form #}
-                    <form method="POST" action="{% url 'inventory:reset_cancelled_orders' %}" onsubmit="return confirm('Anda yakin ingin menghapus semua data pesanan dibatalkan? Data yang dihapus tidak dapat dikembalikan.');" style="margin-right: 10px;">
-                        {% csrf_token %}
-                        <button type="submit" class="btn btn-danger btn-sm">
-                            <i class="bi bi-trash me-1"></i> Reset Data
-                        </button>
-                    </form>
-                    {# Save Button #}
-                    <button type="submit" form="cancelledOrderForm" class="btn btn-success btn-sm">
-                        <i class="bi bi-save me-1"></i> Simpan Data
+            </form> {# End of cancelledOrderForm #}
+
+            {# Buttons Container #}
+            <div class="mt-3 d-flex justify-content-end">
+                {# Save Button - Submits the main form #}
+                <button type="submit" form="cancelledOrderForm" class="btn btn-success btn-sm me-2"> {# Added me-2 for margin #}
+                    <i class="bi bi-save me-1"></i> Simpan Data
+                </button>
+
+                {# Reset Button Form - Separate form #}
+                <form method="POST" action="{% url 'inventory:reset_cancelled_orders' %}" onsubmit="return confirm('Anda yakin ingin menghapus semua data pesanan dibatalkan? Data yang dihapus tidak dapat dikembalikan.');" style="display: inline;"> {# Removed margin-right #}
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-danger btn-sm">
+                        <i class="bi bi-trash me-1"></i> Reset Data
                     </button>
-                </div>
-            </form>
+                </form>
+            </div>
         </div>
     </div>
     {% endif %}
