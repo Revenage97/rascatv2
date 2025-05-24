@@ -502,14 +502,10 @@
                     toastMessage.textContent = 'Terjadi kesalahan: ' + error.message;
                     toastEl.classList.remove('bg-info', 'bg-success');
                     toastEl.classList.add('bg-danger', 'text-white');
-                    toast.show();
+                    toast.show();                    }
                 });
             }
         });
-    });
-</script>
-{% endblock %}
-
 
         // Delete Harga Item button click handler (using event delegation)
         document.addEventListener("click", function(e) {
