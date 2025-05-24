@@ -787,14 +787,14 @@ def reset_cancelled_orders(request):
             ActivityLog.objects.create(
                 user=request.user,
                 action="RESET",
-                description="Mereset semua data pesanan dibatalkan."
+                notes="Mereset semua data pesanan dibatalkan."
             )
         except Exception as e:
             messages.error(request, f"Terjadi kesalahan saat mereset data: {e}")
             ActivityLog.objects.create(
                 user=request.user,
                 action="ERROR",
-                description=f"Gagal mereset data pesanan dibatalkan: {e}"
+                notes=f"Gagal mereset data pesanan dibatalkan: {e}"
             )
         return redirect("inventory:pesanan_dibatalkan")
     else:

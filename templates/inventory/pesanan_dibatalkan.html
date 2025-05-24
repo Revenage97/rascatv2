@@ -62,13 +62,10 @@
                     <i class="bi bi-save me-1"></i> Simpan Data
                 </button>
 
-                {# Reset Button Form - Separate form #}
-                <form method="POST" action="{% url 'inventory:reset_cancelled_orders' %}" onsubmit="return confirm('Anda yakin ingin menghapus semua data pesanan dibatalkan? Data yang dihapus tidak dapat dikembalikan.');" style="display: inline;"> {# Removed margin-right #}
-                    {% csrf_token %}
-                    <button type="submit" class="btn btn-danger btn-sm">
-                        <i class="bi bi-trash me-1"></i> Reset Data
-                    </button>
-                </form>
+                {# Reset Button - Triggers modal #}
+                <button type="button" id="resetDataBtn" class="btn btn-danger btn-sm">
+                    <i class="bi bi-trash me-1"></i> Reset Data
+                </button>
             </div>
         </div>
     </div>
@@ -112,7 +109,7 @@
                         {% empty %}
                         {# Empty state row #}
                         <tr>
-                            <td colspan="6" class="text-center py-5"> {# Updated colspan to 6 #}
+                            <td colspan="7" class="text-center py-5"> {# Updated colspan to 7 to match column count #}
                                 <i class="bi bi-inbox fs-1 text-muted mb-3 d-block"></i>
                                 <h5 class="text-muted">Tidak Ada Data Pesanan Dibatalkan</h5>
                                 <p class="text-muted">Belum ada data pesanan yang dibatalkan untuk ditampilkan.</p>
@@ -125,10 +122,51 @@
         </div>
     </div>
 </div>
+
+<!-- Modal Konfirmasi Reset Data -->
+<div class="modal fade" id="resetDataModal" tabindex="-1" aria-labelledby="resetDataModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="resetDataModalLabel">Konfirmasi Reset Data</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="alert alert-danger">
+                    <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                    Apakah Anda yakin ingin menghapus semua data pesanan dibatalkan? Tindakan ini tidak bisa dibatalkan.
+                </div>
+                <p class="text-muted">Semua data pesanan dibatalkan akan dihapus secara permanen dari sistem.</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
+                <form method="POST" action="{% url 'inventory:reset_cancelled_orders' %}" style="display: inline;">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-danger" id="confirmResetData">Hapus Semua Data</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Toast Notification -->
+<div class="position-fixed bottom-0 end-0 p-3" style="z-index: 11">
+    <div id="notificationToast" class="toast" role="alert" aria-live="assertive" aria-atomic="true">
+        <div class="toast-header">
+            <strong class="me-auto">Notifikasi</strong>
+            <button type="button" class="btn-close" data-bs-dismiss="toast" aria-label="Close"></button>
+        </div>
+        <div class="toast-body" id="toastMessage">
+            
+        </div>
+    </div>
+</div>
 {% endblock %}
 
 {% block extra_js %}
 <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+<!-- SweetAlert2 CDN -->
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 <script>
     document.addEventListener('DOMContentLoaded', function() {
         // Initialize datepicker for both date fields
@@ -137,14 +175,15 @@
             allowInput: true
         });
 
-        // Form submission is now handled by standard POST request, no JS needed for basic submit
-        // const form = document.getElementById('cancelledOrderForm');
-        // if (form) {
-        //     form.addEventListener('submit', function(event) {
-        //         // event.preventDefault(); // Removed preventDefault to allow standard POST
-        //         // No alert needed, backend handles messages
-        //     });
-        // }
+        // Reset Data button click handler
+        const resetDataBtn = document.getElementById('resetDataBtn');
+        const resetDataModal = new bootstrap.Modal(document.getElementById('resetDataModal'));
+        
+        if (resetDataBtn) {
+            resetDataBtn.addEventListener('click', function() {
+                resetDataModal.show();
+            });
+        }
     });
 </script>
 {% endblock %}
