@@ -1,206 +1,47 @@
-{% extends 'base.html' %}
-
-{% block extra_head %}
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
-{% endblock %}
-
-{% block content %}
-<div class="container-fluid py-4">
-    <h2 class="mb-4">Pesanan Dibatalkan</h2>
-
-    {# Display messages #}
-    {% if messages %}
-        {% for message in messages %}
-            <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
-                {{ message }}
-                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-            </div>
-        {% endfor %}
-    {% endif %}
-
-    {# Manual Input Form - Visible only to admin and staff gudang #}
-    {% if user.profile.is_admin or user.profile.is_staff_gudang %}
-    <div class="card mb-4">
-        <div class="card-header bg-primary text-white">
-            Input Manual Pesanan Dibatalkan
-        </div>
-        <div class="card-body">
-            <form id="cancelledOrderForm" method="POST"> {# Added method="POST" #}
-                {% csrf_token %} {# Added CSRF token #}
-                <div class="row g-3">
-                    <div class="col-md-4">
-                        <label for="nomorPesanan" class="form-label">Nomor Pesanan <span class="text-danger">*</span></label>
-                        <input type="text" class="form-control form-control-sm" id="nomorPesanan" name="nomor_pesanan" required>
-                    </div>
-                    <div class="col-md-4">
-                        <label for="tanggalPemesanan" class="form-label">Tanggal Pemesanan <span class="text-danger">*</span></label> {# Added Tanggal Pemesanan #}
-                        <input type="text" class="form-control form-control-sm datepicker" id="tanggalPemesanan" name="tanggal_pemesanan" placeholder="YYYY-MM-DD" required>
-                    </div>
-                    <div class="col-md-4">
-                        <label for="tanggalPembatalan" class="form-label">Tanggal Pembatalan <span class="text-danger">*</span></label>
-                        <input type="text" class="form-control form-control-sm datepicker" id="tanggalPembatalan" name="tanggal_pembatalan" placeholder="YYYY-MM-DD" required>
-                    </div>
-                    <div class="col-md-8">
-                        <label for="namaProduk" class="form-label">Produk</label> {# Removed required asterisk #}
-                        <input type="text" class="form-control form-control-sm" id="namaProduk" name="produk"> {# Removed required attribute #}
-                    </div>
-                    <div class="col-md-4">
-                        <label for="jumlahProduk" class="form-label">Jumlah <span class="text-danger">*</span></label>
-                        <input type="number" class="form-control form-control-sm" id="jumlahProduk" name="jumlah" min="1" required>
-                    </div>
-                    <div class="col-12">
-                        <label for="alasanPembatalan" class="form-label">Alasan Pembatalan</label>
-                        <textarea class="form-control form-control-sm" id="alasanPembatalan" name="alasan_pembatalan" rows="2"></textarea>
-                    </div>
-                </div>
-            </form> {# End of cancelledOrderForm #}
-
-            {# Buttons Container #}
-            <div class="mt-3 d-flex justify-content-end">
-                {# Save Button - Submits the main form #}
-                <button type="submit" form="cancelledOrderForm" class="btn btn-success btn-sm me-2"> {# Added me-2 for margin #}
-                    <i class="bi bi-save me-1"></i> Simpan Data
-                </button>
-
-                {# Reset Button - Triggers modal #}
-                <button type="button" id="resetDataBtn" class="btn btn-danger btn-sm">
-                    <i class="bi bi-trash me-1"></i> Reset Data
-                </button>
-            </div>
-        </div>
-    </div>
-    {% endif %}
-
-    {# Table Section #}
-    <div class="card">
-        <div class="card-body">
-            <div class="table-responsive">
-                <table class="table table-bordered table-hover table-striped mb-0">
-                    <thead class="bg-light">
-                        <tr>
-                            <th>Nomor Pesanan</th>
-                            <th>Tanggal Pemesanan</th> {# Updated header #}
-                            <th>Tanggal Pembatalan</th> {# Added header #}
-                            <th>Produk</th>
-                            <th class="text-center">Jumlah</th>
-                            <th>Alasan Pembatalan</th>
-                            <th class="text-center">Aksi</th> {# Added Aksi column #}
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {# Dynamic rendering of cancelled orders #}
-                        {% for order in cancelled_orders %}
-                        <tr>
-                            <td>{{ order.order_number }}</td>
-                            <td>{{ order.order_date|date:"Y-m-d" }}</td>
-                            <td>{{ order.cancellation_date|date:"Y-m-d" }}</td>
-                            <td>{{ order.product_name|default:"-" }}</td>
-                            <td class="text-center">{{ order.quantity }}</td>
-                            <td>{{ order.cancellation_reason|default:"-" }}</td>
-                            <td class="text-center">
-                                <form method="POST" action="{% url 'inventory:send_cancelled_order_telegram' order.id %}" style="display: inline;" class="me-1">
-                                    {% csrf_token %}
-                                    <button type="submit" class="btn btn-info btn-sm" title="Kirim ke Telegram">
-                                        <i class="bi bi-telegram"></i>
-                                    </button>
-                                </form>
-                                <button type="button" class="btn btn-sm btn-danger delete-cancelled-order-btn" data-order-id="{{ order.id }}" title="Hapus Pesanan Dibatalkan">
-                                    <i class="bi bi-trash"></i>
-                                </button>
-                            </td>
-                        </tr>
-                        {% empty %}
-                        {# Empty state row #}
-                        <tr>
-                            <td colspan="7" class="text-center py-5"> {# Updated colspan to 7 to match column count #}
-                                <i class="bi bi-inbox fs-1 text-muted mb-3 d-block"></i>
-                                <h5 class="text-muted">Tidak Ada Data Pesanan Dibatalkan</h5>
-                                <p class="text-muted">Belum ada data pesanan yang dibatalkan untuk ditampilkan.</p>
-                            </td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            </div>
-        </div>
-    </div>
-</div>
-
-<!-- Modal Konfirmasi Reset Data -->
-<div class="modal fade" id="resetDataModal" tabindex="-1" aria-labelledby="resetDataModalLabel" aria-hidden="true">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="resetDataModalLabel">Konfirmasi Reset Data</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <div class="modal-body">
-                <div class="alert alert-danger">
-                    <i class="bi bi-exclamation-triangle-fill me-2"></i>
-                    Apakah Anda yakin ingin menghapus semua data pesanan dibatalkan? Tindakan ini tidak bisa dibatalkan.
-                </div>
-                <p class="text-muted">Semua data pesanan dibatalkan akan dihapus secara permanen dari sistem.</p>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
-                <form method="POST" action="{% url 'inventory:reset_cancelled_orders' %}" style="display: inline;">
-                    {% csrf_token %}
-                    <button type="submit" class="btn btn-danger" id="confirmResetData">Hapus Semua Data</button>
-                </form>
-            </div>
-        </div>
-    </div>
-</div>
-
-<!-- Toast Notification -->
-<div class="position-fixed bottom-0 end-0 p-3" style="z-index: 11">
-    <div id="notificationToast" class="toast" role="alert" aria-live="assertive" aria-atomic="true">
-        <div class="toast-header">
-            <strong class="me-auto">Notifikasi</strong>
-            <button type="button" class="btn-close" data-bs-dismiss="toast" aria-label="Close"></button>
-        </div>
-        <div class="toast-body" id="toastMessage">
-            
-        </div>
-    </div>
-</div>
-{% endblock %}
 
 {% block extra_js %}
-<script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
 <!-- SweetAlert2 CDN -->
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 <script>
-    document.addEventListener('DOMContentLoaded', function() {
-        // Initialize datepicker for both date fields
-        flatpickr(".datepicker", {
-            dateFormat: "Y-m-d",
-            allowInput: true
-        });
+    document.addEventListener("DOMContentLoaded", function() {
+        console.log("DOM fully loaded and parsed for Pesanan Dibatalkan");
 
-        // Reset Data button click handler
-        const resetDataBtn = document.getElementById('resetDataBtn');
-        const resetDataModal = new bootstrap.Modal(document.getElementById('resetDataModal'));
-        
+        // Get CSRF token
+        const csrfToken = document.querySelector("[name=csrfmiddlewaretoken]").value;
+        console.log("CSRF Token:", csrfToken ? "Found" : "Not found");
+
+        const resetDataBtn = document.getElementById("resetDataBtn");
+
+        // Reset Data button click
         if (resetDataBtn) {
-            resetDataBtn.addEventListener('click', function() {
-                resetDataModal.show();
+            resetDataBtn.addEventListener("click", function(e) {
+                e.preventDefault(); // Prevent default form submission
+                Swal.fire({
+                    title: "Konfirmasi Reset Data",
+                    html: "<div class=	\'alert alert-danger	\'><i class=	\'bi bi-exclamation-triangle-fill me-2	\'></i>Apakah Anda yakin ingin menghapus <strong>semua data pesanan dibatalkan</strong>? Tindakan ini tidak dapat dibatalkan.</div>",
+                    icon: "warning",
+                    showCancelButton: true,
+                    confirmButtonColor: "#d33",
+                    cancelButtonColor: "#3085d6",
+                    confirmButtonText: "Ya, Hapus Semua!",
+                    cancelButtonText: "Batal"
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        // If confirmed, submit the reset form
+                        document.getElementById("resetForm").submit();
+                    }
+                });
             });
         }
-    });
-</script>
-{% endblock %}
-
-
 
         // Delete Cancelled Order button click handler (using event delegation)
         document.addEventListener("click", function(e) {
-            const deleteBtn = e.target.closest(".delete-cancelled-order-btn"); // Changed selector
+            const deleteBtn = e.target.closest(".delete-cancelled-order-btn"); // Use specific class
             if (deleteBtn) {
                 const button = deleteBtn;
-                const orderId = button.getAttribute("data-order-id"); // Changed attribute name
+                const itemId = button.getAttribute("data-item-id");
                 const row = button.closest("tr");
-                const orderNumberElement = row.querySelector("td:nth-child(1)"); // Assuming Order Number is 1st column
+                const orderNumberElement = row.querySelector("td:nth-child(2)"); // Assuming Nomor Pesanan is 2nd column
                 const orderNumber = orderNumberElement ? orderNumberElement.textContent.trim() : "pesanan ini";
 
                 Swal.fire({
@@ -215,11 +56,11 @@
                 }).then((result) => {
                     if (result.isConfirmed) {
                         Swal.fire({ title: "Menghapus pesanan...", allowOutsideClick: false, didOpen: () => { Swal.showLoading(); } });
-                        fetch(`/api/delete-cancelled-order/${orderId}/`, { // Changed endpoint
+                        fetch(`/api/delete-cancelled-order/${itemId}/`, { // Use correct endpoint
                             method: "POST",
                             headers: {
                                 "Content-Type": "application/json",
-                                "X-CSRFToken": document.querySelector("[name=csrfmiddlewaretoken]").value
+                                "X-CSRFToken": csrfToken
                             },
                             // No body needed if just using URL parameter for ID
                         })
@@ -235,8 +76,7 @@
                                     const tableBody = document.querySelector("table tbody");
                                     if (tableBody && tableBody.querySelectorAll("tr").length === 0) {
                                         const noDataRow = document.createElement("tr");
-                                        // Adjusted colspan to 7 and content for Pesanan Dibatalkan
-                                        noDataRow.innerHTML = "<td colspan=\"7\" class=\"text-center py-5\"><i class=\"bi bi-inbox fs-1 text-muted mb-3 d-block\"></i><h5 class=\"text-muted\">Tidak Ada Data Pesanan Dibatalkan</h5><p class=\"text-muted\">Belum ada data pesanan yang dibatalkan untuk ditampilkan.</p></td>";
+                                        noDataRow.innerHTML = "<td colspan=\"7\" class=\"text-center\">Tidak ada data pesanan dibatalkan</td>"; // Adjusted colspan
                                         tableBody.appendChild(noDataRow);
                                     }
                                 }, 500);
@@ -254,4 +94,7 @@
                 });
             }
         });
+    });
+</script>
+{% endblock %}
 
