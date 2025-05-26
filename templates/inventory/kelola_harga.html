@@ -164,9 +164,14 @@
     document.addEventListener('DOMContentLoaded', function() {
         console.log('DOM fully loaded and parsed');
         
-        // Get CSRF token
-        const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
-        console.log('CSRF Token:', csrfToken ? 'Found' : 'Not found');
+        const csrfTokenInput = document.querySelector("[name=csrfmiddlewaretoken]");
+        if (!csrfTokenInput) {
+            console.error("CSRF token input field not found in Kelola Harga!");
+            Swal.fire("Error Kritis", "Elemen CSRF token tidak ditemukan. Fungsi AJAX tidak akan bekerja.", "error");
+            return; // Stop execution
+        }
+        const csrfToken = csrfTokenInput.value;
+        console.log("CSRF Token:", csrfToken ? "Found" : "Not found (but input exists)");
         
         const sendToTelegramBtn = document.getElementById('sendToTelegramBtn');
         const toastEl = document.getElementById('notificationToast');
