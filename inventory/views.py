@@ -800,12 +800,18 @@ def reset_cancelled_orders(request):
 @login_required
 @user_passes_test(is_admin) # Only admin can delete items directly
 @csrf_exempt # Consider CSRF protection if not using API tokens
-def delete_item(request, item_id):
+def delete_item(request):
     """
     API endpoint to delete a specific stock item.
     """
     if request.method == 'POST':
         try:
+            data = json.loads(request.body)
+            item_id = data.get('item_id')
+            
+            if not item_id:
+                return JsonResponse({"status": "error", "message": "ID item tidak diberikan."}, status=400)
+                
             item = get_object_or_404(Item, pk=item_id)
             item_name = item.name # Store name for logging before deletion
             item.delete()
@@ -815,10 +821,10 @@ def delete_item(request, item_id):
                 user=request.user,
                 action="delete_item",
                 status="success",
-                notes=f"Item 	'{item_name}	' (ID: {item_id}) deleted."
+                notes=f"Item '{item_name}' (ID: {item_id}) deleted."
             )
             
-            return JsonResponse({"status": "success", "message": f"Item 	'{item_name}	' berhasil dihapus."}, status=200)
+            return JsonResponse({"status": "success", "message": f"Item '{item_name}' berhasil dihapus."}, status=200)
         except Item.DoesNotExist:
              ActivityLog.objects.create(
                 user=request.user,
@@ -827,14 +833,16 @@ def delete_item(request, item_id):
                 notes=f"Attempted to delete non-existent item ID: {item_id}."
             )
              return JsonResponse({"status": "error", "message": "Item tidak ditemukan."}, status=404)
+        except json.JSONDecodeError:
+            return JsonResponse({"status": "error", "message": "Format JSON tidak valid."}, status=400)
         except Exception as e:
-            logger.error(f"Error deleting item {item_id}: {e}")
+            logger.error(f"Error deleting item: {e}")
             logger.error(traceback.format_exc())
             ActivityLog.objects.create(
                 user=request.user,
                 action="delete_item_failed",
                 status="failed",
-                notes=f"Error deleting item ID {item_id}: {e}"
+                notes=f"Error deleting item: {e}"
             )
             return JsonResponse({"status": "error", "message": f"Terjadi kesalahan: {e}"}, status=500)
     else:
@@ -846,13 +854,19 @@ def delete_item(request, item_id):
 @login_required
 @user_passes_test(is_admin) # Only admin can delete items
 @csrf_exempt # Consider CSRF protection if not using API tokens
-def delete_exp_item(request, item_id):
+def delete_exp_item(request):
     """
     API endpoint to delete a specific stock item from the Data Exp Produk view.
     Note: This deletes the entire Item record, not just the expiry date.
     """
     if request.method == 'POST':
         try:
+            data = json.loads(request.body)
+            item_id = data.get('item_id')
+            
+            if not item_id:
+                return JsonResponse({"status": "error", "message": "ID item tidak diberikan."}, status=400)
+                
             # Use the Item model as this page lists Items
             item = get_object_or_404(Item, pk=item_id)
             item_name = item.name # Store name for logging before deletion
@@ -875,14 +889,16 @@ def delete_exp_item(request, item_id):
                 notes=f"Attempted to delete non-existent item ID: {item_id} from Data Exp Produk."
             )
              return JsonResponse({"status": "error", "message": "Item tidak ditemukan."}, status=404)
+        except json.JSONDecodeError:
+            return JsonResponse({"status": "error", "message": "Format JSON tidak valid."}, status=400)
         except Exception as e:
-            logger.error(f"Error deleting item {item_id} from Data Exp Produk: {e}")
+            logger.error(f"Error deleting item from Data Exp Produk: {e}")
             logger.error(traceback.format_exc())
             ActivityLog.objects.create(
                 user=request.user,
                 action="delete_exp_item_failed",
                 status="failed",
-                notes=f"Error deleting item ID {item_id} from Data Exp Produk: {e}"
+                notes=f"Error deleting item from Data Exp Produk: {e}"
             )
             return JsonResponse({"status": "error", "message": f"Terjadi kesalahan: {e}"}, status=500)
     else:
@@ -894,13 +910,19 @@ def delete_exp_item(request, item_id):
 @login_required
 @user_passes_test(is_admin) # Only admin can delete items
 @csrf_exempt # Consider CSRF protection if not using API tokens
-def delete_transfer_item(request, item_id):
+def delete_transfer_item(request):
     """
     API endpoint to delete a specific stock item from the Transfer Stok view.
     Note: This deletes the entire Item record.
     """
     if request.method == 'POST':
         try:
+            data = json.loads(request.body)
+            item_id = data.get('item_id')
+            
+            if not item_id:
+                return JsonResponse({"status": "error", "message": "ID item tidak diberikan."}, status=400)
+                
             # Use the Item model as this page lists Items
             item = get_object_or_404(Item, pk=item_id)
             item_name = item.name # Store name for logging before deletion
@@ -923,14 +945,120 @@ def delete_transfer_item(request, item_id):
                 notes=f"Attempted to delete non-existent item ID: {item_id} from Transfer Stok."
             )
              return JsonResponse({"status": "error", "message": "Item tidak ditemukan."}, status=404)
+        except json.JSONDecodeError:
+            return JsonResponse({"status": "error", "message": "Format JSON tidak valid."}, status=400)
         except Exception as e:
-            logger.error(f"Error deleting item {item_id} from Transfer Stok: {e}")
+            logger.error(f"Error deleting item from Transfer Stok: {e}")
             logger.error(traceback.format_exc())
             ActivityLog.objects.create(
                 user=request.user,
                 action="delete_transfer_item_failed",
                 status="failed",
-                notes=f"Error deleting item ID {item_id} from Transfer Stok: {e}"
+                notes=f"Error deleting item from Transfer Stok: {e}"
+            )
+            return JsonResponse({"status": "error", "message": f"Terjadi kesalahan: {e}"}, status=500)
+    else:
+        return JsonResponse({"status": "error", "message": "Metode request tidak valid."}, status=405)
+
+@login_required
+@user_passes_test(is_admin) # Only admin can delete items
+@csrf_exempt # Consider CSRF protection if not using API tokens
+def delete_cancelled_order(request):
+    """
+    API endpoint to delete a specific cancelled order.
+    """
+    if request.method == 'POST':
+        try:
+            data = json.loads(request.body)
+            order_id = data.get('order_id')
+            
+            if not order_id:
+                return JsonResponse({"status": "error", "message": "ID pesanan tidak diberikan."}, status=400)
+                
+            order = get_object_or_404(CancelledOrder, pk=order_id)
+            order_number = order.order_number # Store number for logging before deletion
+            order.delete()
+            
+            # Log activity
+            ActivityLog.objects.create(
+                user=request.user,
+                action="delete_cancelled_order",
+                status="success",
+                notes=f"Cancelled order '{order_number}' (ID: {order_id}) deleted."
+            )
+            
+            return JsonResponse({"status": "success", "message": f"Pesanan dibatalkan '{order_number}' berhasil dihapus."}, status=200)
+        except CancelledOrder.DoesNotExist:
+             ActivityLog.objects.create(
+                user=request.user,
+                action="delete_cancelled_order_failed",
+                status="failed",
+                notes=f"Attempted to delete non-existent cancelled order ID: {order_id}."
+            )
+             return JsonResponse({"status": "error", "message": "Pesanan dibatalkan tidak ditemukan."}, status=404)
+        except json.JSONDecodeError:
+            return JsonResponse({"status": "error", "message": "Format JSON tidak valid."}, status=400)
+        except Exception as e:
+            logger.error(f"Error deleting cancelled order: {e}")
+            logger.error(traceback.format_exc())
+            ActivityLog.objects.create(
+                user=request.user,
+                action="delete_cancelled_order_failed",
+                status="failed",
+                notes=f"Error deleting cancelled order: {e}"
+            )
+            return JsonResponse({"status": "error", "message": f"Terjadi kesalahan: {e}"}, status=500)
+    else:
+        return JsonResponse({"status": "error", "message": "Metode request tidak valid."}, status=405)
+
+
+@login_required
+@user_passes_test(is_admin) # Only admin can delete items
+@csrf_exempt # Consider CSRF protection if not using API tokens
+def delete_harga_item(request):
+    """
+    API endpoint to delete a specific price item from the Kelola Harga view.
+    """
+    if request.method == 'POST':
+        try:
+            data = json.loads(request.body)
+            item_id = data.get('item_id')
+            
+            if not item_id:
+                return JsonResponse({"status": "error", "message": "ID item tidak diberikan."}, status=400)
+                
+            # Use the Item model as this page lists Items
+            item = get_object_or_404(Item, pk=item_id)
+            item_name = item.name # Store name for logging before deletion
+            item.delete()
+            
+            # Log activity
+            ActivityLog.objects.create(
+                user=request.user,
+                action="delete_harga_item",
+                status="success",
+                notes=f"Item '{item_name}' (ID: {item_id}) deleted from Kelola Harga view."
+            )
+            
+            return JsonResponse({"status": "success", "message": f"Item '{item_name}' berhasil dihapus."}, status=200)
+        except Item.DoesNotExist:
+             ActivityLog.objects.create(
+                user=request.user,
+                action="delete_harga_item_failed",
+                status="failed",
+                notes=f"Attempted to delete non-existent item ID: {item_id} from Kelola Harga."
+            )
+             return JsonResponse({"status": "error", "message": "Item tidak ditemukan."}, status=404)
+        except json.JSONDecodeError:
+            return JsonResponse({"status": "error", "message": "Format JSON tidak valid."}, status=400)
+        except Exception as e:
+            logger.error(f"Error deleting item from Kelola Harga: {e}")
+            logger.error(traceback.format_exc())
+            ActivityLog.objects.create(
+                user=request.user,
+                action="delete_harga_item_failed",
+                status="failed",
+                notes=f"Error deleting item from Kelola Harga: {e}"
             )
             return JsonResponse({"status": "error", "message": f"Terjadi kesalahan: {e}"}, status=500)
     else:
@@ -942,12 +1070,18 @@ def delete_transfer_item(request, item_id):
 @login_required
 @user_passes_test(is_admin) # Only admin can delete cancelled orders
 @csrf_exempt # Consider CSRF protection if not using API tokens
-def delete_cancelled_order(request, order_id):
+def delete_cancelled_order(request):
     """
     API endpoint to delete a specific cancelled order.
     """
     if request.method == 'POST':
         try:
+            data = json.loads(request.body)
+            order_id = data.get('order_id')
+            
+            if not order_id:
+                return JsonResponse({"status": "error", "message": "ID pesanan tidak diberikan."}, status=400)
+                
             order = get_object_or_404(CancelledOrder, pk=order_id)
             order_number = order.order_number # Store number for logging before deletion
             order.delete()
@@ -957,7 +1091,7 @@ def delete_cancelled_order(request, order_id):
                 user=request.user,
                 action="delete_cancelled_order",
                 status="success",
-                notes=f"Cancelled order 	'{order_number}	' (ID: {order_id}) deleted."
+                notes=f"Cancelled order '{order_number}' (ID: {order_id}) deleted."
             )
             
             return JsonResponse({"status": "success", "message": f"Pesanan dibatalkan 	'{order_number}	' berhasil dihapus."}, status=200)
@@ -988,13 +1122,19 @@ def delete_cancelled_order(request, order_id):
 @login_required
 @user_passes_test(is_admin) # Only admin can delete items
 @csrf_exempt # Consider CSRF protection if not using API tokens
-def delete_harga_item(request, item_id):
+def delete_harga_item(request):
     """
     API endpoint to delete a specific stock item from the Kelola Harga view.
     Note: This deletes the entire Item record.
     """
     if request.method == 'POST':
         try:
+            data = json.loads(request.body)
+            item_id = data.get('item_id')
+            
+            if not item_id:
+                return JsonResponse({"status": "error", "message": "ID item tidak diberikan."}, status=400)
+                
             # Use the Item model as this page lists Items
             item = get_object_or_404(Item, pk=item_id)
             item_name = item.name # Store name for logging before deletion

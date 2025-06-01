@@ -254,7 +254,7 @@
 
         // Delete Exp Item button click handler (using event delegation)
         document.addEventListener("click", function(e) {
-            const deleteBtn = e.target.closest(".delete-exp-item-btn"); // Use specific class
+            const deleteBtn = e.target.closest(".delete-item"); // Use consistent class
             if (deleteBtn) {
                 const button = deleteBtn;
                 const itemId = button.getAttribute("data-item-id");
@@ -274,13 +274,13 @@
                 }).then((result) => {
                     if (result.isConfirmed) {
                         Swal.fire({ title: "Menghapus item...", allowOutsideClick: false, didOpen: () => { Swal.showLoading(); } });
-                        fetch(`/api/delete-exp-item/${itemId}/`, { // Use correct endpoint
+                        fetch('/api/delete-exp-item/', { // Use consistent endpoint
                             method: "POST",
                             headers: {
                                 "Content-Type": "application/json",
                                 "X-CSRFToken": csrfToken
                             },
-                            // No body needed if just using URL parameter for ID
+                            body: JSON.stringify({ item_id: itemId })
                         })
                         .then(response => response.json())
                         .then(data => {

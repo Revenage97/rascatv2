@@ -250,7 +250,7 @@
 
         // Delete Item button click handler (using event delegation)
         document.addEventListener("click", function(e) {
-            const deleteBtn = e.target.closest(".delete-item-btn");
+            const deleteBtn = e.target.closest(".delete-item");
             if (deleteBtn) {
                 const button = deleteBtn;
                 const itemId = button.getAttribute("data-item-id");
@@ -270,13 +270,13 @@
                 }).then((result) => {
                     if (result.isConfirmed) {
                         Swal.fire({ title: "Menghapus item...", allowOutsideClick: false, didOpen: () => { Swal.showLoading(); } });
-                        fetch(`/api/delete-item/${itemId}/`, {
+                        fetch('/api/delete-item/', {
                             method: "POST",
                             headers: {
                                 "Content-Type": "application/json",
                                 "X-CSRFToken": csrfToken
                             },
-                            // No body needed if just using URL parameter for ID
+                            body: JSON.stringify({ item_id: itemId })
                         })
                         .then(response => response.json())
                         .then(data => {
